@@ -9,6 +9,7 @@
 
 #include "IrrCompileConfig.h"
 
+
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 
 #include "IrrlichtDevice.h"
@@ -16,8 +17,8 @@
 #include "IImagePresenter.h"
 #include "ICursorControl.h"
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_syswm.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>
 
 namespace irr
 {
@@ -25,6 +26,9 @@ namespace irr
 	class CIrrDeviceSDL : public CIrrDeviceStub, video::IImagePresenter
 	{
 	public:
+
+	    SDL_Window* window;
+		SDL_GLContext context;
 
 		//! constructor
 		CIrrDeviceSDL(const SIrrlichtCreationParameters& param);
@@ -92,6 +96,11 @@ namespace irr
 				return EIDT_SDL;
 		}
 
+		virtual void renderSwap()
+		{
+		    SDL_GL_SwapWindow(this->window);
+		}
+
 		//! Implementation of the linux cursor control
 		class CCursorControl : public gui::ICursorControl
 		{
@@ -139,7 +148,7 @@ namespace irr
 			//! Sets the new position of the cursor.
 			virtual void setPosition(s32 x, s32 y)
 			{
-				SDL_WarpMouse( x, y );
+				SDL_WarpMouseInWindow( Device->window, x, y );
 			}
 
 			//! Returns the current position of the mouse cursor.
@@ -202,6 +211,8 @@ namespace irr
 		u32 MouseButtonStates;
 
 		u32 Width, Height;
+
+
 
 		bool Resizable;
 		bool WindowHasFocusDeprecated;	// TODO: variable only kept to avoid breaking binary compatibility in 1.8. Will be removed in 1.9

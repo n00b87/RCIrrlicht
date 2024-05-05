@@ -22,7 +22,8 @@
 #endif
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
+#include "CIrrDeviceSDL.h"
 #endif
 
 namespace irr
@@ -609,6 +610,8 @@ COpenGLDriver::COpenGLDriver(const SIrrlichtCreationParameters& params,
 	CgContext = 0;
 	#endif
 
+	SDLDevice->context = SDL_GL_CreateContext(SDLDevice->window);
+
 	genericDriverInit();
 }
 
@@ -855,7 +858,7 @@ bool COpenGLDriver::endScene()
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 	if (DeviceType == EIDT_SDL)
 	{
-		SDL_GL_SwapBuffers();
+		SDLDevice->renderSwap();
 		return true;
 	}
 #endif
