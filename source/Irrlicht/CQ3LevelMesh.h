@@ -2,18 +2,17 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_Q3_LEVEL_MESH_H_INCLUDED__
-#define __C_Q3_LEVEL_MESH_H_INCLUDED__
+#ifndef IRR_C_Q3_LEVEL_MESH_H_INCLUDED
+#define IRR_C_Q3_LEVEL_MESH_H_INCLUDED
 
 #include "IQ3LevelMesh.h"
 #include "IReadFile.h"
 #include "IFileSystem.h"
 #include "SMesh.h"
-#include "SMeshBufferLightMap.h"
+#include "CMeshBuffer.h"
 #include "IVideoDriver.h"
 #include "irrString.h"
 #include "ISceneManager.h"
-#include "os.h"
 
 namespace irr
 {
@@ -25,7 +24,7 @@ namespace scene
 
 		//! constructor
 		CQ3LevelMesh(io::IFileSystem* fs, scene::ISceneManager* smgr,
-		             const quake3::Q3LevelLoadParameter &loadParam);
+			const quake3::Q3LevelLoadParameter &loadParam);
 
 		//! destructor
 		virtual ~CQ3LevelMesh();
@@ -36,11 +35,11 @@ namespace scene
 
 		//! returns the amount of frames in milliseconds. If the amount
 		//! is 1, it is a static (=non animated) mesh.
-		virtual u32 getFrameCount() const;
+		virtual u32 getFrameCount() const IRR_OVERRIDE;
 
 		//! Gets the default animation speed of the animated mesh.
 		/** \return Amount of frames per second. If the amount is 0, it is a static, non animated mesh. */
-		virtual f32 getAnimationSpeed() const
+		virtual f32 getAnimationSpeed() const IRR_OVERRIDE
 		{
 			return FramesPerSecond;
 		}
@@ -48,7 +47,7 @@ namespace scene
 		//! Gets the frame count of the animated mesh.
 		/** \param fps Frames per second to play the animation with. If the amount is 0, it is not animated.
 		The actual speed is set in the scene node the mesh is instantiated in.*/
-		virtual void setAnimationSpeed(f32 fps)
+		virtual void setAnimationSpeed(f32 fps) IRR_OVERRIDE
 		{
 			FramesPerSecond=fps;
 		}
@@ -57,74 +56,74 @@ namespace scene
 		//! lowest, 255 the highest detail. Note, that some Meshes will
 		//! ignore the detail level.
 		virtual IMesh* getMesh(s32 frameInMs, s32 detailLevel=255,
-				s32 startFrameLoop=-1, s32 endFrameLoop=-1);
+				s32 startFrameLoop=-1, s32 endFrameLoop=-1) IRR_OVERRIDE;
 
 		//! Returns an axis aligned bounding box of the mesh.
 		//! \return A bounding box of this mesh is returned.
-		virtual const core::aabbox3d<f32>& getBoundingBox() const;
+		virtual const core::aabbox3d<f32>& getBoundingBox() const IRR_OVERRIDE;
 
-		virtual void setBoundingBox( const core::aabbox3df& box);
+		virtual void setBoundingBox( const core::aabbox3df& box) IRR_OVERRIDE;
 
 		//! Returns the type of the animated mesh.
-		virtual E_ANIMATED_MESH_TYPE getMeshType() const;
+		virtual E_ANIMATED_MESH_TYPE getMeshType() const IRR_OVERRIDE;
 
 		//! loads the shader definition
-		virtual void getShader( io::IReadFile* file );
+		void getShader( io::IReadFile* file );
 
 		//! loads the shader definition
-		virtual const quake3::IShader * getShader( const c8 * filename, bool fileNameIsValid=true );
+		virtual const quake3::IShader * getShader( const c8 * filename, bool fileNameIsValid=true ) IRR_OVERRIDE;
 
 		//! returns a already loaded Shader
-		virtual const quake3::IShader * getShader( u32 index  ) const;
+		virtual const quake3::IShader * getShader( u32 index  ) const IRR_OVERRIDE;
 
 
 		//! loads a configuration file
-		virtual void getConfiguration( io::IReadFile* file );
+		void getConfiguration( io::IReadFile* file );
 		//! get's an interface to the entities
-		virtual quake3::tQ3EntityList & getEntityList();
+		virtual quake3::tQ3EntityList & getEntityList() IRR_OVERRIDE;
 
 		//! returns the requested brush entity
-		virtual IMesh* getBrushEntityMesh(s32 num) const;
+		virtual IMesh* getBrushEntityMesh(s32 num) const IRR_OVERRIDE;
 
 		//! returns the requested brush entity
-		virtual IMesh* getBrushEntityMesh(quake3::IEntity &ent) const;
+		virtual IMesh* getBrushEntityMesh(quake3::IEntity &ent) const IRR_OVERRIDE;
 
 		//Link to held meshes? ...
 
 
 		//! returns amount of mesh buffers.
-		virtual u32 getMeshBufferCount() const
+		virtual u32 getMeshBufferCount() const IRR_OVERRIDE
 		{
 			return 0;
 		}
 
 		//! returns pointer to a mesh buffer
-		virtual IMeshBuffer* getMeshBuffer(u32 nr) const
+		virtual IMeshBuffer* getMeshBuffer(u32 nr) const IRR_OVERRIDE
 		{
 			return 0;
 		}
 
 		//! Returns pointer to a mesh buffer which fits a material
- 		/** \param material: material to search for
+		/** \param material: material to search for
 		\return Pointer to the mesh buffer or 0 if there is no such mesh buffer. */
-		virtual IMeshBuffer* getMeshBuffer( const video::SMaterial &material) const
+		virtual IMeshBuffer* getMeshBuffer( const video::SMaterial &material) const IRR_OVERRIDE
 		{
 			return 0;
 		}
 
-		virtual void setMaterialFlag(video::E_MATERIAL_FLAG flag, bool newvalue)
+		virtual void setMaterialFlag(video::E_MATERIAL_FLAG flag, bool newvalue) IRR_OVERRIDE
 		{
 			return;
 		}
 
 		//! set the hardware mapping hint, for driver
-		virtual void setHardwareMappingHint(E_HARDWARE_MAPPING newMappingHint, E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX)
+		virtual void setHardwareMappingHint(E_HARDWARE_MAPPING newMappingHint, E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX) IRR_OVERRIDE
 		{
 			return;
 		}
 
 		//! flags the meshbuffer as changed, reloads hardware buffers
-		virtual void setDirty(E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX)
+		virtual void setDirty(E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX) IRR_OVERRIDE
 		{
 			return;
 		}
@@ -324,10 +323,10 @@ namespace scene
 
 		//bi-quadratic bezier patches
 		void createCurvedSurface_bezier(SMeshBufferLightMap* meshBuffer,
-				s32 faceIndex, s32 patchTesselation, s32 storevertexcolor);
+				s32 faceIndex, s32 patchTessellation, s32 storevertexcolor);
 
 		void createCurvedSurface_nosubdivision(SMeshBufferLightMap* meshBuffer,
-				s32 faceIndex, s32 patchTesselation, s32 storevertexcolor);
+				s32 faceIndex, s32 patchTessellation, s32 storevertexcolor);
 
 		struct S3DVertex2TCoords_64
 		{
@@ -369,10 +368,7 @@ namespace scene
 			void tesselate(s32 level);
 
 		private:
-			s32	Level;
-
 			core::array<S3DVertex2TCoords_64> column[3];
-
 		};
 		SBezier Bezier;
 
@@ -488,4 +484,3 @@ namespace scene
 } // end namespace irr
 
 #endif
-

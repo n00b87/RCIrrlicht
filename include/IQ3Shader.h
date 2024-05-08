@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_Q3_LEVEL_SHADER_H_INCLUDED__
-#define __I_Q3_LEVEL_SHADER_H_INCLUDED__
+#ifndef IRR_I_Q3_LEVEL_SHADER_H_INCLUDED
+#define IRR_I_Q3_LEVEL_SHADER_H_INCLUDED
 
 #include "irrArray.h"
 #include "fast_atof.h"
@@ -40,7 +40,7 @@ namespace quake3
 			:defaultLightMapMaterial ( video::EMT_LIGHTMAP_M4 ),
 			defaultModulate ( video::EMFN_MODULATE_4X ),
 			defaultFilter ( video::EMF_BILINEAR_FILTER ),
-			patchTesselation ( 8 ),
+			patchTessellation ( 8 ),
 			verbose ( 0 ),
 			startTime ( 0 ), endTime ( 0 ),
 			mergeShaderBuffer ( 1 ),
@@ -61,7 +61,7 @@ namespace quake3
 		video::E_MATERIAL_TYPE defaultLightMapMaterial;
 		video::E_MODULATE_FUNC defaultModulate;
 		video::E_MATERIAL_FLAG defaultFilter;
-		s32 patchTesselation;
+		s32 patchTessellation;
 		s32 verbose;
 		u32 startTime;
 		u32 endTime;
@@ -80,7 +80,7 @@ namespace quake3
 	typedef core::array< video::ITexture* > tTexArray;
 
 	// string helper.. TODO: move to generic files
-	inline s16 isEqual ( const core::stringc &string, u32 &pos, const c8 *list[], u16 listSize )
+	inline s16 isEqual ( const core::stringc &string, u32 &pos, const c8 * const list[], u16 listSize )
 	{
 		const char * in = string.c_str () + pos;
 
@@ -371,50 +371,48 @@ namespace quake3
 
 	enum eQ3ModifierFunction
 	{
-		TCMOD				= 0,
+		TCMOD			= 0,
 		DEFORMVERTEXES		= 1,
-		RGBGEN				= 2,
-		TCGEN				= 3,
-		MAP					= 4,
-		ALPHAGEN			= 5,
+		RGBGEN			= 2,
+		TCGEN			= 3,
+		MAP			= 4,
+		ALPHAGEN		= 5,
 
-		FUNCTION2			= 0x10,
-		SCROLL				= FUNCTION2 + 1,
-		SCALE				= FUNCTION2 + 2,
-		ROTATE				= FUNCTION2 + 3,
-		STRETCH				= FUNCTION2 + 4,
-		TURBULENCE			= FUNCTION2 + 5,
-		WAVE				= FUNCTION2 + 6,
+		FUNCTION2		= 0x10,
+		SCROLL			= FUNCTION2 + 1,
+		SCALE			= FUNCTION2 + 2,
+		ROTATE			= FUNCTION2 + 3,
+		STRETCH			= FUNCTION2 + 4,
+		TURBULENCE		= FUNCTION2 + 5,
+		WAVE			= FUNCTION2 + 6,
 
-		IDENTITY			= FUNCTION2 + 7,
-		VERTEX				= FUNCTION2 + 8,
-		TEXTURE				= FUNCTION2 + 9,
-		LIGHTMAP			= FUNCTION2 + 10,
-		ENVIRONMENT			= FUNCTION2 + 11,
+		IDENTITY		= FUNCTION2 + 7,
+		VERTEX			= FUNCTION2 + 8,
+		TEXTURE			= FUNCTION2 + 9,
+		LIGHTMAP		= FUNCTION2 + 10,
+		ENVIRONMENT		= FUNCTION2 + 11,
 		DOLLAR_LIGHTMAP		= FUNCTION2 + 12,
-		BULGE				= FUNCTION2 + 13,
-		AUTOSPRITE			= FUNCTION2 + 14,
-		AUTOSPRITE2			= FUNCTION2 + 15,
-		TRANSFORM			= FUNCTION2 + 16,
-		EXACTVERTEX			= FUNCTION2 + 17,
-		CONSTANT			= FUNCTION2 + 18,
+		BULGE			= FUNCTION2 + 13,
+		AUTOSPRITE		= FUNCTION2 + 14,
+		AUTOSPRITE2		= FUNCTION2 + 15,
+		TRANSFORM		= FUNCTION2 + 16,
+		EXACTVERTEX		= FUNCTION2 + 17,
+		CONSTANT		= FUNCTION2 + 18,
 		LIGHTINGSPECULAR	= FUNCTION2 + 19,
-		MOVE				= FUNCTION2 + 20,
-		NORMAL				= FUNCTION2 + 21,
+		MOVE			= FUNCTION2 + 20,
+		NORMAL			= FUNCTION2 + 21,
 		IDENTITYLIGHTING	= FUNCTION2 + 22,
 
 		WAVE_MODIFIER_FUNCTION	= 0x30,
-		SINUS				= WAVE_MODIFIER_FUNCTION + 1,
-		COSINUS				= WAVE_MODIFIER_FUNCTION + 2,
-		SQUARE				= WAVE_MODIFIER_FUNCTION + 3,
-		TRIANGLE			= WAVE_MODIFIER_FUNCTION + 4,
-		SAWTOOTH			= WAVE_MODIFIER_FUNCTION + 5,
+		SINUS			= WAVE_MODIFIER_FUNCTION + 1,
+		COSINUS			= WAVE_MODIFIER_FUNCTION + 2,
+		SQUARE			= WAVE_MODIFIER_FUNCTION + 3,
+		TRIANGLE		= WAVE_MODIFIER_FUNCTION + 4,
+		SAWTOOTH		= WAVE_MODIFIER_FUNCTION + 5,
 		SAWTOOTH_INVERSE	= WAVE_MODIFIER_FUNCTION + 6,
-		NOISE				= WAVE_MODIFIER_FUNCTION + 7,
+		NOISE			= WAVE_MODIFIER_FUNCTION + 7,
 
-
-		UNKNOWN				= -2
-
+		UNKNOWN			= -2
 	};
 
 	struct SModifierFunction
@@ -639,14 +637,6 @@ namespace quake3
 	{
 		IShader ()
 			: ID ( 0 ), VarGroup ( 0 )  {}
-		virtual ~IShader () {}
-
-		void operator = (const IShader &other )
-		{
-			ID = other.ID;
-			VarGroup = other.VarGroup;
-			name = other.name;
-		}
 
 		bool operator == (const IShader &other ) const
 		{
@@ -695,13 +685,11 @@ namespace quake3
 	inline void dumpVarGroup ( core::stringc &dest, const SVarGroup * group, s32 stack )
 	{
 		core::stringc buf;
-		s32 i;
-
 
 		if ( stack > 0 )
 		{
 			buf = "";
-			for ( i = 0; i < stack - 1; ++i )
+			for (s32 i = 0; i < stack - 1; ++i )
 				buf += '\t';
 
 			buf += "{\n";
@@ -711,7 +699,7 @@ namespace quake3
 		for ( u32 g = 0; g != group->Variable.size(); ++g )
 		{
 			buf = "";
-			for ( i = 0; i < stack; ++i )
+			for (s32 i = 0; i < stack; ++i )
 				buf += '\t';
 
 			buf += group->Variable[g].name;
@@ -724,13 +712,12 @@ namespace quake3
 		if ( stack > 1 )
 		{
 			buf = "";
-			for ( i = 0; i < stack - 1; ++i )
+			for (s32 i = 0; i < stack - 1; ++i )
 				buf += '\t';
 
 			buf += "}\n";
 			dest.append ( buf );
 		}
-
 	}
 
 	/*!
@@ -741,12 +728,10 @@ namespace quake3
 		if ( 0 == shader )
 			return dest;
 
-		const SVarGroup * group;
-
 		const u32 size = shader->VarGroup->VariableGroup.size ();
 		for ( u32 i = 0; i != size; ++i )
 		{
-			group = &shader->VarGroup->VariableGroup[ i ];
+			const SVarGroup * group = &shader->VarGroup->VariableGroup[ i ];
 			dumpVarGroup ( dest, group, core::clamp( (int)i, 0, 2 ) );
 		}
 
@@ -769,10 +754,10 @@ namespace quake3
 	*/
 	inline void getTextures(tTexArray &textures,
 				const core::stringc &name, u32 &startPos,
-				io::IFileSystem *fileSystem,
+				const io::IFileSystem *fileSystem,
 				video::IVideoDriver* driver)
 	{
-		static const char* extension[] =
+		static const char * const extension[] =
 		{
 			".jpg",
 			".jpeg",
@@ -792,7 +777,7 @@ namespace quake3
 		for ( u32 i = 0; i!= stringList.size (); ++i )
 		{
 			video::ITexture* texture = 0;
-			for (u32 g = 0; g != 7 ; ++g)
+			for (u32 g = 0; g != 7; ++g)
 			{
 				core::cutFilenameExtension ( loadFile, stringList[i] );
 
@@ -858,6 +843,10 @@ namespace quake3
 					loadFile.append ( extension[g] );
 				}
 
+				texture = driver->findTexture( loadFile );
+				if ( texture )
+					break;
+
 				if ( fileSystem->existFile ( loadFile ) )
 				{
 					texture = driver->getTexture( loadFile );
@@ -882,4 +871,3 @@ namespace quake3
 } // end namespace irr
 
 #endif
-

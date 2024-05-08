@@ -8,9 +8,7 @@
 #include "CQ3LevelMesh.h"
 #include "ISceneManager.h"
 #include "os.h"
-#include "SMeshBufferLightMap.h"
 #include "irrString.h"
-#include "ILightSceneNode.h"
 #include "IQ3Shader.h"
 #include "IFileList.h"
 
@@ -112,7 +110,7 @@ bool CQ3LevelMesh::loadFile(io::IReadFile* file)
 			( header.strID != 0x50534252 || header.version != 1 ) // RBSP, starwars jedi, sof
 		)
 	{
-		os::Printer::log("Could not load .bsp file, unknown header.", file->getFileName(), ELL_ERROR);
+		os::Printer::log("Could not load .bsp file, unknown header", file->getFileName(), ELL_ERROR);
 		return false;
 	}
 
@@ -718,7 +716,7 @@ s32 CQ3LevelMesh::setShaderFogMaterial( video::SMaterial &material, const tBSPFa
 	material.setTexture(2, 0);
 	material.setTexture(3, 0);
 	material.ZBuffer = video::ECFN_LESSEQUAL;
-	material.ZWriteEnable = false;
+	material.ZWriteEnable = video::EZW_OFF;
 	material.MaterialTypeParam = 0.f;
 
 	s32 shaderState = -1;
@@ -746,7 +744,7 @@ s32 CQ3LevelMesh::setShaderMaterial( video::SMaterial &material, const tBSPFace 
 	material.setTexture(2, 0);
 	material.setTexture(3, 0);
 	material.ZBuffer = video::ECFN_LESSEQUAL;
-	material.ZWriteEnable = true;
+	material.ZWriteEnable = video::EZW_AUTO;
 	material.MaterialTypeParam = 0.f;
 
 	s32 shaderState = -1;
@@ -804,7 +802,7 @@ s32 CQ3LevelMesh::setShaderMaterial( video::SMaterial &material, const tBSPFace 
 
 		if ( group->isDefined( "depthwrite" ) )
 		{
-			material.ZWriteEnable = true;
+			material.ZWriteEnable = video::EZW_ON;
 		}
 
 		SBlendFunc blendfunc ( LoadParam.defaultModulate );
@@ -952,7 +950,7 @@ scene::SMesh** CQ3LevelMesh::buildMesh(s32 num)
 						item[g].index != E_Q3_MESH_FOG ? material : material2 );
 				}
 
-				// create a seperate mesh buffer
+				// create a separate mesh buffer
 				if ( 0 == buffer )
 				{
 					buffer = new scene::SMeshBufferLightMap();
@@ -971,7 +969,7 @@ scene::SMesh** CQ3LevelMesh::buildMesh(s32 num)
 					break;
 				case 2: // patches
 					createCurvedSurface_bezier( buffer, i,
-									LoadParam.patchTesselation,
+									LoadParam.patchTessellation,
 									item[g].takeVertexColor
 								  );
 					break;
@@ -1041,7 +1039,7 @@ void CQ3LevelMesh::constructMesh()
 
 		if ( LoadParam.verbose > 1 )
 		{
-			snprintf( buf, sizeof ( buf ),
+			snprintf_irr( buf, sizeof ( buf ),
 				"quake3::constructMesh start to create %d faces, %d vertices,%d mesh vertices",
 				NumFaces,
 				NumVertices,
@@ -1082,8 +1080,8 @@ void CQ3LevelMesh::constructMesh()
 	{
 		LoadParam.endTime = os::Timer::getRealTime();
 
-		snprintf( buf, sizeof ( buf ),
-			"quake3::constructMesh needed %04d ms to create %d faces, %d vertices,%d mesh vertices",
+		snprintf_irr( buf, sizeof ( buf ),
+			"quake3::constructMesh needed %04u ms to create %d faces, %d vertices,%d mesh vertices",
 			LoadParam.endTime - LoadParam.startTime,
 			NumFaces,
 			NumVertices,
@@ -1274,7 +1272,7 @@ void CQ3LevelMesh::SBezier::tesselate( s32 level )
 */
 void CQ3LevelMesh::createCurvedSurface_nosubdivision(SMeshBufferLightMap* meshBuffer,
 					s32 faceIndex,
-					s32 patchTesselation,
+					s32 patchTessellation,
 					s32 storevertexcolor)
 {
 	tBSPFace * face = &Faces[faceIndex];
@@ -1318,7 +1316,7 @@ void CQ3LevelMesh::createCurvedSurface_nosubdivision(SMeshBufferLightMap* meshBu
 */
 void CQ3LevelMesh::createCurvedSurface_bezier(SMeshBufferLightMap* meshBuffer,
 					s32 faceIndex,
-					s32 patchTesselation,
+					s32 patchTessellation,
 					s32 storevertexcolor)
 {
 
@@ -1372,7 +1370,7 @@ void CQ3LevelMesh::createCurvedSurface_bezier(SMeshBufferLightMap* meshBuffer,
 			Bezier.control[7] = controlPoint[ inx + controlWidth * 2 + 1];
 			Bezier.control[8] = controlPoint[ inx + controlWidth * 2 + 2];
 
-			Bezier.tesselate( patchTesselation );
+			Bezier.tesselate( patchTessellation );
 		}
 	}
 
@@ -1418,8 +1416,8 @@ void CQ3LevelMesh::createCurvedSurface_bezier(SMeshBufferLightMap* meshBuffer,
 	{
 		LoadParam.endTime = os::Timer::getRealTime();
 
-		snprintf( buf, sizeof ( buf ),
-			"quake3::createCurvedSurface_bezier needed %04d ms to create bezier patch.(%dx%d)",
+		snprintf_irr( buf, sizeof ( buf ),
+			"quake3::createCurvedSurface_bezier needed %04u ms to create bezier patch.(%ux%u)",
 			LoadParam.endTime - LoadParam.startTime,
 			biquadWidth,
 			biquadHeight
@@ -1803,8 +1801,8 @@ void CQ3LevelMesh::cleanMesh(SMesh *m, const bool texture0important)
 		LoadParam.startTime = os::Timer::getRealTime();
 		if ( LoadParam.verbose > 1 )
 		{
-			snprintf( buf, sizeof ( buf ),
-				"quake3::cleanMeshes start for %d meshes",
+			snprintf_irr( buf, sizeof ( buf ),
+				"quake3::cleanMeshes start for %u meshes",
 				m->MeshBuffers.size()
 				);
 			os::Printer::log(buf, ELL_INFORMATION);
@@ -1846,7 +1844,7 @@ void CQ3LevelMesh::cleanMesh(SMesh *m, const bool texture0important)
 			{
 				if ( LoadParam.verbose > 1 )
 				{
-					snprintf( buf, sizeof ( buf ),
+					snprintf_irr( buf, sizeof ( buf ),
 						"quake3::cleanMeshes cleaning mesh %d %d size",
 						blockstart,
 						blockcount
@@ -1862,8 +1860,8 @@ void CQ3LevelMesh::cleanMesh(SMesh *m, const bool texture0important)
 	if ( LoadParam.verbose > 0 )
 	{
 		LoadParam.endTime = os::Timer::getRealTime();
-		snprintf( buf, sizeof ( buf ),
-			"quake3::cleanMeshes needed %04d ms to clean %d of %d meshes",
+		snprintf_irr( buf, sizeof ( buf ),
+			"quake3::cleanMeshes needed %04u ms to clean %u of %u meshes",
 			LoadParam.endTime - LoadParam.startTime,
 			remove,
 			run
@@ -1882,7 +1880,7 @@ void CQ3LevelMesh::calcBoundingBoxes()
 
 		if ( LoadParam.verbose > 1 )
 		{
-			snprintf( buf, sizeof ( buf ),
+			snprintf_irr( buf, sizeof ( buf ),
 				"quake3::calcBoundingBoxes start create %d textures and %d lightmaps",
 				NumTextures,
 				NumLightMaps
@@ -1922,8 +1920,8 @@ void CQ3LevelMesh::calcBoundingBoxes()
 	{
 		LoadParam.endTime = os::Timer::getRealTime();
 
-		snprintf( buf, sizeof ( buf ),
-			"quake3::calcBoundingBoxes needed %04d ms to create %d textures and %d lightmaps",
+		snprintf_irr( buf, sizeof ( buf ),
+			"quake3::calcBoundingBoxes needed %04u ms to create %d textures and %d lightmaps",
 			LoadParam.endTime - LoadParam.startTime,
 			NumTextures,
 			NumLightMaps
@@ -1945,7 +1943,7 @@ void CQ3LevelMesh::loadTextures()
 
 		if ( LoadParam.verbose > 1 )
 		{
-			snprintf( buf, sizeof ( buf ),
+			snprintf_irr( buf, sizeof ( buf ),
 				"quake3::loadTextures start create %d textures and %d lightmaps",
 				NumTextures,
 				NumLightMaps
@@ -2046,8 +2044,8 @@ void CQ3LevelMesh::loadTextures()
 	{
 		LoadParam.endTime = os::Timer::getRealTime();
 
-		snprintf( buf, sizeof ( buf ),
-			"quake3::loadTextures needed %04d ms to create %d textures and %d lightmaps",
+		snprintf_irr( buf, sizeof ( buf ),
+			"quake3::loadTextures needed %04u ms to create %d textures and %d lightmaps",
 			LoadParam.endTime - LoadParam.startTime,
 			NumTextures,
 			NumLightMaps

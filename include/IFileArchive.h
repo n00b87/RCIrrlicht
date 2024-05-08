@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_FILE_ARCHIVE_H_INCLUDED__
-#define __I_FILE_ARCHIVE_H_INCLUDED__
+#ifndef IRR_I_FILE_ARCHIVE_H_INCLUDED
+#define IRR_I_FILE_ARCHIVE_H_INCLUDED
 
 #include "IReadFile.h"
 #include "IFileList.h"
@@ -14,7 +14,7 @@ namespace irr
 namespace io
 {
 
-//! FileSystemType: which Filesystem should be used for e.g. browsing
+//! FileSystemType: which filesystem should be used for e.g. browsing
 enum EFileSystemType
 {
 	FILESYSTEM_NATIVE = 0,	// Native OS FileSystem
@@ -45,6 +45,9 @@ enum E_FILE_ARCHIVE_TYPE
 	//! A wad Archive, Quake2, Halflife
 	EFAT_WAD     = MAKE_IRR_ID('W','A','D', 0),
 
+    //! An Android asset file archive
+    EFAT_ANDROID_ASSET = MAKE_IRR_ID('A','S','S','E'),
+
 	//! The type of this archive is unknown
 	EFAT_UNKNOWN = MAKE_IRR_ID('u','n','k','n')
 };
@@ -74,6 +77,19 @@ public:
 
 	//! get the archive type
 	virtual E_FILE_ARCHIVE_TYPE getType() const { return EFAT_UNKNOWN; }
+
+	//! return the name (id) of the file Archive
+	virtual const io::path& getArchiveName() const =0;
+	
+	//! Add a directory in the archive and all it's files to the FileList
+	/** Only needed for file-archives which have no information about their own 
+	directory structure. In that case the user must add directories manually.
+	Currently this is necessary for archives of type EFAT_ANDROID_ASSET.
+	The root-path itself is already set by the engine.
+	If directories are not added manually opening files might still work,
+	but checks if file exists will fail.
+	*/
+	virtual void addDirectoryToFileList(const io::path &filename) {}
 
 	//! An optionally used password string
 	/** This variable is publicly accessible from the interface in order to
@@ -106,7 +122,7 @@ public:
 	//! Check to see if the loader can create archives of this type.
 	/** Check based on the archive type.
 	\param fileType The archive type to check.
-	\return True if the archile loader supports this type, false if not */
+	\return True if the archive loader supports this type, false if not */
 	virtual bool isALoadableFileFormat(E_FILE_ARCHIVE_TYPE fileType) const =0;
 
 	//! Creates an archive from the filename
@@ -129,4 +145,3 @@ public:
 } // end namespace irr
 
 #endif
-

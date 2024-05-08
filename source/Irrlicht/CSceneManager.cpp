@@ -7,14 +7,16 @@
 #include "IVideoDriver.h"
 #include "IFileSystem.h"
 #include "SAnimatedMesh.h"
+#include "SOverrideMaterial.h"
 #include "CMeshCache.h"
 #include "IXMLWriter.h"
 #include "ISceneUserDataSerializer.h"
 #include "IGUIEnvironment.h"
-#include "IMaterialRenderer.h"
 #include "IReadFile.h"
 #include "IWriteFile.h"
 #include "ISceneLoader.h"
+#include "EProfileIDs.h"
+#include "IProfiler.h"
 
 #include "os.h"
 
@@ -132,20 +134,48 @@
 #include "CPLYMeshWriter.h"
 #endif
 
+#ifdef _IRR_COMPILE_WITH_B3D_WRITER_
+#include "CB3DMeshWriter.h"
+#endif
+
+#ifdef _IRR_COMPILE_WITH_CUBE_SCENENODE_
 #include "CCubeSceneNode.h"
+#endif // _IRR_COMPILE_WITH_CUBE_SCENENODE_
+#ifdef _IRR_COMPILE_WITH_SPHERE_SCENENODE_
 #include "CSphereSceneNode.h"
+#endif
 #include "CAnimatedMeshSceneNode.h"
+#ifdef _IRR_COMPILE_WITH_OCTREE_SCENENODE_
 #include "COctreeSceneNode.h"
+#endif // #ifdef _IRR_COMPILE_WITH_OCTREE_SCENENODE_
 #include "CCameraSceneNode.h"
 #include "CLightSceneNode.h"
+#ifdef _IRR_COMPILE_WITH_BILLBOARD_SCENENODE_
 #include "CBillboardSceneNode.h"
+#endif // _IRR_COMPILE_WITH_BILLBOARD_SCENENODE_
 #include "CMeshSceneNode.h"
 #include "CSkyBoxSceneNode.h"
+#ifdef _IRR_COMPILE_WITH_SKYDOME_SCENENODE_
 #include "CSkyDomeSceneNode.h"
+#endif // _IRR_COMPILE_WITH_SKYDOME_SCENENODE_
+
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+#include "CShadowVolumeSceneNode.h"
+#else
+#include "IShadowVolumeSceneNode.h"
+#endif // _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+
+#ifdef _IRR_COMPILE_WITH_PARTICLES_
 #include "CParticleSystemSceneNode.h"
+#endif // _IRR_COMPILE_WITH_PARTICLES_
+
 #include "CDummyTransformationSceneNode.h"
+#ifdef _IRR_COMPILE_WITH_WATER_SURFACE_SCENENODE_
 #include "CWaterSurfaceSceneNode.h"
+#endif // _IRR_COMPILE_WITH_WATER_SURFACE_SCENENODE_
+#ifdef _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 #include "CTerrainSceneNode.h"
+#endif // _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 #include "CEmptySceneNode.h"
 #include "CTextSceneNode.h"
 #include "CQuake3ShaderSceneNode.h"
@@ -158,7 +188,9 @@
 #include "COctreeTriangleSelector.h"
 #include "CTriangleBBSelector.h"
 #include "CMetaTriangleSelector.h"
+#ifdef _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 #include "CTerrainTriangleSelector.h"
+#endif // _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 
 #include "CSceneNodeAnimatorRotation.h"
 #include "CSceneNodeAnimatorFlyCircle.h"
@@ -173,6 +205,8 @@
 
 #include "CGeometryCreator.h"
 
+#include <locale.h>
+
 namespace irr
 {
 namespace scene
@@ -184,8 +218,8 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 		gui::IGUIEnvironment* gui)
 : ISceneNode(0, 0), Driver(driver), FileSystem(fs), GUIEnvironment(gui),
 	CursorControl(cursorControl), CollisionManager(0),
-	ActiveCamera(0), ShadowColor(150,0,0,0), AmbientLight(0,0,0,0),
-	MeshCache(cache), CurrentRendertime(ESNRP_NONE), LightManager(0),
+	ActiveCamera(0), ShadowColor(150,0,0,0), AmbientLight(0,0,0,0), Parameters(0),
+	MeshCache(cache), CurrentRenderPass(ESNRP_NONE), LightManager(0),
 	IRR_XML_FORMAT_SCENE(L"irr_scene"), IRR_XML_FORMAT_NODE(L"node"), IRR_XML_FORMAT_NODE_ATTR_TYPE(L"type")
 {
 	#ifdef _DEBUG
@@ -195,10 +229,6 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 
 	// root node's scene manager
 	SceneManager = this;
-
-	// set scene parameters
-	Parameters.setAttribute( DEBUG_NORMAL_LENGTH, 1.f );
-	Parameters.setAttribute( DEBUG_NORMAL_COLOR, video::SColor(255, 34, 221, 221));
 
 	if (Driver)
 		Driver->grab();
@@ -217,6 +247,11 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 		MeshCache = new CMeshCache();
 	else
 		MeshCache->grab();
+
+	// set scene parameters
+	Parameters = new io::CAttributes();
+	Parameters->setAttribute(DEBUG_NORMAL_LENGTH, 1.f);
+	Parameters->setAttribute(DEBUG_NORMAL_COLOR, video::SColor(255, 34, 221, 221));
 
 	// create collision manager
 	CollisionManager = new CSceneCollisionManager(this, Driver);
@@ -237,7 +272,7 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	MeshLoaderList.push_back(new CPLYMeshFileLoader(this));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_SMF_LOADER_
-	MeshLoaderList.push_back(new CSMFMeshFileLoader(Driver));
+	MeshLoaderList.push_back(new CSMFMeshFileLoader(FileSystem, Driver));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_OCT_LOADER_
 	MeshLoaderList.push_back(new COCTLoader(this, FileSystem));
@@ -246,7 +281,7 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	MeshLoaderList.push_back(new CCSMLoader(this, FileSystem));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_LMTS_LOADER_
-	MeshLoaderList.push_back(new CLMTSMeshFileLoader(FileSystem, Driver, &Parameters));
+	MeshLoaderList.push_back(new CLMTSMeshFileLoader(FileSystem, Driver, Parameters));
 	#endif
 	#ifdef _IRR_COMPILE_WITH_MY3D_LOADER_
 	MeshLoaderList.push_back(new CMY3DMeshFileLoader(this, FileSystem));
@@ -299,7 +334,6 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	SceneLoaderList.push_back(new CSceneLoaderIrr(this, FileSystem));
 	#endif
 
-
 	// factories
 	ISceneNodeFactory* factory = new CDefaultSceneNodeFactory(this);
 	registerSceneNodeFactory(factory);
@@ -308,6 +342,25 @@ CSceneManager::CSceneManager(video::IVideoDriver* driver, io::IFileSystem* fs,
 	ISceneNodeAnimatorFactory* animatorFactory = new CDefaultSceneNodeAnimatorFactory(this, CursorControl);
 	registerSceneNodeAnimatorFactory(animatorFactory);
 	animatorFactory->drop();
+
+	IRR_PROFILE(
+		static bool initProfile = false;
+		if (!initProfile )
+		{
+			initProfile = true;
+			getProfiler().add(EPID_SM_DRAW_ALL, L"drawAll", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_ANIMATE, L"animate", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_CAMERAS, L"cameras", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_LIGHTS, L"lights", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_SKYBOXES, L"skyboxes", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_DEFAULT, L"defaultnodes", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_SHADOWS, L"shadows", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_TRANSPARENT, L"transp.nodes", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_EFFECT, L"effectnodes", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_RENDER_GUI_NODES, L"guinodes", L"Irrlicht scene");
+			getProfiler().add(EPID_SM_REGISTER, L"reg.render.node", L"Irrlicht scene");
+		}
+ 	)
 }
 
 
@@ -351,6 +404,9 @@ CSceneManager::~CSceneManager()
 	if (MeshCache)
 		MeshCache->drop();
 
+	if (Parameters)
+		Parameters->drop();
+
 	for (i=0; i<SceneNodeFactoryList.size(); ++i)
 		SceneNodeFactoryList[i]->drop();
 
@@ -371,19 +427,49 @@ CSceneManager::~CSceneManager()
 }
 
 
-//! gets an animateable mesh. loads it if needed. returned pointer must not be dropped.
-IAnimatedMesh* CSceneManager::getMesh(const io::path& filename)
+//! gets an animatable mesh. loads it if needed. returned pointer must not be dropped.
+IAnimatedMesh* CSceneManager::getMesh(const io::path& filename, const io::path& alternativeCacheName)
 {
-	IAnimatedMesh* msh = MeshCache->getMeshByName(filename);
+	io::path cacheName = alternativeCacheName.empty() ? filename : alternativeCacheName;
+	IAnimatedMesh* msh = MeshCache->getMeshByName(cacheName);
 	if (msh)
 		return msh;
 
 	io::IReadFile* file = FileSystem->createAndOpenFile(filename);
 	if (!file)
 	{
-		os::Printer::log("Could not load mesh, because file could not be opened: ", filename, ELL_ERROR);
+		os::Printer::log("Could not load mesh, because file could not be opened", filename, ELL_ERROR);
 		return 0;
 	}
+
+	msh = getUncachedMesh(file, filename, cacheName);
+
+	file->drop();
+
+	return msh;
+}
+
+
+//! gets an animatable mesh. loads it if needed. returned pointer must not be dropped.
+IAnimatedMesh* CSceneManager::getMesh(io::IReadFile* file)
+{
+	if (!file)
+		return 0;
+
+	io::path name = file->getFileName();
+	IAnimatedMesh* msh = MeshCache->getMeshByName(name);
+	if (msh)
+		return msh;
+
+	msh = getUncachedMesh(file, name, name);
+
+	return msh;
+}
+
+// load and create a mesh which we know already isn't in the cache and put it in there
+IAnimatedMesh* CSceneManager::getUncachedMesh(io::IReadFile* file, const io::path& filename, const io::path& cachename)
+{
+	IAnimatedMesh* msh = 0;
 
 	// iterate the list in reverse order so user-added loaders can override the built-in ones
 	s32 count = MeshLoaderList.size();
@@ -396,61 +482,20 @@ IAnimatedMesh* CSceneManager::getMesh(const io::path& filename)
 			msh = MeshLoaderList[i]->createMesh(file);
 			if (msh)
 			{
-				MeshCache->addMesh(filename, msh);
+				MeshCache->addMesh(cachename, msh);
 				msh->drop();
 				break;
 			}
 		}
 	}
-
-	file->drop();
 
 	if (!msh)
 		os::Printer::log("Could not load mesh, file format seems to be unsupported", filename, ELL_ERROR);
 	else
-		os::Printer::log("Loaded mesh", filename, ELL_INFORMATION);
+		os::Printer::log("Loaded mesh", filename, ELL_DEBUG);
 
 	return msh;
 }
-
-
-//! gets an animateable mesh. loads it if needed. returned pointer must not be dropped.
-IAnimatedMesh* CSceneManager::getMesh(io::IReadFile* file)
-{
-	if (!file)
-		return 0;
-
-	io::path name = file->getFileName();
-	IAnimatedMesh* msh = MeshCache->getMeshByName(file->getFileName());
-	if (msh)
-		return msh;
-
-	// iterate the list in reverse order so user-added loaders can override the built-in ones
-	s32 count = MeshLoaderList.size();
-	for (s32 i=count-1; i>=0; --i)
-	{
-		if (MeshLoaderList[i]->isALoadableFileExtension(name))
-		{
-			// reset file to avoid side effects of previous calls to createMesh
-			file->seek(0);
-			msh = MeshLoaderList[i]->createMesh(file);
-			if (msh)
-			{
-				MeshCache->addMesh(file->getFileName(), msh);
-				msh->drop();
-				break;
-			}
-		}
-	}
-
-	if (!msh)
-		os::Printer::log("Could not load mesh, file format seems to be unsupported", file->getFileName(), ELL_ERROR);
-	else
-		os::Printer::log("Loaded mesh", file->getFileName(), ELL_INFORMATION);
-
-	return msh;
-}
-
 
 //! returns the video driver
 video::IVideoDriver* CSceneManager::getVideoDriver()
@@ -564,15 +609,20 @@ IVolumeLightSceneNode* CSceneManager::addVolumeLightSceneNode(
 //! the returned pointer must not be dropped.
 IMeshSceneNode* CSceneManager::addCubeSceneNode(f32 size, ISceneNode* parent,
 		s32 id, const core::vector3df& position,
-		const core::vector3df& rotation, const core::vector3df& scale)
+		const core::vector3df& rotation, const core::vector3df& scale,
+		ECUBE_MESH_TYPE type)
 {
+#ifdef _IRR_COMPILE_WITH_CUBE_SCENENODE_
 	if (!parent)
 		parent = this;
 
-	IMeshSceneNode* node = new CCubeSceneNode(size, parent, this, id, position, rotation, scale);
+	IMeshSceneNode* node = new CCubeSceneNode(size, parent, this, id, position, rotation, scale, type);
 	node->drop();
 
 	return node;
+#else
+	return 0;
+#endif
 }
 
 
@@ -581,6 +631,7 @@ IMeshSceneNode* CSceneManager::addSphereSceneNode(f32 radius, s32 polyCount,
 		ISceneNode* parent, s32 id, const core::vector3df& position,
 		const core::vector3df& rotation, const core::vector3df& scale)
 {
+#ifdef _IRR_COMPILE_WITH_SPHERE_SCENENODE_
 	if (!parent)
 		parent = this;
 
@@ -588,6 +639,9 @@ IMeshSceneNode* CSceneManager::addSphereSceneNode(f32 radius, s32 polyCount,
 	node->drop();
 
 	return node;
+#else
+	return 0;
+#endif // _IRR_COMPILE_WITH_SPHERE_SCENENODE_
 }
 
 
@@ -615,6 +669,7 @@ ISceneNode* CSceneManager::addWaterSurfaceSceneNode(IMesh* mesh, f32 waveHeight,
 	ISceneNode* parent, s32 id, const core::vector3df& position,
 	const core::vector3df& rotation, const core::vector3df& scale)
 {
+#ifdef _IRR_COMPILE_WITH_WATER_SURFACE_SCENENODE_
 	if (!parent)
 		parent = this;
 
@@ -624,6 +679,9 @@ ISceneNode* CSceneManager::addWaterSurfaceSceneNode(IMesh* mesh, f32 waveHeight,
 	node->drop();
 
 	return node;
+#else
+	return 0;
+#endif
 }
 
 
@@ -649,7 +707,7 @@ IAnimatedMeshSceneNode* CSceneManager::addAnimatedMeshSceneNode(IAnimatedMesh* m
 //! Adds a scene node for rendering using a octree to the scene graph. This a good method for rendering
 //! scenes with lots of geometry. The Octree is built on the fly from the mesh, much
 //! faster then a bsp tree.
-IMeshSceneNode* CSceneManager::addOctreeSceneNode(IAnimatedMesh* mesh, ISceneNode* parent,
+IOctreeSceneNode* CSceneManager::addOctreeSceneNode(IAnimatedMesh* mesh, ISceneNode* parent,
 			s32 id, s32 minimalPolysPerNode, bool alsoAddIfMeshPointerZero)
 {
 	if (!alsoAddIfMeshPointerZero && (!mesh || !mesh->getFrameCount()))
@@ -664,9 +722,10 @@ IMeshSceneNode* CSceneManager::addOctreeSceneNode(IAnimatedMesh* mesh, ISceneNod
 //! Adds a scene node for rendering using a octree. This a good method for rendering
 //! scenes with lots of geometry. The Octree is built on the fly from the mesh, much
 //! faster then a bsp tree.
-IMeshSceneNode* CSceneManager::addOctreeSceneNode(IMesh* mesh, ISceneNode* parent,
+IOctreeSceneNode* CSceneManager::addOctreeSceneNode(IMesh* mesh, ISceneNode* parent,
 		s32 id, s32 minimalPolysPerNode, bool alsoAddIfMeshPointerZero)
 {
+#ifdef _IRR_COMPILE_WITH_OCTREE_SCENENODE_
 	if (!alsoAddIfMeshPointerZero && !mesh)
 		return 0;
 
@@ -682,6 +741,9 @@ IMeshSceneNode* CSceneManager::addOctreeSceneNode(IMesh* mesh, ISceneNode* paren
 	}
 
 	return node;
+#else
+	return 0;
+#endif
 }
 
 
@@ -713,14 +775,16 @@ ICameraSceneNode* CSceneManager::addCameraSceneNode(ISceneNode* parent,
 //! The returned pointer must not be dropped.
 ICameraSceneNode* CSceneManager::addCameraSceneNodeMaya(ISceneNode* parent,
 	f32 rotateSpeed, f32 zoomSpeed, f32 translationSpeed, s32 id, f32 distance,
-	bool makeActive)
+	bool makeActive
+	, f32 rotX, f32 rotY)
 {
 	ICameraSceneNode* node = addCameraSceneNode(parent, core::vector3df(),
 			core::vector3df(0,0,100), id, makeActive);
 	if (node)
 	{
 		ISceneNodeAnimator* anm = new CSceneNodeAnimatorCameraMaya(CursorControl,
-			rotateSpeed, zoomSpeed, translationSpeed, distance);
+			rotateSpeed, zoomSpeed, translationSpeed, distance
+			,rotX,rotY);
 
 		node->addAnimator(anm);
 		anm->drop();
@@ -779,6 +843,7 @@ IBillboardSceneNode* CSceneManager::addBillboardSceneNode(ISceneNode* parent,
 	video::SColor colorTop, video::SColor colorBottom
 	)
 {
+#ifdef _IRR_COMPILE_WITH_BILLBOARD_SCENENODE_
 	if (!parent)
 		parent = this;
 
@@ -787,6 +852,9 @@ IBillboardSceneNode* CSceneManager::addBillboardSceneNode(ISceneNode* parent,
 	node->drop();
 
 	return node;
+#else
+	return 0;
+#endif
 }
 
 
@@ -813,6 +881,7 @@ ISceneNode* CSceneManager::addSkyDomeSceneNode(video::ITexture* texture,
 	u32 horiRes, u32 vertRes, f32 texturePercentage,f32 spherePercentage, f32 radius,
 	ISceneNode* parent, s32 id)
 {
+#ifdef _IRR_COMPILE_WITH_SKYDOME_SCENENODE_
 	if (!parent)
 		parent = this;
 
@@ -821,6 +890,9 @@ ISceneNode* CSceneManager::addSkyDomeSceneNode(video::ITexture* texture,
 
 	node->drop();
 	return node;
+#else
+	return 0;
+#endif
 }
 
 
@@ -830,6 +902,7 @@ IParticleSystemSceneNode* CSceneManager::addParticleSystemSceneNode(
 	const core::vector3df& position, const core::vector3df& rotation,
 	const core::vector3df& scale)
 {
+#ifdef _IRR_COMPILE_WITH_PARTICLES_
 	if (!parent)
 		parent = this;
 
@@ -838,6 +911,9 @@ IParticleSystemSceneNode* CSceneManager::addParticleSystemSceneNode(
 	node->drop();
 
 	return node;
+#else
+	return 0;
+#endif // _IRR_COMPILE_WITH_PARTICLES_
 }
 
 
@@ -883,6 +959,7 @@ ITerrainSceneNode* CSceneManager::addTerrainSceneNode(
 	s32 smoothFactor,
 	bool addAlsoIfHeightmapEmpty)
 {
+#ifdef _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 	if (!parent)
 		parent = this;
 
@@ -907,6 +984,9 @@ ITerrainSceneNode* CSceneManager::addTerrainSceneNode(
 
 	node->drop();
 	return node;
+#else
+	return 0;
+#endif // _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 }
 
 
@@ -1015,14 +1095,14 @@ IAnimatedMesh* CSceneManager::addTerrainMesh(const io::path& name,
 //! Adds an arrow mesh to the mesh pool.
 IAnimatedMesh* CSceneManager::addArrowMesh(const io::path& name,
 		video::SColor vtxColor0, video::SColor vtxColor1,
-		u32 tesselationCylinder, u32 tesselationCone, f32 height,
+		u32 tessellationCylinder, u32 tessellationCone, f32 height,
 		f32 cylinderHeight, f32 width0,f32 width1)
 {
 	if (MeshCache->isMeshLoaded(name))
 		return MeshCache->getMeshByName(name);
 
-	IMesh* mesh = GeometryCreator->createArrowMesh( tesselationCylinder,
-			tesselationCone, height, cylinderHeight, width0,width1,
+	IMesh* mesh = GeometryCreator->createArrowMesh( tessellationCylinder,
+			tessellationCone, height, cylinderHeight, width0,width1,
 			vtxColor0, vtxColor1);
 	if (!mesh)
 		return 0;
@@ -1105,7 +1185,7 @@ IAnimatedMesh* CSceneManager::addVolumeLightMesh(const io::path& name,
 }
 
 
-//! Returns the root scene node. This is the scene node wich is parent
+//! Returns the root scene node. This is the scene node which is parent
 //! of all scene nodes. The root scene node is a special scene node which
 //! only exists to manage all scene nodes. It is not rendered and cannot
 //! be removed from the scene.
@@ -1147,10 +1227,10 @@ void CSceneManager::render()
 //! returns the axis aligned bounding box of this node
 const core::aabbox3d<f32>& CSceneManager::getBoundingBox() const
 {
-	_IRR_DEBUG_BREAK_IF(true) // Bounding Box of Scene Manager wanted.
+	IRR_DEBUG_BREAK_IF(true) // Bounding Box of Scene Manager should never be used.
 
-	// should never be used.
-	return *((core::aabbox3d<f32>*)0);
+	static const core::aabbox3d<f32> dummy;
+	return dummy;
 }
 
 
@@ -1160,7 +1240,6 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 	const ICameraSceneNode* cam = getActiveCamera();
 	if (!cam)
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 	bool result = false;
@@ -1168,7 +1247,7 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 	// has occlusion query information
 	if (node->getAutomaticCulling() & scene::EAC_OCC_QUERY)
 	{
-		result = (Driver->getOcclusionQueryResult(const_cast<ISceneNode*>(node))==0);
+		result = (Driver->getOcclusionQueryResult(node)==0);
 	}
 
 	// can be seen by a bounding box ?
@@ -1181,7 +1260,18 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 
 	// can be seen by a bounding sphere
 	if (!result && (node->getAutomaticCulling() & scene::EAC_FRUSTUM_SPHERE))
-	{ // requires bbox diameter
+	{
+		const core::aabbox3df nbox = node->getTransformedBoundingBox();
+		const float rad = nbox.getRadius();
+		const core::vector3df center = nbox.getCenter();
+
+		const float camrad = cam->getViewFrustum()->getBoundingRadius();
+		const core::vector3df camcenter = cam->getViewFrustum()->getBoundingCenter();
+
+		const float dist = (center - camcenter).getLengthSQ();
+		const float maxdist = (rad + camrad) * (rad + camrad);
+
+		result = dist > maxdist;
 	}
 
 	// can be seen by cam pyramid planes ?
@@ -1217,7 +1307,6 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 		}
 	}
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return result;
 }
 
@@ -1225,6 +1314,7 @@ bool CSceneManager::isCulled(const ISceneNode* node) const
 //! registers a node for rendering it at a specific time.
 u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDER_PASS pass)
 {
+	IRR_PROFILE(CProfileScope p1(EPID_SM_REGISTER);)
 	u32 taken = 0;
 
 	switch(pass)
@@ -1291,9 +1381,7 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 			taken = 0;
 			for (u32 i=0; i<count; ++i)
 			{
-				video::IMaterialRenderer* rnd =
-					Driver->getMaterialRenderer(node->getMaterial(i).MaterialType);
-				if (rnd && rnd->isTransparent())
+				if (Driver->needsTransparentRenderPass(node->getMaterial(i)))
 				{
 					// register as transparent node
 					TransparentNodeEntry e(node, camWorldPos);
@@ -1319,39 +1407,59 @@ u32 CSceneManager::registerNodeForRendering(ISceneNode* node, E_SCENE_NODE_RENDE
 		}
 		break;
 
+	case ESNRP_GUI:
+		if (!isCulled(node))
+		{
+			GuiNodeList.push_back(node);
+			taken = 1;
+		}
+
 	case ESNRP_NONE: // ignore this one
 		break;
 	}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-	s32 index = Parameters.findAttribute ( "calls" );
-	Parameters.setAttribute ( index, Parameters.getAttributeAsInt ( index ) + 1 );
+	s32 index = Parameters->findAttribute("calls");
+	Parameters->setAttribute(index, Parameters->getAttributeAsInt(index)+1);
 
 	if (!taken)
 	{
-		index = Parameters.findAttribute ( "culled" );
-		Parameters.setAttribute ( index, Parameters.getAttributeAsInt ( index ) + 1 );
+		index = Parameters->findAttribute("culled");
+		Parameters->setAttribute(index, Parameters->getAttributeAsInt(index)+1);
 	}
 #endif
 
 	return taken;
 }
 
+void CSceneManager::clearAllRegisteredNodesForRendering()
+{
+	CameraList.clear();
+	LightList.clear();
+	SkyBoxList.clear();
+	SolidNodeList.clear();
+	TransparentNodeList.clear();
+	TransparentEffectNodeList.clear();
+	ShadowNodeList.clear();
+	GuiNodeList.clear();
+}
 
 //! This method is called just before the rendering process of the whole scene.
 //! draws all scene nodes
 void CSceneManager::drawAll()
 {
+	IRR_PROFILE(CProfileScope psAll(EPID_SM_DRAW_ALL);)
+
 	if (!Driver)
 		return;
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
 	// reset attributes
-	Parameters.setAttribute ( "culled", 0 );
-	Parameters.setAttribute ( "calls", 0 );
-	Parameters.setAttribute ( "drawn_solid", 0 );
-	Parameters.setAttribute ( "drawn_transparent", 0 );
-	Parameters.setAttribute ( "drawn_transparent_effect", 0 );
+	Parameters->setAttribute("culled", 0);
+	Parameters->setAttribute("calls", 0);
+	Parameters->setAttribute("drawn_solid", 0);
+	Parameters->setAttribute("drawn_transparent", 0);
+	Parameters->setAttribute("drawn_transparent_effect", 0);
 #endif
 
 	u32 i; // new ISO for scoping problem in some compilers
@@ -1363,23 +1471,26 @@ void CSceneManager::drawAll()
 	Driver->setTransform ( video::ETS_WORLD, core::IdentityMatrix );
 	for (i=video::ETS_COUNT-1; i>=video::ETS_TEXTURE_0; --i)
 		Driver->setTransform ( (video::E_TRANSFORMATION_STATE)i, core::IdentityMatrix );
-
 	// TODO: This should not use an attribute here but a real parameter when necessary (too slow!)
-	Driver->setAllowZWriteOnTransparent(Parameters.getAttributeAsBool( ALLOW_ZWRITE_ON_TRANSPARENT) );
+	Driver->setAllowZWriteOnTransparent(Parameters->getAttributeAsBool(ALLOW_ZWRITE_ON_TRANSPARENT));
 
 	// do animations and other stuff.
+	IRR_PROFILE(getProfiler().start(EPID_SM_ANIMATE));
 	OnAnimate(os::Timer::getTime());
+	IRR_PROFILE(getProfiler().stop(EPID_SM_ANIMATE));
 
 	/*!
 		First Scene Node for prerendering should be the active camera
 		consistent Camera is needed for culling
 	*/
+	IRR_PROFILE(getProfiler().start(EPID_SM_RENDER_CAMERAS));
 	camWorldPos.set(0,0,0);
 	if (ActiveCamera)
 	{
 		ActiveCamera->render();
 		camWorldPos = ActiveCamera->getAbsolutePosition();
 	}
+	IRR_PROFILE(getProfiler().stop(EPID_SM_RENDER_CAMERAS));
 
 	// let all nodes register themselves
 	OnRegisterSceneNode();
@@ -1389,11 +1500,12 @@ void CSceneManager::drawAll()
 
 	//render camera scenes
 	{
-		CurrentRendertime = ESNRP_CAMERA;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psCam(EPID_SM_RENDER_CAMERAS);)
+		CurrentRenderPass = ESNRP_CAMERA;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 
 		for (i=0; i<CameraList.size(); ++i)
 			CameraList[i]->render();
@@ -1401,17 +1513,18 @@ void CSceneManager::drawAll()
 		CameraList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 	//render lights scenes
 	{
-		CurrentRendertime = ESNRP_LIGHT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psLights(EPID_SM_RENDER_LIGHTS);)
+		CurrentRenderPass = ESNRP_LIGHT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 		}
 		else
 		{
@@ -1445,17 +1558,18 @@ void CSceneManager::drawAll()
 			LightList[i]->render();
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 	// render skyboxes
 	{
-		CurrentRendertime = ESNRP_SKY_BOX;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psSkyBox(EPID_SM_RENDER_SKYBOXES);)
+		CurrentRenderPass = ESNRP_SKY_BOX;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 			for (i=0; i<SkyBoxList.size(); ++i)
 			{
 				ISceneNode* node = SkyBoxList[i];
@@ -1473,20 +1587,21 @@ void CSceneManager::drawAll()
 		SkyBoxList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 
 	// render default objects
 	{
-		CurrentRendertime = ESNRP_SOLID;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psDefault(EPID_SM_RENDER_DEFAULT);)
+		CurrentRenderPass = ESNRP_SOLID;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		SolidNodeList.sort(); // sort by textures
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 			for (i=0; i<SolidNodeList.size(); ++i)
 			{
 				ISceneNode* node = SolidNodeList[i].Node;
@@ -1502,22 +1617,23 @@ void CSceneManager::drawAll()
 		}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters.setAttribute("drawn_solid", (s32) SolidNodeList.size() );
+		Parameters->setAttribute("drawn_solid", (s32) SolidNodeList.size() );
 #endif
 		SolidNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 	// render shadows
 	{
-		CurrentRendertime = ESNRP_SHADOW;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psShadow(EPID_SM_RENDER_SHADOWS);)
+		CurrentRenderPass = ESNRP_SHADOW;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 			for (i=0; i<ShadowNodeList.size(); ++i)
 			{
 				ISceneNode* node = ShadowNodeList[i];
@@ -1539,18 +1655,19 @@ void CSceneManager::drawAll()
 		ShadowNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 	// render transparent objects.
 	{
-		CurrentRendertime = ESNRP_TRANSPARENT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psTrans(EPID_SM_RENDER_TRANSPARENT);)
+		CurrentRenderPass = ESNRP_TRANSPARENT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		TransparentNodeList.sort(); // sort by distance from camera
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 
 			for (i=0; i<TransparentNodeList.size(); ++i)
 			{
@@ -1567,24 +1684,25 @@ void CSceneManager::drawAll()
 		}
 
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters.setAttribute ( "drawn_transparent", (s32) TransparentNodeList.size() );
+		Parameters->setAttribute ( "drawn_transparent", (s32) TransparentNodeList.size() );
 #endif
 		TransparentNodeList.set_used(0);
 
 		if (LightManager)
-			LightManager->OnRenderPassPostRender(CurrentRendertime);
+			LightManager->OnRenderPassPostRender(CurrentRenderPass);
 	}
 
 	// render transparent effect objects.
 	{
-		CurrentRendertime = ESNRP_TRANSPARENT_EFFECT;
-		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRendertime) != 0);
+		IRR_PROFILE(CProfileScope psEffect(EPID_SM_RENDER_EFFECT);)
+		CurrentRenderPass = ESNRP_TRANSPARENT_EFFECT;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
 
 		TransparentEffectNodeList.sort(); // sort by distance from camera
 
 		if (LightManager)
 		{
-			LightManager->OnRenderPassPreRender(CurrentRendertime);
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
 
 			for (i=0; i<TransparentEffectNodeList.size(); ++i)
 			{
@@ -1600,10 +1718,40 @@ void CSceneManager::drawAll()
 				TransparentEffectNodeList[i].Node->render();
 		}
 #ifdef _IRR_SCENEMANAGER_DEBUG
-		Parameters.setAttribute ( "drawn_transparent_effect", (s32) TransparentEffectNodeList.size() );
+		Parameters->setAttribute("drawn_transparent_effect", (s32) TransparentEffectNodeList.size());
 #endif
 		TransparentEffectNodeList.set_used(0);
 	}
+
+	// render custom gui nodes
+	{
+		IRR_PROFILE(CProfileScope psEffect(EPID_SM_RENDER_GUI_NODES);)
+		CurrentRenderPass = ESNRP_GUI;
+		Driver->getOverrideMaterial().Enabled = ((Driver->getOverrideMaterial().EnablePasses & CurrentRenderPass) != 0);
+
+		if (LightManager)
+		{
+			LightManager->OnRenderPassPreRender(CurrentRenderPass);
+
+			for (i=0; i<GuiNodeList.size(); ++i)
+			{
+				ISceneNode* node = GuiNodeList[i];
+				LightManager->OnNodePreRender(node);
+				node->render();
+				LightManager->OnNodePostRender(node);
+			}
+		}
+		else
+		{
+			for (i=0; i<GuiNodeList.size(); ++i)
+				GuiNodeList[i]->render();
+		}
+#ifdef _IRR_SCENEMANAGER_DEBUG
+		Parameters->setAttribute("drawn_gui_nodes", (s32) GuiNodeList.size());
+#endif
+		GuiNodeList.set_used(0);
+	}
+	
 
 	if (LightManager)
 		LightManager->OnPostRender();
@@ -1611,7 +1759,7 @@ void CSceneManager::drawAll()
 	LightList.set_used(0);
 	clearDeletionList();
 
-	CurrentRendertime = ESNRP_NONE;
+	CurrentRenderPass = ESNRP_NONE;
 }
 
 void CSceneManager::setLightManager(ILightManager* lightManager)
@@ -1637,6 +1785,16 @@ video::SColor CSceneManager::getShadowColor() const
 {
 	return ShadowColor;
 }
+
+IShadowVolumeSceneNode* CSceneManager::createShadowVolumeSceneNode(const IMesh* shadowMesh, ISceneNode* parent, s32 id, bool zfailmethod, f32 infinity)
+{
+#ifdef _IRR_COMPILE_WITH_SHADOW_VOLUME_SCENENODE_
+	return new CShadowVolumeSceneNode(shadowMesh, parent, this, id, zfailmethod, infinity);
+#else
+	return 0;
+#endif
+}
+
 
 
 //! creates a rotation animator, which rotates the attached scene node around itself.
@@ -1691,7 +1849,7 @@ ISceneNodeAnimator* CSceneManager::createTextureAnimator(const core::array<video
 
 
 //! Creates a scene node animator, which deletes the scene node after
-//! some time automaticly.
+//! some time automatically.
 ISceneNodeAnimator* CSceneManager::createDeleteAnimator(u32 when)
 {
 	return new CSceneNodeAnimatorDelete(this, os::Timer::getTime() + when);
@@ -1717,10 +1875,10 @@ ISceneNodeAnimatorCollisionResponse* CSceneManager::createCollisionResponseAnima
 //! Creates a follow spline animator.
 ISceneNodeAnimator* CSceneManager::createFollowSplineAnimator(s32 startTime,
 	const core::array< core::vector3df >& points,
-	f32 speed, f32 tightness, bool loop, bool pingpong)
+	f32 speed, f32 tightness, bool loop, bool pingpong, bool steer)
 {
 	ISceneNodeAnimator* a = new CSceneNodeAnimatorFollowSpline(startTime, points,
-		speed, tightness, loop, pingpong);
+		speed, tightness, loop, pingpong, steer);
 	return a;
 }
 
@@ -1796,23 +1954,29 @@ IMeshManipulator* CSceneManager::getMeshManipulator()
 
 
 //! Creates a simple ITriangleSelector, based on a mesh.
-ITriangleSelector* CSceneManager::createTriangleSelector(IMesh* mesh, ISceneNode* node)
+ITriangleSelector* CSceneManager::createTriangleSelector(IMesh* mesh, ISceneNode* node, bool separateMeshbuffers)
 {
 	if (!mesh)
 		return 0;
 
-	return new CTriangleSelector(mesh, node);
+	return new CTriangleSelector(mesh, node, separateMeshbuffers);
+}
+
+ITriangleSelector* CSceneManager::createTriangleSelector(const IMeshBuffer* meshBuffer, irr::u32 materialIndex, ISceneNode* node)
+{
+	if ( !meshBuffer)
+		return 0;
+	return new  CTriangleSelector(meshBuffer, materialIndex, node);
 }
 
 
-//! Creates a simple and updatable ITriangleSelector, based on a the mesh owned by an
-//! animated scene node
-ITriangleSelector* CSceneManager::createTriangleSelector(IAnimatedMeshSceneNode* node)
+//! Creates a ITriangleSelector, based on a the mesh owned by an animated scene node
+ITriangleSelector* CSceneManager::createTriangleSelector(IAnimatedMeshSceneNode* node, bool separateMeshbuffers)
 {
 	if (!node || !node->getMesh())
 		return 0;
 
-	return new CTriangleSelector(node);
+	return new CTriangleSelector(node, separateMeshbuffers);
 }
 
 
@@ -1836,6 +2000,14 @@ ITriangleSelector* CSceneManager::createOctreeTriangleSelector(IMesh* mesh,
 	return new COctreeTriangleSelector(mesh, node, minimalPolysPerNode);
 }
 
+ITriangleSelector* CSceneManager::createOctreeTriangleSelector(IMeshBuffer* meshBuffer, irr::u32 materialIndex,
+			ISceneNode* node, s32 minimalPolysPerNode)
+{
+	if ( !meshBuffer)
+		return 0;
+
+	return new COctreeTriangleSelector(meshBuffer, materialIndex, node, minimalPolysPerNode);
+}
 
 //! Creates a meta triangle selector.
 IMetaTriangleSelector* CSceneManager::createMetaTriangleSelector()
@@ -1848,7 +2020,11 @@ IMetaTriangleSelector* CSceneManager::createMetaTriangleSelector()
 ITriangleSelector* CSceneManager::createTerrainTriangleSelector(
 	ITerrainSceneNode* node, s32 LOD)
 {
+#ifdef _IRR_COMPILE_WITH_TERRAIN_SCENENODE_
 	return new CTerrainTriangleSelector(node, LOD);
+#else
+	return 0;
+#endif
 }
 
 
@@ -1980,7 +2156,6 @@ bool CSceneManager::postEventFromUser(const SEvent& event)
 	if (cam)
 		ret = cam->OnEvent(event);
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -2006,18 +2181,18 @@ void CSceneManager::clear()
 //! Returns interface to the parameters set in this scene.
 io::IAttributes* CSceneManager::getParameters()
 {
-	return &Parameters;
+	return Parameters;
 }
 
 
 //! Returns current render pass.
 E_SCENE_NODE_RENDER_PASS CSceneManager::getSceneNodeRenderPass() const
 {
-	return CurrentRendertime;
+	return CurrentRenderPass;
 }
 
 
-//! Returns an interface to the mesh cache which is shared beween all existing scene managers.
+//! Returns an interface to the mesh cache which is shared between all existing scene managers.
 IMeshCache* CSceneManager::getMeshCache()
 {
 	return MeshCache;
@@ -2119,7 +2294,6 @@ bool CSceneManager::saveScene(const io::path& filename, ISceneUserDataSerializer
 	else
 		os::Printer::log("Unable to open file", filename, ELL_ERROR);
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -2156,8 +2330,13 @@ bool CSceneManager::saveScene(io::IXMLWriter* writer, const io::path& currentPat
 	if (!node)
 		node=this;
 
+	char* oldLocale = setlocale(LC_NUMERIC, NULL);
+	setlocale(LC_NUMERIC, "C");	// float number should to be saved with dots in this format independent of current locale settings.
+
 	writer->writeXMLHeader();
 	writeSceneNode(writer, node, userDataSerializer, currentPath.c_str(), true);
+
+	setlocale(LC_NUMERIC, oldLocale);
 
 	return true;
 }
@@ -2198,7 +2377,7 @@ bool CSceneManager::loadScene(io::IReadFile* file, ISceneUserDataSerializer* use
 			ret = SceneLoaderList[i]->loadScene(file, userDataSerializer, rootNode);
 
 	if (!ret)
-		os::Printer::log("Could not load scene file, perhaps the format is unsupported: ", file->getFileName().c_str(), ELL_ERROR);
+		os::Printer::log("Could not load scene file, perhaps the format is unsupported", file->getFileName().c_str(), ELL_ERROR);
 
 	return ret;
 }
@@ -2499,6 +2678,13 @@ IMeshWriter* CSceneManager::createMeshWriter(EMESH_WRITER_TYPE type)
 	case EMWT_PLY:
 #ifdef _IRR_COMPILE_WITH_PLY_WRITER_
 		return new CPLYMeshWriter();
+#else
+		return 0;
+#endif
+
+	case EMWT_B3D:
+#ifdef _IRR_COMPILE_WITH_B3D_WRITER_
+		return new CB3DMeshWriter();
 #else
 		return 0;
 #endif

@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_SCENE_NODE_ANIMATOR_COLLISION_RESPONSE_H_INCLUDED__
-#define __C_SCENE_NODE_ANIMATOR_COLLISION_RESPONSE_H_INCLUDED__
+#ifndef IRR_C_SCENE_NODE_ANIMATOR_COLLISION_RESPONSE_H_INCLUDED
+#define IRR_C_SCENE_NODE_ANIMATOR_COLLISION_RESPONSE_H_INCLUDED
 
 #include "ISceneNodeAnimatorCollisionResponse.h"
 
@@ -38,86 +38,86 @@ namespace scene
 		//! Returns if the attached scene node is falling, which means that
 		//! there is no blocking wall from the scene node in the direction of
 		//! the gravity.
-		virtual bool isFalling() const;
+		virtual bool isFalling() const IRR_OVERRIDE;
 
 		//! Sets the radius of the ellipsoid with which collision detection and
 		//! response is done.
-		virtual void setEllipsoidRadius(const core::vector3df& radius);
+		virtual void setEllipsoidRadius(const core::vector3df& radius) IRR_OVERRIDE;
 
 		//! Returns the radius of the ellipsoid with which the collision detection and
 		//! response is done.
-		virtual core::vector3df getEllipsoidRadius() const;
+		virtual core::vector3df getEllipsoidRadius() const IRR_OVERRIDE;
 
 		//! Sets the gravity of the environment.
-		virtual void setGravity(const core::vector3df& gravity);
+		virtual void setGravity(const core::vector3df& gravity) IRR_OVERRIDE;
 
 		//! 'Jump' the animator, by adding a jump speed opposite to its gravity
-		virtual void jump(f32 jumpSpeed);
+		virtual void jump(f32 jumpSpeed) IRR_OVERRIDE;
 
 		//! Should the Target react on collision ( default = true )
-		virtual void setAnimateTarget ( bool enable );
-		virtual bool getAnimateTarget () const;
+		virtual void setAnimateTarget ( bool enable ) IRR_OVERRIDE;
+		virtual bool getAnimateTarget () const IRR_OVERRIDE;
 
 		//! Returns current vector of gravity.
-		virtual core::vector3df getGravity() const;
+		virtual core::vector3df getGravity() const IRR_OVERRIDE;
 
 		//! Sets the translation of the ellipsoid for collision detection.
-		virtual void setEllipsoidTranslation(const core::vector3df &translation);
+		virtual void setEllipsoidTranslation(const core::vector3df &translation) IRR_OVERRIDE;
 
 		//! Returns the translation of the ellipsoid for collision detection.
-		virtual core::vector3df getEllipsoidTranslation() const;
+		virtual core::vector3df getEllipsoidTranslation() const IRR_OVERRIDE;
 
 		//! Sets a triangle selector holding all triangles of the world with which
 		//! the scene node may collide.
-		virtual void setWorld(ITriangleSelector* newWorld);
+		virtual void setWorld(ITriangleSelector* newWorld) IRR_OVERRIDE;
 
 		//! Returns the current triangle selector containing all triangles for
 		//! collision detection.
-		virtual ITriangleSelector* getWorld() const;
+		virtual ITriangleSelector* getWorld() const IRR_OVERRIDE;
 
 		//! animates a scene node
-		virtual void animateNode(ISceneNode* node, u32 timeMs);
+		virtual void animateNode(ISceneNode* node, u32 timeMs) IRR_OVERRIDE;
 
 		//! Writes attributes of the scene node animator.
-		virtual void serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options=0) const;
+		virtual void serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options=0) const IRR_OVERRIDE;
 
 		//! Reads attributes of the scene node animator.
-		virtual void deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options=0);
+		virtual void deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options=0) IRR_OVERRIDE;
 
 		//! Returns type of the scene node animator
-		virtual ESCENE_NODE_ANIMATOR_TYPE getType() const { return ESNAT_COLLISION_RESPONSE; }
+		virtual ESCENE_NODE_ANIMATOR_TYPE getType() const IRR_OVERRIDE { return ESNAT_COLLISION_RESPONSE; }
 
 		//! Creates a clone of this animator.
 		/** Please note that you will have to drop
 		(IReferenceCounted::drop()) the returned pointer after calling
 		this. */
-		virtual ISceneNodeAnimator* createClone(ISceneNode* node, ISceneManager* newManager=0);
+		virtual ISceneNodeAnimator* createClone(ISceneNode* node, ISceneManager* newManager=0) IRR_OVERRIDE;
 
 		//! Set the single node that this animator will act on.
-		virtual void setTargetNode(ISceneNode * node) { setNode(node); }
+		virtual void setTargetNode(ISceneNode * node) IRR_OVERRIDE { setNode(node); }
 
 		//! Gets the single node that this animator is acting on.
-		virtual ISceneNode* getTargetNode(void) const { return Object; }
+		virtual ISceneNode* getTargetNode(void) const IRR_OVERRIDE { return Object; }
 
 		//! Returns true if a collision occurred during the last animateNode()
-		virtual bool collisionOccurred() const { return CollisionOccurred; }
+		virtual bool collisionOccurred() const IRR_OVERRIDE { return CollisionOccurred; }
 
 		//! Returns the last point of collision.
-		virtual const core::vector3df & getCollisionPoint() const { return CollisionPoint; }
+		virtual const core::vector3df & getCollisionPoint() const IRR_OVERRIDE { return CollisionPoint; }
 
 		//! Returns the last triangle that caused a collision.
-		virtual const core::triangle3df & getCollisionTriangle() const { return CollisionTriangle; }
+		virtual const core::triangle3df & getCollisionTriangle() const IRR_OVERRIDE { return CollisionTriangle; }
 
-		virtual const core::vector3df & getCollisionResultPosition(void) const { return CollisionResultPosition; }
+		virtual const core::vector3df & getCollisionResultPosition(void) const IRR_OVERRIDE { return CollisionResultPosition; }
 
-		virtual ISceneNode* getCollisionNode(void) const { return CollisionNode; }
+		virtual ISceneNode* getCollisionNode(void) const IRR_OVERRIDE { return CollisionNode; }
 
 
 		//! Sets a callback interface which will be called if a collision occurs.
 		/** \param callback: collision callback handler that will be called when a collision
 		occurs. Set this to 0 to disable the callback.
 		*/
-		virtual void setCollisionCallback(ICollisionCallback* callback);
+		virtual void setCollisionCallback(ICollisionCallback* callback) IRR_OVERRIDE;
 
 	private:
 
@@ -154,4 +154,3 @@ namespace scene
 } // end namespace irr
 
 #endif
-

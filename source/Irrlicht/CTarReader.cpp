@@ -7,12 +7,10 @@
 #ifdef __IRR_COMPILE_WITH_TAR_ARCHIVE_LOADER_
 
 #include "CFileList.h"
-#include "CLimitReadFile.h"
+#include "IReadFile.h"
 #include "os.h"
 #include "coreutil.h"
-#if !defined(_IRR_WINDOWS_CE_PLATFORM_)
 #include "errno.h"
-#endif
 
 namespace irr
 {
@@ -149,6 +147,7 @@ CTarReader::~CTarReader()
 		File->drop();
 }
 
+
 const IFileList* CTarReader::getFileList() const
 {
 	return this;
@@ -204,10 +203,9 @@ u32 CTarReader::populateFileList()
 			}
 
 			u32 size = strtoul(sSize.c_str(), NULL, 8);
-#if !defined(_IRR_WINDOWS_CE_PLATFORM_)
+
 			if (errno == ERANGE)
 				os::Printer::log("File too large", fullPath, ELL_WARNING);
-#endif
 
 			// save start position
 			u32 offset = pos + 512;

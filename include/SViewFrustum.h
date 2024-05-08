@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __S_VIEW_FRUSTUM_H_INCLUDED__
-#define __S_VIEW_FRUSTUM_H_INCLUDED__
+#ifndef S_VIEW_FRUSTUM_H_INCLUDED
+#define S_VIEW_FRUSTUM_H_INCLUDED
 
 #include "plane3d.h"
 #include "vector3d.h"
@@ -26,7 +26,7 @@ namespace scene
 	{
 		enum VFPLANES
 		{
-			//! Far plane of the frustum. That is the plane farest away from the eye.
+			//! Far plane of the frustum. That is the plane furthest away from the eye.
 			VF_FAR_PLANE = 0,
 			//! Near plane of the frustum. That is the plane nearest to the eye.
 			VF_NEAR_PLANE,
@@ -45,16 +45,15 @@ namespace scene
 
 
 		//! Default Constructor
-		SViewFrustum() {}
-
-		//! Copy Constructor
-		SViewFrustum(const SViewFrustum& other);
+		SViewFrustum() : BoundingRadius(0.f), FarNearDistance(0.f) {}
 
 		//! This constructor creates a view frustum based on a projection and/or view matrix.
-		SViewFrustum(const core::matrix4& mat);
+		//\param zClipFromZero: Clipping of z can be projected from 0 to w when true (D3D style) and from -w to w when false (OGL style).
+		SViewFrustum(const core::matrix4& mat, bool zClipFromZero);
 
 		//! This constructor creates a view frustum based on a projection and/or view matrix.
-		inline void setFrom(const core::matrix4& mat);
+		//\param zClipFromZero: Clipping of z can be projected from 0 to w when true (D3D style) and from -w to w when false (OGL style).
+		inline void setFrom(const core::matrix4& mat, bool zClipFromZero);
 
 		//! transforms the frustum by the matrix
 		/** \param mat: Matrix by which the view frustum is transformed.*/
@@ -87,8 +86,17 @@ namespace scene
 		//! returns a bounding box enclosing the whole view frustum
 		const core::aabbox3d<f32> &getBoundingBox() const;
 
-		//! recalculates the bounding box member based on the planes
+		//! recalculates the bounding box and sphere based on the planes
 		inline void recalculateBoundingBox();
+
+		//! get the bounding sphere's radius (of an optimized sphere, not the AABB's)
+		float getBoundingRadius() const;
+
+		//! get the bounding sphere's radius (of an optimized sphere, not the AABB's)
+		core::vector3df getBoundingCenter() const;
+
+		//! the cam should tell the frustum the distance between far and near
+		void setFarNearDistance(float distance);
 
 		//! get the given state's matrix based on frustum E_TRANSFORMATION_STATE
 		core::matrix4& getTransform( video::E_TRANSFORMATION_STATE state);
@@ -118,30 +126,20 @@ namespace scene
 			ETS_COUNT_FRUSTUM
 		};
 
+		//! recalculates the bounding sphere based on the planes
+		inline void recalculateBoundingSphere();
+
 		//! Hold a copy of important transform matrices
 		core::matrix4 Matrices[ETS_COUNT_FRUSTUM];
+
+		float BoundingRadius;
+		float FarNearDistance;
+		core::vector3df BoundingCenter;
 	};
 
-
-	/*!
-		Copy constructor ViewFrustum
-	*/
-	inline SViewFrustum::SViewFrustum(const SViewFrustum& other)
+	inline SViewFrustum::SViewFrustum(const core::matrix4& mat, bool zClipFromZero)
 	{
-		cameraPosition=other.cameraPosition;
-		boundingBox=other.boundingBox;
-
-		u32 i;
-		for (i=0; i<VF_PLANE_COUNT; ++i)
-			planes[i]=other.planes[i];
-
-		for (i=0; i<ETS_COUNT_FRUSTUM; ++i)
-			Matrices[i]=other.Matrices[i];
-	}
-
-	inline SViewFrustum::SViewFrustum(const core::matrix4& mat)
-	{
-		setFrom ( mat );
+		setFrom(mat, zClipFromZero);
 	}
 
 
@@ -242,17 +240,37 @@ namespace scene
 
 	inline void SViewFrustum::recalculateBoundingBox()
 	{
-		boundingBox.reset ( cameraPosition );
-
-		boundingBox.addInternalPoint(getFarLeftUp());
+		boundingBox.reset(getNearLeftUp());
+		boundingBox.addInternalPoint(getNearRightUp());
+		boundingBox.addInternalPoint(getNearLeftDown());
+		boundingBox.addInternalPoint(getNearRightDown());
 		boundingBox.addInternalPoint(getFarRightUp());
 		boundingBox.addInternalPoint(getFarLeftDown());
 		boundingBox.addInternalPoint(getFarRightDown());
+		boundingBox.addInternalPoint(getFarLeftUp());
+
+		// Also recalculate the bounding sphere when the bbox changes
+		recalculateBoundingSphere();
+	}
+
+	inline float SViewFrustum::getBoundingRadius() const
+	{
+		return BoundingRadius;
+	}
+
+	inline core::vector3df SViewFrustum::getBoundingCenter() const
+	{
+		return BoundingCenter;
+	}
+
+	inline void SViewFrustum::setFarNearDistance(float distance)
+	{
+		FarNearDistance = distance;
 	}
 
 	//! This constructor creates a view frustum based on a projection
 	//! and/or view matrix.
-	inline void SViewFrustum::setFrom(const core::matrix4& mat)
+	inline void SViewFrustum::setFrom(const core::matrix4& mat, bool zClipFromZero)
 	{
 		// left clipping plane
 		planes[VF_LEFT_PLANE].Normal.X = mat[3 ] + mat[0];
@@ -285,10 +303,21 @@ namespace scene
 		planes[VF_FAR_PLANE].D =        mat[15] - mat[14];
 
 		// near clipping plane
-		planes[VF_NEAR_PLANE].Normal.X = mat[2];
-		planes[VF_NEAR_PLANE].Normal.Y = mat[6];
-		planes[VF_NEAR_PLANE].Normal.Z = mat[10];
-		planes[VF_NEAR_PLANE].D =        mat[14];
+		if ( zClipFromZero )
+		{
+			planes[VF_NEAR_PLANE].Normal.X = mat[2];
+			planes[VF_NEAR_PLANE].Normal.Y = mat[6];
+			planes[VF_NEAR_PLANE].Normal.Z = mat[10];
+			planes[VF_NEAR_PLANE].D =        mat[14];
+		}
+		else
+		{
+			// near clipping plane
+			planes[VF_NEAR_PLANE].Normal.X = mat[3 ] + mat[2];
+			planes[VF_NEAR_PLANE].Normal.Y = mat[7 ] + mat[6];
+			planes[VF_NEAR_PLANE].Normal.Z = mat[11] + mat[10];
+			planes[VF_NEAR_PLANE].D =        mat[15] + mat[14];
+		}
 
 		// normalize normals
 		u32 i;
@@ -307,7 +336,7 @@ namespace scene
 	/*!
 		View Frustum depends on Projection & View Matrix
 	*/
-	inline core::matrix4& SViewFrustum::getTransform(video::E_TRANSFORMATION_STATE state )
+	inline core::matrix4& SViewFrustum::getTransform(video::E_TRANSFORMATION_STATE state)
 	{
 		u32 index = 0;
 		switch ( state )
@@ -325,7 +354,7 @@ namespace scene
 	/*!
 		View Frustum depends on Projection & View Matrix
 	*/
-	inline const core::matrix4& SViewFrustum::getTransform(video::E_TRANSFORMATION_STATE state ) const
+	inline const core::matrix4& SViewFrustum::getTransform(video::E_TRANSFORMATION_STATE state) const
 	{
 		u32 index = 0;
 		switch ( state )
@@ -362,9 +391,47 @@ namespace scene
 		return wasClipped;
 	}
 
+	inline void SViewFrustum::recalculateBoundingSphere()
+	{
+		// Find the center
+		const float shortlen = (getNearLeftUp() - getNearRightUp()).getLength();
+		const float longlen = (getFarLeftUp() - getFarRightUp()).getLength();
+
+		const float farlen = FarNearDistance;
+		const float fartocenter = (farlen + (shortlen - longlen) * (shortlen + longlen)/(4*farlen)) / 2;
+		const float neartocenter = farlen - fartocenter;
+
+		BoundingCenter = cameraPosition + -planes[VF_NEAR_PLANE].Normal * neartocenter;
+
+		// Find the radius
+		core::vector3df dir[8];
+		dir[0] = getFarLeftUp() - BoundingCenter;
+		dir[1] = getFarRightUp() - BoundingCenter;
+		dir[2] = getFarLeftDown() - BoundingCenter;
+		dir[3] = getFarRightDown() - BoundingCenter;
+		dir[4] = getNearRightDown() - BoundingCenter;
+		dir[5] = getNearLeftDown() - BoundingCenter;
+		dir[6] = getNearRightUp() - BoundingCenter;
+		dir[7] = getNearLeftUp() - BoundingCenter;
+
+		u32 i = 0;
+		float diam[8] = { 0.f };
+
+		for (i = 0; i < 8; ++i)
+			diam[i] = dir[i].getLengthSQ();
+
+		float longest = 0;
+
+		for (i = 0; i < 8; ++i)
+		{
+			if (diam[i] > longest)
+				longest = diam[i];
+		}
+
+		BoundingRadius = sqrtf(longest);
+	}
 
 } // end namespace scene
 } // end namespace irr
 
 #endif
-

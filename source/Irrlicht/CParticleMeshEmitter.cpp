@@ -2,9 +2,13 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#include "IrrCompileConfig.h"
 #include "CParticleMeshEmitter.h"
+
+#include "IrrCompileConfig.h"
+#ifdef _IRR_COMPILE_WITH_PARTICLES_
+
 #include "os.h"
+#include "IMeshBuffer.h"
 
 namespace irr
 {
@@ -27,7 +31,7 @@ CParticleMeshEmitter::CParticleMeshEmitter(
 	MinParticlesPerSecond(minParticlesPerSecond), MaxParticlesPerSecond(maxParticlesPerSecond),
 	MinStartColor(minStartColor), MaxStartColor(maxStartColor),
 	MinLifeTime(lifeTimeMin), MaxLifeTime(lifeTimeMax),
-	Time(0), Emitted(0), MaxAngleDegrees(maxAngleDegrees),
+	Time(0), MaxAngleDegrees(maxAngleDegrees),
 	EveryMeshVertex(everyMeshVertex), UseNormalDirection(useNormalDirection)
 {
 	#ifdef _DEBUG
@@ -188,3 +192,4 @@ void CParticleMeshEmitter::setMesh(IMesh* mesh)
 } // end namespace scene
 } // end namespace irr
 
+#endif // _IRR_COMPILE_WITH_PARTICLES_

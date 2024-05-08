@@ -11,7 +11,7 @@
 #else
 #include <string.h>
 #include <unistd.h>
-#ifndef _IRR_SOLARIS_PLATFORM_
+#ifndef _IRR_ANDROID_PLATFORM_
 #include <sys/types.h>
 #ifdef _IRR_OSX_PLATFORM_
 #include <sys/sysctl.h>
@@ -22,9 +22,11 @@
 #if defined(_IRR_COMPILE_WITH_X11_DEVICE_)
 #include "CIrrDeviceLinux.h"
 #endif
-#ifdef _IRR_COMPILE_WITH_OSX_DEVICE_
-#include "MacOSX/OSXClipboard.h"
+#if defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
+#import <Cocoa/Cocoa.h>
 #endif
+
+#include "fast_atof.h"
 
 namespace irr
 {
@@ -71,18 +73,29 @@ void COSOperator::copyToClipboard(const c8* text) const
 	char * buffer;
 
 	clipbuffer = GlobalAlloc(GMEM_DDESHARE, strlen(text)+1);
-	buffer = (char*)GlobalLock(clipbuffer);
-
-	strcpy(buffer, text);
-
-	GlobalUnlock(clipbuffer);
-	SetClipboardData(CF_TEXT, clipbuffer);
+	if ( clipbuffer )
+	{
+		buffer = (char*)GlobalLock(clipbuffer);
+		if ( buffer )
+		{
+			strcpy(buffer, text);
+		}
+		GlobalUnlock(clipbuffer);
+		SetClipboardData(CF_TEXT, clipbuffer);
+	}
 	CloseClipboard();
 
-// MacOSX version
 #elif defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
+    NSString *str = nil;
+    NSPasteboard *board = nil;
 
-	OSXCopyToClipboard(text);
+    if ((text != NULL) && (strlen(text) > 0))
+    {
+        str = [NSString stringWithCString:text encoding:NSWindowsCP1252StringEncoding];
+        board = [NSPasteboard generalPasteboard];
+        [board declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:NSApp];
+        [board setString:str forType:NSStringPboardType];
+    }
 
 #elif defined(_IRR_COMPILE_WITH_X11_DEVICE_)
     if ( IrrDeviceLinux )
@@ -112,7 +125,17 @@ const c8* COSOperator::getTextFromClipboard() const
 	return buffer;
 
 #elif defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
-	return (OSXCopyFromClipboard());
+    NSString* str = nil;
+    NSPasteboard* board = nil;
+    char* result = 0;
+
+    board = [NSPasteboard generalPasteboard];
+    str = [board stringForType:NSStringPboardType];
+
+    if (str != nil)
+        result = (char*)[str cStringUsingEncoding:NSWindowsCP1252StringEncoding];
+
+    return (result);
 
 #elif defined(_IRR_COMPILE_WITH_X11_DEVICE_)
     if ( IrrDeviceLinux )
@@ -128,6 +151,8 @@ const c8* COSOperator::getTextFromClipboard() const
 
 bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 {
+	if (MHz)
+		*MHz=0;
 #if defined(_IRR_WINDOWS_API_) && !defined(_WIN32_WCE ) && !defined (_IRR_XBOX_PLATFORM_)
 	LONG Error;
 
@@ -149,7 +174,6 @@ bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 		return false;
 	else if (MHz)
 		*MHz = Speed;
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return true;
 
 #elif defined(_IRR_OSX_PLATFORM_)
@@ -162,9 +186,28 @@ bool COSOperator::getProcessorSpeedMHz(u32* MHz) const
 		*MHz = CpuClock.hz;
 	return true;
 #else
-	// could probably be read from "/proc/cpuinfo" or "/proc/cpufreq"
-
-	return false;
+	// read from "/proc/cpuinfo"
+	FILE* file = fopen("/proc/cpuinfo", "r");
+	if (file)
+	{
+		char buffer[1024];
+		size_t r = fread(buffer, 1, 1023, file);
+		buffer[r] = 0;
+		buffer[1023]=0;
+		core::stringc str(buffer);
+		s32 pos = str.find("cpu MHz");
+		if (pos != -1)
+		{
+			pos = str.findNext(':', pos);
+			if (pos != -1)
+			{
+				while ( str[++pos] == ' ' );
+				*MHz = core::fast_atof(str.c_str()+pos);
+			}
+		}
+		fclose(file);
+	}
+	return (MHz && *MHz != 0);
 #endif
 }
 
@@ -198,26 +241,37 @@ bool COSOperator::getSystemMemory(u32* Total, u32* Avail) const
     return true;
 	#endif
 
-#elif defined(_IRR_POSIX_API_) && !defined(__FreeBSD__)
-#if defined(_SC_PHYS_PAGES) && defined(_SC_AVPHYS_PAGES)
-        long ps = sysconf(_SC_PAGESIZE);
-        long pp = sysconf(_SC_PHYS_PAGES);
-        long ap = sysconf(_SC_AVPHYS_PAGES);
+#elif defined(_IRR_POSIX_API_) && defined(_SC_PHYS_PAGES) && defined(_SC_AVPHYS_PAGES)
+	long ps = sysconf(_SC_PAGESIZE);
+	long pp = sysconf(_SC_PHYS_PAGES);
+	long ap = sysconf(_SC_AVPHYS_PAGES);
 
-	if ((ps==-1)||(pp==-1)||(ap==-1))
+ 	if (ps == -1 || (Total && pp == -1) || (Avail && ap == -1))
 		return false;
 
 	if (Total)
-		*Total = (u32)((ps*(long long)pp)>>10);
+		*Total = (u32)((pp>>10)*ps);
 	if (Avail)
-		*Avail = (u32)((ps*(long long)ap)>>10);
+		*Avail = (u32)((ap>>10)*ps);
+	return true;
+#elif defined(_IRR_OSX_PLATFORM_)
+	int mib[2];
+	int64_t physical_memory;
+	size_t length;
+
+	// Get the Physical memory size
+	mib[0] = CTL_HW;
+	mib[1] = HW_MEMSIZE;
+	length = sizeof(int64_t);
+	sysctl(mib, 2, &physical_memory, &length, NULL, 0);
+
+	if (Total)
+		*Total = (u32)(physical_memory>>10);
+	if (Avail)
+		*Avail = (u32)(physical_memory>>10); // we don't know better
 	return true;
 #else
-	// TODO: implement for non-availability of symbols/features
-	return false;
-#endif
-#else
-	// TODO: implement for OSX
+	// TODO: implement for others
 	return false;
 #endif
 }

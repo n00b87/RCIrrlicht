@@ -2,7 +2,7 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#include "IrrCompileConfig.h" 
+#include "IrrCompileConfig.h"
 
 #ifdef _IRR_COMPILE_WITH_IRR_WRITER_
 
@@ -11,6 +11,7 @@
 #include "IWriteFile.h"
 #include "IXMLWriter.h"
 #include "IMesh.h"
+#include "IMeshBuffer.h"
 #include "IAttributes.h"
 
 namespace irr
@@ -272,13 +273,10 @@ void CIrrMeshWriter::writeMeshBuffer(const scene::IMeshBuffer* buffer)
 			Writer->writeText(str.c_str());
 		}
 
-		if (i % maxIndicesPerLine != maxIndicesPerLine)
-		{
-			if (i % maxIndicesPerLine == maxIndicesPerLine-1)
-				Writer->writeLineBreak();
-			else
-				Writer->writeText(L" ");
-		}
+		if (i % maxIndicesPerLine == maxIndicesPerLine-1)
+			Writer->writeLineBreak();
+		else
+			Writer->writeText(L" ");
 	}
 
 	if ((indexCount-1) % maxIndicesPerLine != maxIndicesPerLine-1)

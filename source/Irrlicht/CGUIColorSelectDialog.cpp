@@ -12,10 +12,6 @@
 #include "IGUIButton.h"
 #include "IGUIStaticText.h"
 #include "IGUIFont.h"
-#include "IGUISpriteBank.h"
-#include "IFileList.h"
-#include "os.h"
-#include "fast_atof.h"
 
 namespace irr
 {
@@ -267,8 +263,6 @@ void CGUIColorSelectDialog::buildColorRing( const core::dimension2d<u32> & dim, 
 		}
 	}
 
-	RawTexture->unlock ();
-
 	if ( supersample > 1 )
 	{
 		video::IImage * filter = driver->createImage(video::ECF_A8R8G8B8, dim );
@@ -363,11 +357,9 @@ bool CGUIColorSelectDialog::OnEvent(const SEvent& event)
 				DragStart.X = event.MouseInput.X;
 				DragStart.Y = event.MouseInput.Y;
 				Dragging = true;
-				Environment->setFocus(this);
 				return true;
 			case EMIE_LMOUSE_LEFT_UP:
 				Dragging = false;
-				Environment->removeFocus(this);
 				return true;
 			case EMIE_MOUSE_MOVED:
 				if (Dragging)

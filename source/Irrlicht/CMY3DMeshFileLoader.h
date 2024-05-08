@@ -24,15 +24,12 @@
 
 
 #ifdef _MSC_VER
-#if _MSC_VER > 1000
 #pragma once
-#endif // _MSC_VER > 1000
 #endif
 
 
 #include "IMeshLoader.h"
-#include "SMesh.h"
-#include "SMeshBufferLightMap.h"
+#include "CMeshBuffer.h"
 #include "IFileSystem.h"
 #include "IVideoDriver.h"
 #include "irrString.h"
@@ -75,9 +72,9 @@ public:
 	CMY3DMeshFileLoader(ISceneManager *scmgr, io::IFileSystem* fs);
 	virtual ~CMY3DMeshFileLoader();
 
-	virtual bool isALoadableFileExtension(const io::path& filename) const;
+	virtual bool isALoadableFileExtension(const io::path& filename) const IRR_OVERRIDE;
 
-	virtual IAnimatedMesh* createMesh(io::IReadFile* file);
+	virtual IAnimatedMesh* createMesh(io::IReadFile* file) IRR_OVERRIDE;
 
 	//! getting access to the nodes (with transparent material), creating
 	//! while loading .my3d file
@@ -94,7 +91,9 @@ private:
 	{
 		SMyMaterialEntry ()
 		: Texture1FileName("null"), Texture2FileName("null"),
-		Texture1(0), Texture2(0), MaterialType(video::EMT_SOLID) {}
+		Texture1(0), Texture2(0), MaterialType(video::EMT_SOLID) {
+			Header.Name[0] = 0;
+		}
 
 		SMyMaterialHeader Header;
 		core::stringc Texture1FileName;

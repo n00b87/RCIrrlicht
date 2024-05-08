@@ -8,6 +8,7 @@
 #include "CD3D9HLSLMaterialRenderer.h"
 #include "IShaderConstantSetCallBack.h"
 #include "IVideoDriver.h"
+#include "CD3D9Driver.h"
 #include "os.h"
 #include "irrString.h"
 
@@ -24,7 +25,7 @@ namespace video
 
 //! Public constructor
 CD3D9HLSLMaterialRenderer::CD3D9HLSLMaterialRenderer(IDirect3DDevice9* d3ddev,
-	video::IVideoDriver* driver, s32& outMaterialTypeNr,
+	video::CD3D9Driver* driver, s32& outMaterialTypeNr,
 	const c8* vertexShaderProgram,
 	const c8* vertexShaderEntryPointName,
 	E_VERTEX_SHADER_TYPE vsCompileTarget,
@@ -88,10 +89,15 @@ bool CD3D9HLSLMaterialRenderer::createHLSLVertexShader(const char* vertexShaderP
 
 #ifdef _IRR_D3D_NO_SHADER_DEBUGGING
 
+	size_t dataLen_t = strlen(vertexShaderProgram);
+	UINT dataLen = (UINT)dataLen_t;
+	if ( dataLen != dataLen_t )
+		return false;
+
 	// compile without debug info
 	HRESULT h = stubD3DXCompileShader(
 		vertexShaderProgram,
-		strlen(vertexShaderProgram),
+		dataLen,
 		0, // macros
 		0, // no includes
 		shaderEntryPointName,
@@ -103,7 +109,7 @@ bool CD3D9HLSLMaterialRenderer::createHLSLVertexShader(const char* vertexShaderP
 
 #else
 
-	// compile shader and emitt some debug informations to
+	// compile shader and emit some debug information to
 	// make it possible to debug the shader in visual studio
 
 	static int irr_dbg_hlsl_file_nr = 0;
@@ -190,10 +196,15 @@ bool CD3D9HLSLMaterialRenderer::createHLSLPixelShader(const char* pixelShaderPro
 
 #ifdef _IRR_D3D_NO_SHADER_DEBUGGING
 
+	size_t dataLen_t = strlen(pixelShaderProgram);
+	UINT dataLen = (UINT)dataLen_t;
+	if ( dataLen != dataLen_t )
+		return false;
+
 	// compile without debug info
 	HRESULT h = stubD3DXCompileShader(
 		pixelShaderProgram,
-		strlen(pixelShaderProgram),
+		dataLen,
 		0, // macros
 		0, // no includes
 		shaderEntryPointName,
@@ -205,7 +216,7 @@ bool CD3D9HLSLMaterialRenderer::createHLSLPixelShader(const char* pixelShaderPro
 
 #else
 
-	// compile shader and emitt some debug informations to
+	// compile shader and emit some debug information to
 	// make it possible to debug the shader in visual studio
 
 	static int irr_dbg_hlsl_file_nr = 0;
@@ -264,27 +275,108 @@ bool CD3D9HLSLMaterialRenderer::createHLSLPixelShader(const char* pixelShaderPro
 	return false;
 }
 
+s32 CD3D9HLSLMaterialRenderer::getVertexShaderConstantID(const c8* name)
+{
+	return getVariableID(true, name);
+}
 
-bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, const c8* name,
-					const f32* floats, int count)
+s32 CD3D9HLSLMaterialRenderer::getPixelShaderConstantID(const c8* name)
+{
+	return getVariableID(false, name);
+}
+
+void CD3D9HLSLMaterialRenderer::setVertexShaderConstant(const f32* data, s32 startRegister, s32 constantAmount)
+{
+	// TODO: Not sure if setting constants which are not bound to the shader in hlsl
+	// I mainly kept this here so it works same as in Irrlicht 1.8 and it probably won't hurt
+	Driver->setVertexShaderConstant(data, startRegister, constantAmount);
+}
+
+void CD3D9HLSLMaterialRenderer::setPixelShaderConstant(const f32* data, s32 startRegister, s32 constantAmount)
+{
+	// TODO: Not sure if setting constants which are not bound to the shader in hlsl
+	// I mainly kept this here so it works same as in Irrlicht 1.8 and it probably won't hurt
+	static_cast<CD3D9Driver*>(Driver)->setPixelShaderConstant(data, startRegister, constantAmount);
+}
+
+bool CD3D9HLSLMaterialRenderer::setVertexShaderConstant(s32 index, const f32* floats, int count)
+{
+	return setVariable(true, index, floats, count);
+}
+
+bool CD3D9HLSLMaterialRenderer::setVertexShaderConstant(s32 index, const s32* ints, int count)
+{
+	return setVariable(true, index, ints, count);
+}
+
+bool CD3D9HLSLMaterialRenderer::setVertexShaderConstant(s32 index, const u32* ints, int count)
+{
+	return setVariable(true, index, ints, count);
+}
+
+bool CD3D9HLSLMaterialRenderer::setPixelShaderConstant(s32 index, const f32* floats, int count)
+{
+	return setVariable(false, index, floats, count);
+}
+
+bool CD3D9HLSLMaterialRenderer::setPixelShaderConstant(s32 index, const s32* ints, int count)
+{
+	return setVariable(false, index, ints, count);
+}
+
+bool CD3D9HLSLMaterialRenderer::setPixelShaderConstant(s32 index, const u32* ints, int count)
+{
+	return setVariable(false, index, ints, count);
+}
+
+IVideoDriver* CD3D9HLSLMaterialRenderer::getVideoDriver()
+{
+	return Driver;
+}
+
+s32 CD3D9HLSLMaterialRenderer::getVariableID(bool vertexShader, const c8* name)
 {
 	LPD3DXCONSTANTTABLE tbl = vertexShader ? VSConstantsTable : PSConstantsTable;
 	if (!tbl)
+		return -1;
+
+	D3DXCONSTANTTABLE_DESC tblDesc;
+	if (!FAILED(tbl->GetDesc(&tblDesc)))
+	{
+		for (u32 i = 0; i < tblDesc.Constants; ++i)
+		{
+			D3DXHANDLE curConst = tbl->GetConstant(NULL, i);
+			D3DXCONSTANT_DESC constDesc;
+			UINT ucount = 1;
+
+			if (!FAILED(tbl->GetConstantDesc(curConst, &constDesc, &ucount)))
+				if(strcmp(name, constDesc.Name) == 0)
+					return i;
+		}
+	}
+
+	core::stringc s = "HLSL Variable to get ID not found: '";
+	s += name;
+	s += "'. Available variables are:";
+	os::Printer::log(s.c_str(), ELL_WARNING);
+	printHLSLVariables(tbl);
+
+	return -1;
+}
+
+bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, s32 index,
+					const f32* floats, int count)
+{
+	LPD3DXCONSTANTTABLE tbl = vertexShader ? VSConstantsTable : PSConstantsTable;
+	if (index < 0 || !tbl)
 		return false;
 
 	// currently we only support top level parameters.
 	// Should be enough for the beginning. (TODO)
 
-	D3DXHANDLE hndl = tbl->GetConstantByName(NULL, name);
+	D3DXHANDLE hndl = tbl->GetConstant(NULL, index);
 	if (!hndl)
-	{
-		core::stringc s = "HLSL Variable to set not found: '";
-		s += name;
-		s += "'. Available variables are:";
-		os::Printer::log(s.c_str(), ELL_WARNING);
-		printHLSLVariables(tbl);
 		return false;
-	}
 
 	D3DXCONSTANT_DESC Description;
 	UINT ucount = 1;
@@ -304,65 +396,19 @@ bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, const c8* name,
 }
 
 
-bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, const c8* name,
-					const bool* bools, int count)
-{
-	LPD3DXCONSTANTTABLE tbl = vertexShader ? VSConstantsTable : PSConstantsTable;
-	if (!tbl)
-		return false;
-
-	// currently we only support top level parameters.
-	// Should be enough for the beginning. (TODO)
-
-	D3DXHANDLE hndl = tbl->GetConstantByName(NULL, name);
-	if (!hndl)
-	{
-		core::stringc s = "HLSL Variable to set not found: '";
-		s += name;
-		s += "'. Available variables are:";
-		os::Printer::log(s.c_str(), ELL_WARNING);
-		printHLSLVariables(tbl);
-		return false;
-	}
-
-	D3DXCONSTANT_DESC Description;
-	UINT ucount = 1;
-    tbl->GetConstantDesc(hndl, &Description, &ucount);
-
-	if(Description.RegisterSet != D3DXRS_SAMPLER)
-	{
-		HRESULT hr = tbl->SetBoolArray(pID3DDevice, hndl, (BOOL*)bools, count);
-		if (FAILED(hr))
-		{
-			os::Printer::log("Error setting bool array for HLSL variable", ELL_WARNING);
-			return false;
-		}
-	}
-
-	return true;
-}
-
-
-bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, const c8* name,
+bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, s32 index,
 					const s32* ints, int count)
 {
 	LPD3DXCONSTANTTABLE tbl = vertexShader ? VSConstantsTable : PSConstantsTable;
-	if (!tbl)
+	if (index < 0 || !tbl)
 		return false;
 
 	// currently we only support top level parameters.
 	// Should be enough for the beginning. (TODO)
 
-	D3DXHANDLE hndl = tbl->GetConstantByName(NULL, name);
+	D3DXHANDLE hndl = tbl->GetConstant(NULL, index);
 	if (!hndl)
-	{
-		core::stringc s = "HLSL Variable to set not found: '";
-		s += name;
-		s += "'. Available variables are:";
-		os::Printer::log(s.c_str(), ELL_WARNING);
-		printHLSLVariables(tbl);
 		return false;
-	}
 
 	D3DXCONSTANT_DESC Description;
 	UINT ucount = 1;
@@ -382,12 +428,20 @@ bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, const c8* name,
 }
 
 
+bool CD3D9HLSLMaterialRenderer::setVariable(bool vertexShader, s32 index,
+					const u32* ints, int count)
+{
+	os::Printer::log("Error DirectX 9 does not support unsigned integer constants in shaders.", ELL_ERROR);
+	return false;
+}
+
+
 bool CD3D9HLSLMaterialRenderer::OnRender(IMaterialRendererServices* service, E_VERTEX_TYPE vtxtype)
 {
 	if (VSConstantsTable)
 		VSConstantsTable->SetDefaults(pID3DDevice);
 
-	return CD3D9ShaderMaterialRenderer::OnRender(service, vtxtype);
+	return CD3D9ShaderMaterialRenderer::OnRender(this, vtxtype);
 }
 
 

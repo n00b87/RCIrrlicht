@@ -81,6 +81,9 @@ namespace irr
 		//! Restores the window size.
 		virtual void restoreWindow();
 
+		//! Get the position of the frame on-screen
+		virtual core::position2di getWindowPosition();
+
 		//! Activate any joysticks, and generate events for them.
 		virtual bool activateJoysticks(core::array<SJoystickInfo> & joystickInfo);
 
@@ -208,11 +211,10 @@ namespace irr
 #endif
 
 		s32 MouseX, MouseY;
+		s32 MouseXRel, MouseYRel;
 		u32 MouseButtonStates;
 
 		u32 Width, Height;
-
-
 
 		bool Resizable;
 		bool WindowHasFocusDeprecated;	// TODO: variable only kept to avoid breaking binary compatibility in 1.8. Will be removed in 1.9

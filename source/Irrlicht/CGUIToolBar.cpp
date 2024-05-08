@@ -7,7 +7,6 @@
 
 #include "IGUISkin.h"
 #include "IGUIEnvironment.h"
-#include "IVideoDriver.h"
 #include "IGUIButton.h"
 #include "IGUIFont.h"
 #include "CGUIButton.h"
@@ -32,15 +31,27 @@ CGUIToolBar::CGUIToolBar(IGUIEnvironment* environment, IGUIElement* parent, s32 
 	if (parent)
 	{
 		parentwidth = Parent->getAbsolutePosition().getWidth();
+		s32 parentheight = Parent->getAbsolutePosition().getHeight();
 
 		const core::list<IGUIElement*>& children = parent->getChildren();
 		core::list<IGUIElement*>::ConstIterator it = children.begin();
 		for (; it != children.end(); ++it)
 		{
-			core::rect<s32> r = (*it)->getAbsolutePosition();
-			if (r.UpperLeftCorner.X == 0 && r.UpperLeftCorner.Y <= y &&
-				r.LowerRightCorner.X == parentwidth)
-				y = r.LowerRightCorner.Y;
+			const IGUIElement* e = *it;
+			if (	e->hasType(EGUIET_CONTEXT_MENU) 
+				||	e->hasType(EGUIET_MENU) 
+				||	e->hasType(EGUIET_TOOL_BAR)  )
+			{
+				core::rect<s32> r = e->getAbsolutePosition();
+				if (r.UpperLeftCorner.X == 0 && r.UpperLeftCorner.Y <= y &&
+					r.LowerRightCorner.X == parentwidth 
+					&& parentheight > r.LowerRightCorner.Y 	)
+					y = r.LowerRightCorner.Y;
+			}
+			else
+			{
+				e->getType();
+			}
 		}
 	}
 

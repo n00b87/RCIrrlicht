@@ -35,6 +35,7 @@
 #include "CGUIMenu.h"
 #include "CGUIToolBar.h"
 #include "CGUITable.h"
+#include "CGUIProfiler.h"
 
 #include "CDefaultGUIElementFactory.h"
 #include "IWriteFile.h"
@@ -48,17 +49,17 @@ namespace irr
 namespace gui
 {
 
-const wchar_t* IRR_XML_FORMAT_GUI_ENV			= L"irr_gui";
-const wchar_t* IRR_XML_FORMAT_GUI_ELEMENT		= L"element";
-const wchar_t* IRR_XML_FORMAT_GUI_ELEMENT_ATTR_TYPE	= L"type";
+const wchar_t IRR_XML_FORMAT_GUI_ENV[]			= L"irr_gui";
+const wchar_t IRR_XML_FORMAT_GUI_ELEMENT[]		= L"element";
+const wchar_t IRR_XML_FORMAT_GUI_ELEMENT_ATTR_TYPE[]	= L"type";
 
 const io::path CGUIEnvironment::DefaultFontName = "#DefaultFont";
 
 //! constructor
 CGUIEnvironment::CGUIEnvironment(io::IFileSystem* fs, video::IVideoDriver* driver, IOSOperator* op)
-: IGUIElement(EGUIET_ROOT, 0, 0, 0, core::rect<s32>(core::position2d<s32>(0,0), driver ? core::dimension2d<s32>(driver->getScreenSize()) : core::dimension2d<s32>(0,0))),
+: IGUIElement(EGUIET_ROOT, 0, 0, 0, core::rect<s32>(driver ? core::dimension2d<s32>(driver->getScreenSize()) : core::dimension2d<s32>(0,0))),
 	Driver(driver), Hovered(0), HoveredNoSubelement(0), Focus(0), LastHoveredMousePos(0,0), CurrentSkin(0),
-	FileSystem(fs), UserReceiver(0), Operator(op)
+	FileSystem(fs), UserReceiver(0), Operator(op), FocusFlags(EFF_SET_ON_LMOUSE_DOWN|EFF_SET_ON_TAB)
 {
 	if (Driver)
 		Driver->grab();
@@ -100,6 +101,8 @@ CGUIEnvironment::CGUIEnvironment(io::IFileSystem* fs, video::IVideoDriver* drive
 //! destructor
 CGUIEnvironment::~CGUIEnvironment()
 {
+	clearDeletionQueue();
+
 	if ( HoveredNoSubelement && HoveredNoSubelement != this )
 	{
 		HoveredNoSubelement->drop();
@@ -168,7 +171,8 @@ CGUIEnvironment::~CGUIEnvironment()
 
 void CGUIEnvironment::loadBuiltInFont()
 {
-	io::IReadFile* file = io::createMemoryReadFile(BuiltInFontData, BuiltInFontDataSize, DefaultFontName, false);
+	io::IReadFile* file = FileSystem->createMemoryReadFile(BuiltInFontData,
+				BuiltInFontDataSize, DefaultFontName, false);
 
 	CGUIFont* font = new CGUIFont(this, DefaultFontName );
 	if (!font->load(file))
@@ -189,19 +193,18 @@ void CGUIEnvironment::loadBuiltInFont()
 
 
 //! draws all gui elements
-void CGUIEnvironment::drawAll()
+void CGUIEnvironment::drawAll(bool useScreenSize)
 {
-	if (Driver)
+	if (useScreenSize && Driver)
 	{
 		core::dimension2d<s32> dim(Driver->getScreenSize());
 		if (AbsoluteRect.LowerRightCorner.X != dim.Width ||
-			AbsoluteRect.LowerRightCorner.Y != dim.Height)
+			AbsoluteRect.UpperLeftCorner.X != 0 ||
+			AbsoluteRect.LowerRightCorner.Y != dim.Height ||
+			AbsoluteRect.UpperLeftCorner.Y != 0
+			)
 		{
-			// resize gui environment
-			DesiredRect.LowerRightCorner = dim;
-			AbsoluteClippingRect = DesiredRect;
-			AbsoluteRect = DesiredRect;
-			updateAbsolutePosition();
+			setRelativePosition(core::recti(0,0,dim.Width, dim.Height));
 		}
 	}
 
@@ -211,6 +214,8 @@ void CGUIEnvironment::drawAll()
 
 	draw();
 	OnPostRender ( os::Timer::getTime () );
+
+	clearDeletionQueue();
 }
 
 
@@ -219,11 +224,10 @@ bool CGUIEnvironment::setFocus(IGUIElement* element)
 {
 	if (Focus == element)
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
-	// GUI Environment should not get the focus
+	// GUI Environment should just reset the focus to 0
 	if (element == this)
 		element = 0;
 
@@ -247,7 +251,6 @@ bool CGUIEnvironment::setFocus(IGUIElement* element)
 			if (element)
 				element->drop();
 			currentFocus->drop();
-			_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 			return false;
 		}
 		currentFocus->drop();
@@ -272,7 +275,6 @@ bool CGUIEnvironment::setFocus(IGUIElement* element)
 				element->drop();
 			if (currentFocus)
 				currentFocus->drop();
-			_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 			return false;
 		}
 	}
@@ -315,7 +317,6 @@ bool CGUIEnvironment::removeFocus(IGUIElement* element)
 		e.GUIEvent.EventType = EGET_ELEMENT_FOCUS_LOST;
 		if (Focus->OnEvent(e))
 		{
-			_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 			return false;
 		}
 	}
@@ -329,11 +330,23 @@ bool CGUIEnvironment::removeFocus(IGUIElement* element)
 }
 
 
-//! Returns if the element has focus
-bool CGUIEnvironment::hasFocus(IGUIElement* element) const
+//! Returns whether the element has focus
+bool CGUIEnvironment::hasFocus(const IGUIElement* element, bool checkSubElements) const
 {
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
-	return (element == Focus);
+	if (element == Focus)
+		return true;
+
+	if ( !checkSubElements || !element )
+		return false;
+
+	IGUIElement* f = Focus;
+	while ( f && f->isSubElement() )
+	{
+		f = f->getParent();
+		if ( f == element )
+			return true;
+	}
+	return false;
 }
 
 
@@ -390,6 +403,7 @@ void CGUIEnvironment::clear()
 //! called by ui if an event happened.
 bool CGUIEnvironment::OnEvent(const SEvent& event)
 {
+
 	bool ret = false;
 	if (UserReceiver
 		&& (event.EventType != EET_MOUSE_INPUT_EVENT)
@@ -399,7 +413,6 @@ bool CGUIEnvironment::OnEvent(const SEvent& event)
 		ret = UserReceiver->OnEvent(event);
 	}
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -461,6 +474,28 @@ void CGUIEnvironment::OnPostRender( u32 time )
 	IGUIElement::OnPostRender ( time );
 }
 
+void CGUIEnvironment::addToDeletionQueue(IGUIElement* element)
+{
+	if (!element)
+		return;
+
+	element->grab();
+	DeletionQueue.push_back(element);
+}
+
+void CGUIEnvironment::clearDeletionQueue()
+{
+	if (DeletionQueue.empty())
+		return;
+
+	for (u32 i=0; i<DeletionQueue.size(); ++i)
+	{
+		DeletionQueue[i]->remove();
+		DeletionQueue[i]->drop();
+	}
+
+	DeletionQueue.clear();
+}
 
 //
 void CGUIEnvironment::updateHoveredElement(core::position2d<s32> mousePos)
@@ -554,16 +589,39 @@ bool CGUIEnvironment::postEventFromUser(const SEvent& event)
 	switch(event.EventType)
 	{
 	case EET_GUI_EVENT:
-		// hey, why is the user sending gui events..?
+		{
+			// hey, why is the user sending gui events..?
+		}
+
 		break;
 	case EET_MOUSE_INPUT_EVENT:
 
 		updateHoveredElement(core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y));
 
-		if (event.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN)
-			if ( (Hovered && Hovered != Focus) || !Focus )
+		if ( Hovered != Focus )
 		{
-			setFocus(Hovered);
+			IGUIElement * focusCandidate = Hovered;
+
+			// Only allow enabled elements to be focused (unless EFF_CAN_FOCUS_DISABLED is set)
+			if ( Hovered && !Hovered->isEnabled() && !(FocusFlags & EFF_CAN_FOCUS_DISABLED))
+				focusCandidate = NULL;	// we still remove focus from the active element
+
+			// Please don't merge this into a single if clause, it's easier to debug the way it is
+			if (FocusFlags & EFF_SET_ON_LMOUSE_DOWN &&
+				event.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN )
+			{
+				setFocus(focusCandidate);
+			}
+			else if ( FocusFlags & EFF_SET_ON_RMOUSE_DOWN &&
+				event.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN )
+			{
+				setFocus(focusCandidate);
+			}
+			else if ( FocusFlags & EFF_SET_ON_MOUSE_OVER &&
+				event.MouseInput.Event == EMIE_MOUSE_MOVED )
+			{
+				setFocus(focusCandidate);
+			}
 		}
 
 		// sending input to focus
@@ -573,7 +631,6 @@ bool CGUIEnvironment::postEventFromUser(const SEvent& event)
 		// focus could have died in last call
 		if (!Focus && Hovered)
 		{
-			_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 			return Hovered->OnEvent(event);
 		}
 
@@ -585,7 +642,8 @@ bool CGUIEnvironment::postEventFromUser(const SEvent& event)
 
 			// For keys we handle the event before changing focus to give elements the chance for catching the TAB
 			// Send focus changing event
-			if (event.EventType == EET_KEY_INPUT_EVENT &&
+			// CAREFUL when changing - there's an identical check in CGUIModalScreen::OnEvent
+			if (FocusFlags & EFF_SET_ON_TAB &&
 				event.KeyInput.PressedDown &&
 				event.KeyInput.Key == KEY_TAB)
 			{
@@ -596,14 +654,12 @@ bool CGUIEnvironment::postEventFromUser(const SEvent& event)
 						return true;
 				}
 			}
-
 		}
 		break;
 	default:
 		break;
 	} // end switch
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return false;
 }
 
@@ -665,7 +721,7 @@ IGUIElementFactory* CGUIEnvironment::getDefaultGUIElementFactory() const
 
 //! Adds an element factory to the gui environment.
 /** Use this to extend the gui environment with new element types which it should be
-able to create automaticly, for example when loading data from xml files. */
+able to create automatically, for example when loading data from xml files. */
 void CGUIEnvironment::registerGUIElementFactory(IGUIElementFactory* factoryToAdd)
 {
 	if (factoryToAdd)
@@ -716,13 +772,11 @@ bool CGUIEnvironment::saveGUI(const io::path& filename, IGUIElement* start)
 	io::IWriteFile* file = FileSystem->createAndWriteFile(filename);
 	if (!file)
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
 	bool ret = saveGUI(file, start);
 	file->drop();
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -732,14 +786,12 @@ bool CGUIEnvironment::saveGUI(io::IWriteFile* file, IGUIElement* start)
 {
 	if (!file)
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
 	io::IXMLWriter* writer = FileSystem->createXMLWriter(file);
 	if (!writer)
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
@@ -758,15 +810,13 @@ bool CGUIEnvironment::loadGUI(const io::path& filename, IGUIElement* parent)
 	io::IReadFile* read = FileSystem->createAndOpenFile(filename);
 	if (!read)
 	{
-		os::Printer::log("Unable to open gui file", filename, ELL_ERROR);
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
+		os::Printer::log("Unable to open GUI file", filename, ELL_ERROR);
 		return false;
 	}
 
 	bool ret = loadGUI(read, parent);
 	read->drop();
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return ret;
 }
 
@@ -777,7 +827,6 @@ bool CGUIEnvironment::loadGUI(io::IReadFile* file, IGUIElement* parent)
 	if (!file)
 	{
 		os::Printer::log("Unable to open GUI file", ELL_ERROR);
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
@@ -785,7 +834,6 @@ bool CGUIEnvironment::loadGUI(io::IReadFile* file, IGUIElement* parent)
 	if (!reader)
 	{
 		os::Printer::log("GUI is not a valid XML file", file->getFileName(), ELL_ERROR);
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
@@ -916,10 +964,8 @@ void CGUIEnvironment::writeGUIElement(io::IXMLWriter* writer, IGUIElement* node)
 		}
 
 		writer->writeLineBreak();
-		writer->writeLineBreak();
 
 		attr->write(writer);
-		writer->writeLineBreak();
 	}
 
 	// write children
@@ -928,14 +974,16 @@ void CGUIEnvironment::writeGUIElement(io::IXMLWriter* writer, IGUIElement* node)
 	for (; it != node->getChildren().end(); ++it)
 	{
 		if (!(*it)->isSubElement())
+		{
+			writer->writeLineBreak();
 			writeGUIElement(writer, (*it));
+		}
 	}
 
 	// write closing brace if required
 	if (attr->getAttributeCount() != 0)
 	{
 		writer->writeClosingTag(name);
-		writer->writeLineBreak();
 		writer->writeLineBreak();
 	}
 
@@ -981,8 +1029,7 @@ void CGUIEnvironment::deserializeAttributes(io::IAttributes* in, io::SAttributeR
 	}
 
 	RelativeRect = AbsoluteRect =
-			core::rect<s32>(core::position2d<s32>(0,0),
-			Driver ? core::dimension2di(Driver->getScreenSize()) : core::dimension2d<s32>(0,0));
+			core::rect<s32>(Driver ? core::dimension2di(Driver->getScreenSize()) : core::dimension2d<s32>(0,0));
 }
 
 
@@ -1026,11 +1073,12 @@ IGUIWindow* CGUIEnvironment::addWindow(const core::rect<s32>& rectangle, bool mo
 
 
 //! adds a modal screen. The returned pointer must not be dropped.
-IGUIElement* CGUIEnvironment::addModalScreen(IGUIElement* parent)
+IGUIElement* CGUIEnvironment::addModalScreen(IGUIElement* parent, int blinkMode)
 {
 	parent = parent ? parent : this;
 
-	IGUIElement *win = new CGUIModalScreen(this, parent, -1);
+	CGUIModalScreen *win = new CGUIModalScreen(this, parent, -1);
+	win->setBlinkMode(blinkMode);
 	win->drop();
 
 	return win;
@@ -1093,6 +1141,13 @@ IGUITable* CGUIEnvironment::addTable(const core::rect<s32>& rectangle, IGUIEleme
 	return b;
 }
 
+	//! Adds an element to display the information from the Irrlicht profiler
+IGUIProfiler* CGUIEnvironment::addProfilerDisplay(const core::rect<s32>& rectangle, IGUIElement* parent, s32 id)
+{
+	CGUIProfiler* p = new CGUIProfiler(this, parent ? parent : this, id, rectangle, NULL);
+	p->drop();
+	return p;
+}
 
 //! Adds an image element.
 IGUIImage* CGUIEnvironment::addImage(video::ITexture* image, core::position2d<s32> pos,
@@ -1302,7 +1357,7 @@ IGUITabControl* CGUIEnvironment::addTabControl(const core::rect<s32>& rectangle,
 IGUITab* CGUIEnvironment::addTab(const core::rect<s32>& rectangle,
 	IGUIElement* parent, s32 id)
 {
-	IGUITab* t = new CGUITab(-1, this, parent ? parent : this,
+	IGUITab* t = new CGUITab(this, parent ? parent : this,
 		rectangle, id);
 	t->drop();
 	return t;
@@ -1357,7 +1412,7 @@ IGUIInOutFader* CGUIEnvironment::addInOutFader(const core::rect<s32>* rectangle,
 	if (rectangle)
 		rect = *rectangle;
 	else if (Driver)
-		rect = core::rect<s32>(core::position2d<s32>(0,0), core::dimension2di(Driver->getScreenSize()));
+		rect = core::rect<s32>(core::dimension2di(Driver->getScreenSize()));
 
 	if (!parent)
 		parent = this;
@@ -1434,19 +1489,16 @@ IGUIFont* CGUIEnvironment::getFont(const io::path& filename)
 		{
 			CGUIFont* font = new CGUIFont(this, filename);
 			ifont = (IGUIFont*)font;
-			// change working directory, for loading textures
-			io::path workingDir = FileSystem->getWorkingDirectory();
-			FileSystem->changeWorkingDirectoryTo(FileSystem->getFileDir(f.NamedPath.getPath()));
 
 			// load the font
-			if (!font->load(xml))
+			io::path directory;
+			core::splitFilename(filename, &directory);
+			if (!font->load(xml, directory))
 			{
 				font->drop();
 				font  = 0;
 				ifont = 0;
 			}
-			// change working dir back again
-			FileSystem->changeWorkingDirectoryTo( workingDir );
 		}
 		else if (t==EGFT_VECTOR)
 		{
@@ -1629,7 +1681,7 @@ IGUIElement* CGUIEnvironment::getNextElement(bool reverse, bool group)
 	// find the element
 	IGUIElement *closest = 0;
 	IGUIElement *first = 0;
-	startPos->getNextElement(startOrder, reverse, group, first, closest);
+	startPos->getNextElement(startOrder, reverse, group, first, closest, false, (FocusFlags & EFF_CAN_FOCUS_DISABLED) != 0);
 
 	if (closest)
 		return closest; // we found an element
@@ -1641,6 +1693,15 @@ IGUIElement* CGUIEnvironment::getNextElement(bool reverse, bool group)
 		return 0;
 }
 
+void CGUIEnvironment::setFocusBehavior(u32 flags)
+{
+	FocusFlags = flags;
+}
+
+u32 CGUIEnvironment::getFocusBehavior() const
+{
+	return FocusFlags;
+}
 
 //! creates an GUI Environment
 IGUIEnvironment* createGUIEnvironment(io::IFileSystem* fs,

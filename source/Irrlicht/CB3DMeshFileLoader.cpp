@@ -10,9 +10,10 @@
 #ifdef _IRR_COMPILE_WITH_B3D_LOADER_
 
 #include "CB3DMeshFileLoader.h"
+#include "CMeshTextureLoader.h"
 
 #include "IVideoDriver.h"
-#include "IFileSystem.h"
+#include "IAttributes.h"
 #include "os.h"
 
 #ifdef _DEBUG
@@ -32,6 +33,8 @@ CB3DMeshFileLoader::CB3DMeshFileLoader(scene::ISceneManager* smgr)
 	#ifdef _DEBUG
 	setDebugName("CB3DMeshFileLoader");
 	#endif
+
+	TextureLoader = new CMeshTextureLoader( SceneManager->getFileSystem(), SceneManager->getVideoDriver() );
 }
 
 
@@ -47,12 +50,15 @@ bool CB3DMeshFileLoader::isALoadableFileExtension(const io::path& filename) cons
 //! \return Pointer to the created mesh. Returns 0 if loading failed.
 //! If you no longer need the mesh, you should call IAnimatedMesh::drop().
 //! See IReferenceCounted::drop() for more information.
-IAnimatedMesh* CB3DMeshFileLoader::createMesh(io::IReadFile* f)
+IAnimatedMesh* CB3DMeshFileLoader::createMesh(io::IReadFile* file)
 {
-	if (!f)
+	if (!file)
 		return 0;
 
-	B3DFile = f;
+	if ( getMeshTextureLoader() )
+		getMeshTextureLoader()->setMeshFile(file);
+
+	B3DFile = file;
 	AnimatedMesh = new scene::CSkinnedMesh();
 	ShowWarning = true; // If true a warning is issued if too many textures are used
 	VerticesStart=0;
@@ -130,7 +136,8 @@ bool CB3DMeshFileLoader::load()
 		else
 		{
 			os::Printer::log("Unknown chunk found in mesh base - skipping");
-			B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length);
+			if (!B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length))
+				return false;
 			B3dStack.erase(B3dStack.size()-1);
 		}
 	}
@@ -158,7 +165,7 @@ bool CB3DMeshFileLoader::readChunkNODE(CSkinnedMesh::SJoint *inJoint)
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkNODE";
-	os::Printer::log(logStr.c_str(), joint->Name.c_str());
+	os::Printer::log(logStr.c_str(), joint->Name.c_str(), ELL_DEBUG);
 #endif
 
 	f32 position[3], scale[3], rotation[4];
@@ -226,7 +233,8 @@ bool CB3DMeshFileLoader::readChunkNODE(CSkinnedMesh::SJoint *inJoint)
 		else
 		{
 			os::Printer::log("Unknown chunk found in node chunk - skipping");
-			B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length);
+			if (!B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length))
+				return false;
 			B3dStack.erase(B3dStack.size()-1);
 		}
 	}
@@ -244,10 +252,10 @@ bool CB3DMeshFileLoader::readChunkMESH(CSkinnedMesh::SJoint *inJoint)
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkMESH";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
-	s32 brushID;
+	s32 brushID=-1;
 	B3DFile->read(&brushID, sizeof(brushID));
 #ifdef __BIG_ENDIAN__
 	brushID = os::Byteswap::byteswap(brushID);
@@ -275,10 +283,14 @@ bool CB3DMeshFileLoader::readChunkMESH(CSkinnedMesh::SJoint *inJoint)
 		{
 			scene::SSkinMeshBuffer *meshBuffer = AnimatedMesh->addMeshBuffer();
 
-			if (brushID!=-1)
+			if ( brushID >= 0 && (u32)brushID < Materials.size() )
 			{
 				loadTextures(Materials[brushID]);
 				meshBuffer->Material=Materials[brushID].Material;
+			}
+			else if (brushID != -1)	// -1 is OK
+			{
+				os::Printer::log("Illegal brush ID found", B3DFile->getFileName(), ELL_WARNING);
 			}
 
 			if(readChunkTRIS(meshBuffer,AnimatedMesh->getMeshBuffers().size()-1, VerticesStart)==false)
@@ -309,7 +321,8 @@ bool CB3DMeshFileLoader::readChunkMESH(CSkinnedMesh::SJoint *inJoint)
 		else
 		{
 			os::Printer::log("Unknown chunk found in mesh - skipping");
-			B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length);
+			if (!B3DFile->seek(B3dStack.getLast().startposition + B3dStack.getLast().length))
+				return false;
 			B3dStack.erase(B3dStack.size()-1);
 		}
 	}
@@ -340,7 +353,7 @@ bool CB3DMeshFileLoader::readChunkVRTS(CSkinnedMesh::SJoint *inJoint)
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "ChunkVRTS";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	const s32 max_tex_coords = 3;
@@ -355,7 +368,8 @@ bool CB3DMeshFileLoader::readChunkVRTS(CSkinnedMesh::SJoint *inJoint)
 	tex_coord_set_size = os::Byteswap::byteswap(tex_coord_set_size);
 #endif
 
-	if (tex_coord_sets >= max_tex_coords || tex_coord_set_size >= 4) // Something is wrong
+	if (tex_coord_sets < 0 || tex_coord_set_size < 0 ||
+		tex_coord_sets >= max_tex_coords || tex_coord_set_size >= 4) // Something is wrong
 	{
 		os::Printer::log("tex_coord_sets or tex_coord_set_size too big", B3DFile->getFileName(), ELL_ERROR);
 		return false;
@@ -446,12 +460,12 @@ bool CB3DMeshFileLoader::readChunkTRIS(scene::SSkinMeshBuffer *meshBuffer, u32 m
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "ChunkTRIS";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	bool showVertexWarning=false;
 
-	s32 triangle_brush_id; // Note: Irrlicht can't have different brushes for each triangle (using a workaround)
+	s32 triangle_brush_id=-1; // Note: Irrlicht can't have different brushes for each triangle (using a workaround)
 	B3DFile->read(&triangle_brush_id, sizeof(triangle_brush_id));
 #ifdef __BIG_ENDIAN__
 	triangle_brush_id = os::Byteswap::byteswap(triangle_brush_id);
@@ -459,14 +473,20 @@ bool CB3DMeshFileLoader::readChunkTRIS(scene::SSkinMeshBuffer *meshBuffer, u32 m
 
 	SB3dMaterial *B3dMaterial;
 
-	if (triangle_brush_id != -1)
+	if (triangle_brush_id >= 0 && (u32)triangle_brush_id < Materials.size())
 	{
 		loadTextures(Materials[triangle_brush_id]);
 		B3dMaterial = &Materials[triangle_brush_id];
 		meshBuffer->Material = B3dMaterial->Material;
 	}
 	else
+	{
 		B3dMaterial = 0;
+		if (triangle_brush_id < -1) // -1 is OK
+		{
+			os::Printer::log("Illegal material index for triangle brush found", B3DFile->getFileName(), ELL_WARNING);
+		}
+	}
 
 	const s32 memoryNeeded = B3dStack.getLast().length / sizeof(s32);
 	meshBuffer->Indices.reallocate(memoryNeeded + meshBuffer->Indices.size() + 1);
@@ -568,7 +588,7 @@ bool CB3DMeshFileLoader::readChunkBONE(CSkinnedMesh::SJoint *inJoint)
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkBONE";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	if (B3dStack.getLast().length > 8)
@@ -585,7 +605,11 @@ bool CB3DMeshFileLoader::readChunkBONE(CSkinnedMesh::SJoint *inJoint)
 #endif
 			globalVertexID += VerticesStart;
 
-			if (AnimatedVertices_VertexID[globalVertexID]==-1)
+			if (globalVertexID >= AnimatedVertices_VertexID.size())
+			{
+				os::Printer::log("Illegal vertex index found", B3DFile->getFileName(), ELL_WARNING);
+			}
+			else if (AnimatedVertices_VertexID[globalVertexID]==-1)
 			{
 				os::Printer::log("B3dMeshLoader: Weight has bad vertex id (no link to meshbuffer index found)");
 			}
@@ -615,7 +639,7 @@ bool CB3DMeshFileLoader::readChunkKEYS(CSkinnedMesh::SJoint *inJoint)
 		for ( u32 i=1; i < B3dStack.size(); ++i )
 			logStr += "-";
 		logStr += "read ChunkKEYS";
-		os::Printer::log(logStr.c_str());
+		os::Printer::log(logStr.c_str(), ELL_DEBUG);
 	}
 #endif
 
@@ -762,7 +786,7 @@ bool CB3DMeshFileLoader::readChunkANIM()
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkANIM";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	s32 animFlags; //not stored\used
@@ -793,7 +817,7 @@ bool CB3DMeshFileLoader::readChunkTEXS()
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkTEXS";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	while((B3dStack.getLast().startposition + B3dStack.getLast().length) > B3DFile->getPos()) //this chunk repeats
@@ -804,7 +828,7 @@ bool CB3DMeshFileLoader::readChunkTEXS()
 		readString(B3dTexture.TextureName);
 		B3dTexture.TextureName.replace('\\','/');
 #ifdef _B3D_READER_DEBUG
-		os::Printer::log("read Texture", B3dTexture.TextureName.c_str());
+		os::Printer::log("read Texture", B3dTexture.TextureName.c_str(), ELL_DEBUG);
 #endif
 
 		B3DFile->read(&B3dTexture.Flags, sizeof(s32));
@@ -814,8 +838,8 @@ bool CB3DMeshFileLoader::readChunkTEXS()
 		B3dTexture.Blend = os::Byteswap::byteswap(B3dTexture.Blend);
 #endif
 #ifdef _B3D_READER_DEBUG
-		os::Printer::log("Flags", core::stringc(B3dTexture.Flags).c_str());
-		os::Printer::log("Blend", core::stringc(B3dTexture.Blend).c_str());
+		os::Printer::log("Flags", core::stringc(B3dTexture.Flags).c_str(), ELL_DEBUG);
+		os::Printer::log("Blend", core::stringc(B3dTexture.Blend).c_str(), ELL_DEBUG);
 #endif
 		readFloats(&B3dTexture.Xpos, 1);
 		readFloats(&B3dTexture.Ypos, 1);
@@ -837,7 +861,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 	for ( u32 i=1; i < B3dStack.size(); ++i )
 		logStr += "-";
 	logStr += "read ChunkBRUS";
-	os::Printer::log(logStr.c_str());
+	os::Printer::log(logStr.c_str(), ELL_DEBUG);
 #endif
 
 	u32 n_texs;
@@ -853,12 +877,12 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 
 	while((B3dStack.getLast().startposition + B3dStack.getLast().length) > B3DFile->getPos()) //this chunk repeats
 	{
-		// This is what blitz basic calls a brush, like a Irrlicht Material
+		// This is what blitz basic calls a brush, like an Irrlicht material
 
 		core::stringc name;
 		readString(name);
 #ifdef _B3D_READER_DEBUG
-		os::Printer::log("read Material", name);
+		os::Printer::log("read Material", name, ELL_DEBUG);
 #endif
 		Materials.push_back(SB3dMaterial());
 		SB3dMaterial& B3dMaterial=Materials.getLast();
@@ -876,8 +900,8 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 		B3dMaterial.fx = os::Byteswap::byteswap(B3dMaterial.fx);
 #endif
 #ifdef _B3D_READER_DEBUG
-		os::Printer::log("Blend", core::stringc(B3dMaterial.blend).c_str());
-		os::Printer::log("FX", core::stringc(B3dMaterial.fx).c_str());
+		os::Printer::log("Blend", core::stringc(B3dMaterial.blend).c_str(), ELL_DEBUG);
+		os::Printer::log("FX", core::stringc(B3dMaterial.fx).c_str(), ELL_DEBUG);
 #endif
 
 		u32 i;
@@ -893,8 +917,8 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			{
 				B3dMaterial.Textures[i]=&Textures[texture_id];
 #ifdef _B3D_READER_DEBUG
-				os::Printer::log("Layer", core::stringc(i).c_str());
-				os::Printer::log("using texture", Textures[texture_id].TextureName.c_str());
+				os::Printer::log("Layer", core::stringc(i).c_str(), ELL_DEBUG);
+				os::Printer::log("using texture", Textures[texture_id].TextureName.c_str(), ELL_DEBUG);
 #endif
 			}
 			else
@@ -927,7 +951,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			}
 		}
 
-		//If a preceeding texture slot is empty move the others down:
+		//If a preceding texture slot is empty move the others down:
 		for (i=num_textures; i>0; --i)
 		{
 			for (u32 j=i-1; j<num_textures-1; ++j)
@@ -956,7 +980,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			else
 			{
 				B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_VERTEX_ALPHA;
-				B3dMaterial.Material.ZWriteEnable = false;
+				B3dMaterial.Material.ZWriteEnable = video::EZW_OFF;
 			}
 		}
 		else if (B3dMaterial.Textures[0]) //One texture:
@@ -965,7 +989,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			if (B3dMaterial.Textures[0]->Flags & 0x2) //(Alpha mapped)
 			{
 				B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-				B3dMaterial.Material.ZWriteEnable = false;
+				B3dMaterial.Material.ZWriteEnable = video::EZW_OFF;
 			}
 			else if (B3dMaterial.Textures[0]->Flags & 0x4) //(Masked)
 				B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF; // TODO: create color key texture
@@ -978,7 +1002,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			else
 			{
 				B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_VERTEX_ALPHA;
-				B3dMaterial.Material.ZWriteEnable = false;
+				B3dMaterial.Material.ZWriteEnable = video::EZW_OFF;
 			}
 		}
 		else //No texture:
@@ -988,7 +1012,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 			else
 			{
 				B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_VERTEX_ALPHA;
-				B3dMaterial.Material.ZWriteEnable = false;
+				B3dMaterial.Material.ZWriteEnable = video::EZW_OFF;
 			}
 		}
 
@@ -1017,7 +1041,7 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 		if (B3dMaterial.fx & 32) //force vertex alpha-blending
 		{
 			B3dMaterial.Material.MaterialType = video::EMT_TRANSPARENT_VERTEX_ALPHA;
-			B3dMaterial.Material.ZWriteEnable = false;
+			B3dMaterial.Material.ZWriteEnable = video::EZW_OFF;
 		}
 
 		B3dMaterial.Material.Shininess = B3dMaterial.shininess;
@@ -1031,6 +1055,12 @@ bool CB3DMeshFileLoader::readChunkBRUS()
 
 void CB3DMeshFileLoader::loadTextures(SB3dMaterial& material) const
 {
+	if ( getMeshTextureLoader() )
+	{
+		if ( SceneManager->getParameters()->existsAttribute(B3D_TEXTURE_PATH) )
+			getMeshTextureLoader()->setTexturePath( SceneManager->getParameters()->getAttributeAsString(B3D_TEXTURE_PATH) );
+	}
+
 	const bool previous32BitTextureFlag = SceneManager->getVideoDriver()->getTextureCreationFlag(video::ETCF_ALWAYS_32_BIT);
 	SceneManager->getVideoDriver()->setTextureCreationFlag(video::ETCF_ALWAYS_32_BIT, true);
 
@@ -1046,29 +1076,15 @@ void CB3DMeshFileLoader::loadTextures(SB3dMaterial& material) const
 			if (!SceneManager->getParameters()->getAttributeAsBool(B3D_LOADER_IGNORE_MIPMAP_FLAG))
 				SceneManager->getVideoDriver()->setTextureCreationFlag(video::ETCF_CREATE_MIP_MAPS, (B3dTexture->Flags & 0x8) ? true:false);
 			{
-				video::ITexture* tex = 0;
-				io::IFileSystem* fs = SceneManager->getFileSystem();
-				io::path texnameWithUserPath( SceneManager->getParameters()->getAttributeAsString(B3D_TEXTURE_PATH) );
-				if ( texnameWithUserPath.size() )
-				{
-					texnameWithUserPath += '/';
-					texnameWithUserPath += B3dTexture->TextureName;
-				}
-				if (fs->existFile(texnameWithUserPath))
-					tex = SceneManager->getVideoDriver()->getTexture(texnameWithUserPath);
-				else if (fs->existFile(B3dTexture->TextureName))
-					tex = SceneManager->getVideoDriver()->getTexture(B3dTexture->TextureName);
-				else if (fs->existFile(fs->getFileDir(B3DFile->getFileName()) +"/"+ fs->getFileBasename(B3dTexture->TextureName)))
-					tex = SceneManager->getVideoDriver()->getTexture(fs->getFileDir(B3DFile->getFileName()) +"/"+ fs->getFileBasename(B3dTexture->TextureName));
-				else
-					tex = SceneManager->getVideoDriver()->getTexture(fs->getFileBasename(B3dTexture->TextureName));
-
+				video::ITexture* tex = getMeshTextureLoader() ? getMeshTextureLoader()->getTexture(B3dTexture->TextureName) : NULL;
 				material.Material.setTexture(i, tex);
 			}
 			if (material.Textures[i]->Flags & 0x10) // Clamp U
 				material.Material.TextureLayer[i].TextureWrapU=video::ETC_CLAMP;
 			if (material.Textures[i]->Flags & 0x20) // Clamp V
 				material.Material.TextureLayer[i].TextureWrapV=video::ETC_CLAMP;
+			if (material.Textures[i]->Flags & 0x20) // Clamp R
+				material.Material.TextureLayer[i].TextureWrapW=video::ETC_CLAMP;
 		}
 	}
 
@@ -1080,10 +1096,9 @@ void CB3DMeshFileLoader::loadTextures(SB3dMaterial& material) const
 void CB3DMeshFileLoader::readString(core::stringc& newstring)
 {
 	newstring="";
-	while (B3DFile->getPos() <= B3DFile->getSize())
+	c8 character=0;
+	while (B3DFile->read(&character, sizeof(character)) > 0) // until eof
 	{
-		c8 character;
-		B3DFile->read(&character, sizeof(character));
 		if (character==0)
 			return;
 		newstring.append(character);

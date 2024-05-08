@@ -3,12 +3,12 @@
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 // Code for this scene node has been contributed by Anders la Cour-Harbo (alc)
 
+#include "IrrCompileConfig.h"
+#ifdef _IRR_COMPILE_WITH_SKYDOME_SCENENODE_
 #include "CSkyDomeSceneNode.h"
 #include "IVideoDriver.h"
 #include "ISceneManager.h"
 #include "ICameraSceneNode.h"
-#include "IAnimatedMesh.h"
-#include "os.h"
 
 namespace irr
 {
@@ -46,8 +46,8 @@ CSkyDomeSceneNode::CSkyDomeSceneNode(video::ITexture* sky, u32 horiRes, u32 vert
 
 	Buffer = new SMeshBuffer();
 	Buffer->Material.Lighting = false;
-	Buffer->Material.ZBuffer = video::ECFN_NEVER;
-	Buffer->Material.ZWriteEnable = false;
+	Buffer->Material.ZBuffer = video::ECFN_DISABLED;
+	Buffer->Material.ZWriteEnable = video::EZW_OFF;
 	Buffer->Material.AntiAliasing = video::EAAM_OFF;
 	Buffer->Material.setTexture(0, sky);
 	Buffer->BoundingBox.MaxEdge.set(0,0,0);
@@ -195,11 +195,7 @@ void CSkyDomeSceneNode::OnRegisterSceneNode()
 }
 
 
-//! returns the material based on the zero based index i. To get the amount
-//! of materials used by this scene node, use getMaterialCount().
-//! This function is needed for inserting the node into the scene hirachy on a
-//! optimal position for minimizing renderstate changes, but can also be used
-//! to directly modify the material of a scene node.
+//! returns the material based on the zero based index i.
 video::SMaterial& CSkyDomeSceneNode::getMaterial(u32 i)
 {
 	return Buffer->Material;
@@ -262,3 +258,5 @@ ISceneNode* CSkyDomeSceneNode::clone(ISceneNode* newParent, ISceneManager* newMa
 
 } // namespace scene
 } // namespace irr
+
+#endif // _IRR_COMPILE_WITH_SKYDOME_SCENENODE_

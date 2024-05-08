@@ -1,8 +1,8 @@
 ==========================================================================
-The Irrlicht Engine SDK version 1.8.5
+The Irrlicht Engine SDK version 1.9
 ==========================================================================
 
-  Welcome the Irrlicht Engine SDK.
+  Welcome to the Irrlicht Engine SDK.
 
   Content of this file:
 
@@ -102,7 +102,7 @@ The Irrlicht Engine SDK version 1.8.5
 4. Release Notes
 ==========================================================================
 
-  Informations about changes in this new version of the engine can be
+  Information about changes in this new version of the engine can be
   found in changes.txt.
 
   Please note that the textures, 3D models and levels are copyright
@@ -123,13 +123,13 @@ The Irrlicht Engine SDK version 1.8.5
   in your documentation that you've used the IJG code and libpng. It would
   also be nice to mention that you use the Irrlicht Engine and the zlib.
   See the README files in the jpeglib and the zlib for
-  further informations.
+  further information.
 
 
   The Irrlicht Engine License
   ===========================
 
-  Copyright (C) 2002-2015 Nikolaus Gebhardt
+  Copyright (C) 2002-2012 Nikolaus Gebhardt
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -167,14 +167,15 @@ The Irrlicht Engine SDK version 1.8.5
 
   Please also not that parts of the engine have been written or contributed
   by other people. Especially: (There are probably more people, sorry if I forgot one.
-  See http://irrlicht.sourceforge.net/author.html for more informations)
+  See http://irrlicht.sourceforge.net/author.html for more information)
 
   Michael Zeilfelder (cutealien) Developer/Maintainer
   Thomas Alten (burningwater)  Wrote the burningsvideo software rasterizer  
   Yoran Bosman (Yoran)        Webserver administrator
   
   Former developers:
-  Christian Stehno (hybrid)   Founder
+  Nikolaus Gebhardt (niko)    Founder
+  Christian Stehno (hybrid)   Developer
   Patryk Nadrowski (Nadro)    Developer  
   Gareth Davidson (bitplane)  Developer/ Forum admin
   Luke P. Hoschke (luke)      Wrote the b3d loader, the new animation system, VBOs and other things

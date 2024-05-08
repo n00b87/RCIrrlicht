@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_SCENE_LOADER_IRR_H_INCLUDED__
-#define __C_SCENE_LOADER_IRR_H_INCLUDED__
+#ifndef IRR_C_SCENE_LOADER_IRR_H_INCLUDED
+#define IRR_C_SCENE_LOADER_IRR_H_INCLUDED
 
 #include "ISceneLoader.h"
 
@@ -34,14 +34,15 @@ public:
 	virtual ~CSceneLoaderIrr();
 
 	//! Returns true if the class might be able to load this file.
-	virtual bool isALoadableFileExtension(const io::path& filename) const;
+	virtual bool isALoadableFileExtension(const io::path& filename) const IRR_OVERRIDE;
 
 	//! Returns true if the class might be able to load this file.
-	virtual bool isALoadableFileFormat(io::IReadFile *file) const;
+	virtual bool isALoadableFileFormat(io::IReadFile *file) const IRR_OVERRIDE;
 
 	//! Loads the scene into the scene manager.
-	virtual bool loadScene(io::IReadFile* file, ISceneUserDataSerializer* userDataSerializer=0,
-	                       ISceneNode* rootNode=0);
+	virtual bool loadScene(io::IReadFile* file,
+		ISceneUserDataSerializer* userDataSerializer=0,
+		ISceneNode* rootNode=0) IRR_OVERRIDE;
 
 private:
 
@@ -79,4 +80,3 @@ private:
 } // end namespace irr
 
 #endif
-

@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_TRIANGLE_RENDERER_TEXTURE_GOURAUD_H_INCLUDED__
-#define __C_TRIANGLE_RENDERER_TEXTURE_GOURAUD_H_INCLUDED__
+#ifndef IRR_C_TRIANGLE_RENDERER_TEXTURE_GOURAUD_H_INCLUDED
+#define IRR_C_TRIANGLE_RENDERER_TEXTURE_GOURAUD_H_INCLUDED
 
 #include "IrrCompileConfig.h"
 
@@ -34,21 +34,21 @@ namespace video
 
 		//! constructor
 		CTRTextureGouraud(IZBuffer* zbuffer);
-	
+
 		//! destructor
 		virtual ~CTRTextureGouraud();
-	
+
 		//! sets a render target
-		virtual void setRenderTarget(video::IImage* surface, const core::rect<s32>& viewPort);
+		virtual void setRenderTarget(video::IImage* surface, const core::rect<s32>& viewPort) IRR_OVERRIDE;
 
 		//! draws an indexed triangle list
-		virtual void drawIndexedTriangleList(S2DVertex* vertices, s32 vertexCount, const u16* indexList, s32 triangleCount);
+		virtual void drawIndexedTriangleList(S2DVertex* vertices, s32 vertexCount, const u16* indexList, s32 triangleCount) IRR_OVERRIDE;
 
 		//! en or disables the backface culling
-		virtual void setBackfaceCulling(bool enabled = true);
+		virtual void setBackfaceCulling(bool enabled = true) IRR_OVERRIDE;
 
 		//! sets the Texture
-		virtual void setTexture(video::IImage* texture);
+		virtual void setTexture(video::IImage* texture) IRR_OVERRIDE;
 
 	protected:
 
@@ -82,4 +82,3 @@ namespace video
 #endif
 
 #endif
-

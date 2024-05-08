@@ -7,7 +7,7 @@
 #include "IVideoDriver.h"
 #include "ICameraSceneNode.h"
 #include "IGUISpriteBank.h"
-#include "SMeshBuffer.h"
+#include "CMeshBuffer.h"
 #include "os.h"
 
 
@@ -61,7 +61,7 @@ void CTextSceneNode::render()
 		SceneManager->getActiveCamera());
 
 	core::rect<s32> r(pos, core::dimension2d<s32>(1,1));
-	Font->draw(Text.c_str(), r, Color, true, true);
+	Font->draw(Text, r, Color, true, true);
 }
 
 
@@ -77,11 +77,40 @@ void CTextSceneNode::setText(const wchar_t* text)
 	Text = text;
 }
 
+//! get the text string
+const wchar_t* CTextSceneNode::getText() const
+{
+	return Text.c_str();
+}
 
 //! sets the color of the text
 void CTextSceneNode::setTextColor(video::SColor color)
 {
 	Color = color;
+}
+
+//! get the color of the text
+video::SColor CTextSceneNode::getTextColor() const
+{
+	return Color;
+}
+
+void CTextSceneNode::setFont(gui::IGUIFont* font)
+{
+	if ( font != Font )
+	{
+		if ( font )
+			font->grab();
+		if ( Font )
+			Font->drop();
+		Font = font;
+	}
+}
+
+//! Get the font used to draw the text
+gui::IGUIFont* CTextSceneNode::getFont() const
+{
+	return Font;
 }
 
 
@@ -105,7 +134,7 @@ CBillboardTextSceneNode::CBillboardTextSceneNode(ISceneNode* parent, ISceneManag
 	Material.BackfaceCulling = false;
 	Material.Lighting = false;
 	Material.ZBuffer = video::ECFN_LESSEQUAL;
-	Material.ZWriteEnable = false;
+	Material.ZWriteEnable = video::EZW_OFF;
 
 	if (font)
 	{
@@ -186,8 +215,18 @@ void CBillboardTextSceneNode::setText(const wchar_t* text)
 		u32 rectno = sprites[spriteno].Frames[0].rectNumber;
 		u32 texno = sprites[spriteno].Frames[0].textureNumber;
 
-		dim[0] = core::reciprocal ( (f32) Font->getSpriteBank()->getTexture(texno)->getSize().Width );
-		dim[1] = core::reciprocal ( (f32) Font->getSpriteBank()->getTexture(texno)->getSize().Height );
+		video::ITexture* texture = Font->getSpriteBank()->getTexture(texno);
+		if (texture)
+		{
+			const core::dimension2d<u32>& texSize = texture->getOriginalSize();
+			dim[0] = core::reciprocal((f32)texSize.Width);
+			dim[1] = core::reciprocal((f32)texSize.Height);
+		}
+		else
+		{
+			dim[0] = 0;
+			dim[1] = 0;
+		}
 
 		const core::rect<s32>& s = sourceRects[rectno];
 
@@ -234,12 +273,17 @@ void CBillboardTextSceneNode::setText(const wchar_t* text)
 	}
 }
 
+//! get the text string
+const wchar_t* CBillboardTextSceneNode::getText() const
+{
+	return Text.c_str();
+}
 
 //! pre render event
 void CBillboardTextSceneNode::OnAnimate(u32 timeMs)
 {
 	ISceneNode::OnAnimate(timeMs);
-	
+
 	if (!IsVisible || !Font || !Mesh)
 		return;
 
@@ -247,6 +291,25 @@ void CBillboardTextSceneNode::OnAnimate(u32 timeMs)
 	if (!camera)
 		return;
 
+	// TODO: Risky - if camera is later in the scene-graph then it's not yet updated here
+	//       CBillBoardSceneNode does it different, but maybe real solution would be to enforce cameras to update earlier?
+	//       Maybe we can also unify the code by using a common base-class or having updateMesh functionality in an animator instead.
+	updateMesh(camera);
+
+	// mesh uses vertices with absolute coordinates so to get a bbox for culling we have to get back to local ones.
+	BBox = Mesh->getBoundingBox();
+	core::matrix4 mat( getAbsoluteTransformation(), core::matrix4::EM4CONST_INVERSE );
+	mat.transformBoxEx(BBox);
+}
+
+const core::aabbox3d<f32>& CBillboardTextSceneNode::getTransformedBillboardBoundingBox(const irr::scene::ICameraSceneNode* camera)
+{
+	updateMesh(camera);
+	return Mesh->getBoundingBox();
+}
+
+void CBillboardTextSceneNode::updateMesh(const irr::scene::ICameraSceneNode* camera)
+{
 	// get text width
 	f32 textLength = 0.f;
 	u32 i;
@@ -313,20 +376,18 @@ void CBillboardTextSceneNode::OnAnimate(u32 timeMs)
 	}
 
 	// make bounding box
-
 	for (i=0; i< Mesh->getMeshBufferCount() ; ++i)
 		Mesh->getMeshBuffer(i)->recalculateBoundingBox();
 	Mesh->recalculateBoundingBox();
-
-	BBox = Mesh->getBoundingBox();
-	core::matrix4 mat( getAbsoluteTransformation(), core::matrix4::EM4CONST_INVERSE );
-	mat.transformBoxEx(BBox);
 }
 
 void CBillboardTextSceneNode::OnRegisterSceneNode()
 {
-	SceneManager->registerNodeForRendering(this, ESNRP_TRANSPARENT);
-	ISceneNode::OnRegisterSceneNode();
+	if (IsVisible && Font && Mesh)
+	{
+		SceneManager->registerNodeForRendering(this, ESNRP_TRANSPARENT);
+		ISceneNode::OnRegisterSceneNode();
+	}
 }
 
 
@@ -408,11 +469,10 @@ const core::dimension2d<f32>& CBillboardTextSceneNode::getSize() const
 	return Size;
 }
 
-
-//! sets the color of the text
-void CBillboardTextSceneNode::setTextColor(video::SColor color)
+//! Get the font used to draw the text
+gui::IGUIFont* CBillboardTextSceneNode::getFont() const
 {
-	Color = color;
+	return Font;
 }
 
 //! Set the color of all vertices of the billboard

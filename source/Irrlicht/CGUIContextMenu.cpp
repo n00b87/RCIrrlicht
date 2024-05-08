@@ -8,7 +8,6 @@
 
 #include "IGUISkin.h"
 #include "IGUIEnvironment.h"
-#include "IVideoDriver.h"
 #include "IGUIFont.h"
 #include "IGUISpriteBank.h"
 #include "os.h"
@@ -57,7 +56,7 @@ void CGUIContextMenu::setCloseHandling(ECONTEXT_MENU_CLOSE onClose)
 	CloseHandling = onClose;
 }
 
-//! get current behavior when the menue will be closed
+//! get current behavior when the menu will be closed
 ECONTEXT_MENU_CLOSE CGUIContextMenu::getCloseHandling() const
 {
 	return CloseHandling;
@@ -88,6 +87,7 @@ u32 CGUIContextMenu::insertItem(u32 idx, const wchar_t* text, s32 commandId, boo
 	s.IsSeparator = (text == 0);
 	s.SubMenu = 0;
 	s.CommandId = commandId;
+	s.PosY = 0;
 
 	if (hasSubMenu)
 	{
@@ -135,10 +135,10 @@ void CGUIContextMenu::setSubMenu(u32 index, CGUIContextMenu* menu)
 		Items[index].SubMenu->drop();
 
 	Items[index].SubMenu = menu;
-	menu->setVisible(false);
 
-	if (Items[index].SubMenu)
+	if (menu)
 	{
+		menu->setVisible(false);
 		menu->AllowFocus = false;
 		if ( Environment->getFocus() == menu )
 		{
@@ -201,11 +201,9 @@ bool CGUIContextMenu::isItemEnabled(u32 idx) const
 {
 	if (idx >= Items.size())
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return Items[idx].Enabled;
 }
 
@@ -215,11 +213,9 @@ bool CGUIContextMenu::isItemChecked(u32 idx) const
 {
 	if (idx >= Items.size())
 	{
-		_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 		return false;
 	}
 
-	_IRR_IMPLEMENT_MANAGED_MARSHALLING_BUGFIX;
 	return Items[idx].Checked;
 }
 
@@ -293,12 +289,12 @@ bool CGUIContextMenu::OnEvent(const SEvent& event)
 					{
 						setEventParent(p);
 
-						SEvent event;
-						event.EventType = EET_GUI_EVENT;
-						event.GUIEvent.Caller = this;
-						event.GUIEvent.Element = 0;
-						event.GUIEvent.EventType = EGET_ELEMENT_CLOSED;
-						if ( !p->OnEvent(event) )
+						SEvent eventClose;
+						eventClose.EventType = EET_GUI_EVENT;
+						eventClose.GUIEvent.Caller = this;
+						eventClose.GUIEvent.Element = 0;
+						eventClose.GUIEvent.EventType = EGET_ELEMENT_CLOSED;
+						if ( !p->OnEvent(eventClose) )
 						{
 							if ( CloseHandling & ECMC_HIDE )
 							{
@@ -342,7 +338,7 @@ bool CGUIContextMenu::OnEvent(const SEvent& event)
 			case EMIE_MOUSE_MOVED:
 				if (Environment->hasFocus(this))
 					highlight(core::position2d<s32>(event.MouseInput.X, event.MouseInput.Y), true);
-				return true;
+				break;
 			default:
 				break;
 			}
@@ -426,7 +422,7 @@ u32 CGUIContextMenu::sendClick(const core::position2d<s32>& p)
 }
 
 
-//! returns true, if an element was highligted
+//! returns true, if an element was highlighted
 bool CGUIContextMenu::highlight(const core::position2d<s32>& p, bool canOpenSubMenu)
 {
 	if (!isEnabled())
@@ -536,7 +532,6 @@ void CGUIContextMenu::draw()
 	// loop through all menu items
 
 	rect = AbsoluteRect;
-	s32 y = AbsoluteRect.UpperLeftCorner.Y;
 
 	for (s32 i=0; i<(s32)Items.size(); ++i)
 	{
@@ -553,8 +548,6 @@ void CGUIContextMenu::draw()
 			rect.LowerRightCorner.Y += 1;
 			rect.UpperLeftCorner.Y += 1;
 			skin->draw2DRectangle(this, skin->getColor(EGDC_3D_HIGH_LIGHT), rect, clip);
-
-			y += 10;
 		}
 		else
 		{
@@ -672,16 +665,30 @@ void CGUIContextMenu::recalculateSize()
 
             core::rect<s32> subRect(width-5, Items[i].PosY, width+w-5, Items[i].PosY+h);
 
-            // if it would be drawn beyond the right border, then add it to the left side
             gui::IGUIElement * root = Environment->getRootGUIElement();
             if ( root )
             {
                 core::rect<s32> rectRoot( root->getAbsolutePosition() );
-                if ( getAbsolutePosition().UpperLeftCorner.X+subRect.LowerRightCorner.X > rectRoot.LowerRightCorner.X )
+				core::rect<s32> absRect( getAbsolutePosition() );
+
+				// if it would be drawn beyond the right border, then add it to the left side - if there is more space
+				irr::s32 beyondRight = absRect.UpperLeftCorner.X+subRect.LowerRightCorner.X-rectRoot.LowerRightCorner.X;
+				irr::s32 beyondLeft = -(absRect.UpperLeftCorner.X - w - rectRoot.UpperLeftCorner.X);
+                if ( beyondRight > 0 && beyondRight > beyondLeft )
                 {
                     subRect.UpperLeftCorner.X = -w;
                     subRect.LowerRightCorner.X = 0;
                 }
+
+                // if it would be drawn below bottom border, move it up, but not further than to top.
+                irr::s32 belowBottom = absRect.UpperLeftCorner.Y+subRect.LowerRightCorner.Y - rectRoot.LowerRightCorner.Y;
+                if ( belowBottom > 0 )
+				{
+					irr::s32 belowTop = absRect.UpperLeftCorner.Y+subRect.UpperLeftCorner.Y;
+					irr::s32 moveUp = belowBottom <  belowTop ? belowBottom : belowTop;
+					subRect.UpperLeftCorner.Y -= moveUp;
+					subRect.LowerRightCorner.Y -= moveUp;
+				}
             }
 
 			Items[i].SubMenu->setRelativePosition(subRect);

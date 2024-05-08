@@ -10,6 +10,7 @@ can easily be integrated into own apps.
 */
 
 #include <irrlicht.h>
+#include "exampleHelper.h"
 
 using namespace irr;
 using namespace core;
@@ -18,7 +19,7 @@ using namespace video;
 using namespace io;
 using namespace gui;
 
-#ifdef _IRR_WINDOWS_
+#ifdef _MSC_VER
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
@@ -143,6 +144,8 @@ public:
 					//we were at the end of the video section so we reset our tag
 					currentSection=L"";
 				break;
+				default:
+					break;
 			}
 		}
 
@@ -221,7 +224,7 @@ public:
 	// Get setting as string
 	stringw getSetting(const stringw& key) const
 	{
-		//the find function or irrmap returns a pointer to a map Node
+		//the find function of irr::map returns a pointer to a map::Node
 		//if the key can be found, otherwise it returns null
 		//the map node has the function getValue and getKey, as we already know the key, we return node->getValue()
 		map<stringw, stringw>::Node* n = SettingMap.find(key);
@@ -260,7 +263,7 @@ private:
 
 	map<stringw, stringw> SettingMap; //current config
 
-	stringw SettingsFile; // location of the xml, usually the
+	stringw SettingsFile; // filename of the xml
 	irr::IrrlichtDevice* NullDevice;
 };
 
@@ -335,7 +338,7 @@ public:
 
 						if (App.Settings->save())
 						{
-							App.Gui->addMessageBox(L"settings save",L"settings saved, please restart for settings to change effect","",true);
+							App.Gui->addMessageBox(L"Settings saved",L"Settings saved, please restart for settings to change effect","",true);
 						}
 					}
 					// cancel/exit button clicked, tell the application to exit
@@ -345,6 +348,8 @@ public:
 					}
 				}
 				break;
+				default:
+					break;
 			}
 		}
 
@@ -370,7 +375,7 @@ void createSettingsDialog(SAppContext& app)
 		app.Gui->getSkin()->setColor((irr::gui::EGUI_DEFAULT_COLOR)i, col);
 	}
 
-	//create video settings windows
+	//create video settings window
 	gui::IGUIWindow* windowSettings = app.Gui->addWindow(rect<s32>(10,10,400,400),true,L"Videosettings");
 	app.Gui->addStaticText (L"Select your desired video settings", rect< s32 >(10,20, 200, 40), false, true, windowSettings);
 
@@ -429,9 +434,9 @@ int main()
 	param.WindowSize.set(640,480);
 
 	// Try to load config.
-	// I leave it as an exercise of the reader to store the configuration in the local application data folder,
+	// I leave it as an exercise for the reader to store the configuration in the local application data folder,
 	// the only logical place to store config data for games. For all other operating systems I redirect to your manuals
-	app.Settings = new SettingManager("../../media/settings.xml");
+	app.Settings = new SettingManager(getExampleMediaPath() + "settings.xml");
 	if ( !app.Settings->load() )
 	{
 		// ...
@@ -443,7 +448,7 @@ int main()
 		//settings xml loaded from disk,
 
 		//map driversetting to driver type and test if the setting is valid
-		//the DriverOptions map contains string representations mapped to to irrlicht E_DRIVER_TYPE enum
+		//the DriverOptions map contains string representations mapped to to Irrlicht E_DRIVER_TYPE enum
 		//e.g "direct3d9" will become 4
 		//see DriverOptions in the settingmanager class for details
 		map<stringw, s32>::Node* driver = app.Settings->DriverOptions.find( app.Settings->getSetting("driver") );
@@ -491,11 +496,11 @@ int main()
 	{
 		if (app.Device->isWindowActive())
 		{
-			app.Driver->beginScene(true, true, SColor(0,200,200,200));
+			app.Driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
 			app.Gui->drawAll();
 			app.Driver->endScene();
 		}
-		app.Device->sleep(10);
+		app.Device->yield(); // be nice
 	}
 
 	//app destroys device in destructor

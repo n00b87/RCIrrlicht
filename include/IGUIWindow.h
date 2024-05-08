@@ -2,11 +2,10 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_GUI_WINDOW_H_INCLUDED__
-#define __I_GUI_WINDOW_H_INCLUDED__
+#ifndef IRR_I_GUI_WINDOW_H_INCLUDED
+#define IRR_I_GUI_WINDOW_H_INCLUDED
 
 #include "IGUIElement.h"
-#include "EMessageBoxFlags.h"
 
 namespace irr
 {
@@ -62,7 +61,7 @@ namespace gui
 		So to get absolute positions you have to add the resulting rectangle to getAbsolutePosition().UpperLeftCorner.<br>
 		To get it relative to the parent element you have to add the resulting rectangle to getRelativePosition().UpperLeftCorner.
 		Beware that adding a menu will not change the clientRect as menus are own gui elements, so in that case you might want to subtract
-		the menu area additionally.	*/
+		the menu area additionally. */
 		virtual core::rect<s32> getClientRect() const = 0;
 	};
 
@@ -71,4 +70,3 @@ namespace gui
 } // end namespace irr
 
 #endif
-

@@ -2,43 +2,25 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_OPENGL_SHADER_LANGUAGE_MATERIAL_RENDERER_H_INCLUDED__
-#define __C_OPENGL_SHADER_LANGUAGE_MATERIAL_RENDERER_H_INCLUDED__
+#ifndef IRR_C_OPENGL_SHADER_LANGUAGE_MATERIAL_RENDERER_H_INCLUDED
+#define IRR_C_OPENGL_SHADER_LANGUAGE_MATERIAL_RENDERER_H_INCLUDED
 
 #include "IrrCompileConfig.h"
+
 #ifdef _IRR_COMPILE_WITH_OPENGL_
 
-#ifdef _IRR_WINDOWS_API_
-	#define WIN32_LEAN_AND_MEAN
-	#include <windows.h>
-	#include <GL/gl.h>
-	#include "glext.h"
-#else
-#if defined(_IRR_OPENGL_USE_EXTPOINTER_)
-	#define GL_GLEXT_LEGACY 1
-#else
-	#define GL_GLEXT_PROTOTYPES 1
-#endif
-#if defined(_IRR_OSX_PLATFORM_)
-	#include <OpenGL/gl.h>
-#else
-	#include <GL/gl.h>
-#endif
-#if defined(_IRR_OPENGL_USE_EXTPOINTER_)
-	#include "glext.h"
-#endif
-#endif
-
-
+#include "EMaterialTypes.h"
 #include "IMaterialRenderer.h"
 #include "IMaterialRendererServices.h"
 #include "IGPUProgrammingServices.h"
 #include "irrArray.h"
 #include "irrString.h"
 
+#include "COpenGLCommon.h"
+
 namespace irr
 {
-namespace video  
+namespace video
 {
 
 class COpenGLDriver;
@@ -52,8 +34,8 @@ public:
 
 	//! Constructor
 	COpenGLSLMaterialRenderer(
-		COpenGLDriver* driver, 
-		s32& outMaterialTypeNr, 
+		COpenGLDriver* driver,
+		s32& outMaterialTypeNr,
 		const c8* vertexShaderProgram = 0,
 		const c8* vertexShaderEntryPointName = 0,
 		E_VERTEX_SHADER_TYPE vsCompileTarget = video::EVST_VS_1_1,
@@ -67,33 +49,42 @@ public:
 		scene::E_PRIMITIVE_TYPE outType = scene::EPT_TRIANGLE_STRIP,
 		u32 verticesOut = 0,
 		IShaderConstantSetCallBack* callback = 0,
-		IMaterialRenderer* baseMaterial = 0,
+		E_MATERIAL_TYPE baseMaterial = EMT_SOLID,
 		s32 userData = 0);
 
 	//! Destructor
 	virtual ~COpenGLSLMaterialRenderer();
 
 	virtual void OnSetMaterial(const SMaterial& material, const SMaterial& lastMaterial,
-		bool resetAllRenderstates, IMaterialRendererServices* services);
+		bool resetAllRenderstates, IMaterialRendererServices* services) IRR_OVERRIDE;
 
-	virtual bool OnRender(IMaterialRendererServices* service, E_VERTEX_TYPE vtxtype);
+	virtual bool OnRender(IMaterialRendererServices* service, E_VERTEX_TYPE vtxtype) IRR_OVERRIDE;
 
-	virtual void OnUnsetMaterial();
+	virtual void OnUnsetMaterial() IRR_OVERRIDE;
 
 	//! Returns if the material is transparent.
-	virtual bool isTransparent() const;
+	virtual bool isTransparent() const IRR_OVERRIDE;
 
-	// implementations for the render services
-	virtual void setBasicRenderStates(const SMaterial& material, const SMaterial& lastMaterial, bool resetAllRenderstates);
-	virtual bool setVertexShaderConstant(const c8* name, const f32* floats, int count);
-	virtual bool setVertexShaderConstant(const c8* name, const bool* bools, int count);
-	virtual bool setVertexShaderConstant(const c8* name, const s32* ints, int count);
-	virtual void setVertexShaderConstant(const f32* data, s32 startRegister, s32 constantAmount=1);
-	virtual bool setPixelShaderConstant(const c8* name, const f32* floats, int count);
-	virtual bool setPixelShaderConstant(const c8* name, const bool* bools, int count);
-	virtual bool setPixelShaderConstant(const c8* name, const s32* ints, int count);
-	virtual void setPixelShaderConstant(const f32* data, s32 startRegister, s32 constantAmount=1);
-	virtual IVideoDriver* getVideoDriver();
+	//! Access the callback provided by the users when creating shader materials
+	virtual IShaderConstantSetCallBack* getShaderConstantSetCallBack() const IRR_OVERRIDE
+	{
+		return CallBack;
+	}
+
+	// implementations for IMaterialRendererServices
+	virtual void startUseProgram() IRR_OVERRIDE;
+	virtual void stopUseProgram() IRR_OVERRIDE;
+	virtual s32 getVertexShaderConstantID(const c8* name) IRR_OVERRIDE;
+	virtual s32 getPixelShaderConstantID(const c8* name) IRR_OVERRIDE;
+	virtual void setVertexShaderConstant(const f32* data, s32 startRegister, s32 constantAmount=1) IRR_OVERRIDE;
+	virtual void setPixelShaderConstant(const f32* data, s32 startRegister, s32 constantAmount=1) IRR_OVERRIDE;
+	virtual bool setVertexShaderConstant(s32 index, const f32* floats, int count) IRR_OVERRIDE;
+	virtual bool setVertexShaderConstant(s32 index, const s32* ints, int count) IRR_OVERRIDE;
+	virtual bool setVertexShaderConstant(s32 index, const u32* ints, int count) IRR_OVERRIDE;
+	virtual bool setPixelShaderConstant(s32 index, const f32* floats, int count) IRR_OVERRIDE;
+	virtual bool setPixelShaderConstant(s32 index, const s32* ints, int count) IRR_OVERRIDE;
+	virtual bool setPixelShaderConstant(s32 index, const u32* ints, int count) IRR_OVERRIDE;
+	virtual IVideoDriver* getVideoDriver() IRR_OVERRIDE;
 
 protected:
 
@@ -101,11 +92,11 @@ protected:
 	//! create a fall back material for example.
 	COpenGLSLMaterialRenderer(COpenGLDriver* driver,
 					IShaderConstantSetCallBack* callback,
-					IMaterialRenderer* baseMaterial,
+					E_MATERIAL_TYPE baseMaterial,
 					s32 userData=0);
 
-	void init(s32& outMaterialTypeNr, 
-		const c8* vertexShaderProgram, 
+	void init(s32& outMaterialTypeNr,
+		const c8* vertexShaderProgram,
 		const c8* pixelShaderProgram,
 		const c8* geometryShaderProgram,
 		scene::E_PRIMITIVE_TYPE inType=scene::EPT_TRIANGLES,
@@ -115,15 +106,20 @@ protected:
 	bool createProgram();
 	bool createShader(GLenum shaderType, const char* shader);
 	bool linkProgram();
-	
+
 	COpenGLDriver* Driver;
 	IShaderConstantSetCallBack* CallBack;
-	IMaterialRenderer* BaseMaterial;
+
+	bool Alpha;
+	bool Blending;
+	bool FixedBlending;
+	bool AlphaTest;
 
 	struct SUniformInfo
 	{
 		core::stringc name;
 		GLenum type;
+		GLint location;
 	};
 
 	GLhandleARB Program;
@@ -138,4 +134,3 @@ protected:
 
 #endif // compile with OpenGL
 #endif // if included
-

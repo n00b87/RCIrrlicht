@@ -2,18 +2,18 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_IMAGE_PRESENTER_H_INCLUDED__
-#define __I_IMAGE_PRESENTER_H_INCLUDED__
+#ifndef IRR_I_IMAGE_PRESENTER_H_INCLUDED
+#define IRR_I_IMAGE_PRESENTER_H_INCLUDED
 
 #include "IImage.h"
 
 namespace irr
 {
-namespace video  
+namespace video
 {
 
 /*!
-	Interface for a class which is able to present an IImage 
+	Interface for a class which is able to present an IImage
 	an the Screen. Usually only implemented by an IrrDevice for
 	presenting Software Device Rendered images.
 
@@ -33,4 +33,3 @@ namespace video
 } // end namespace irr
 
 #endif
-

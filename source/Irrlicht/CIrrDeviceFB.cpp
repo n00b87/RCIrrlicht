@@ -27,8 +27,25 @@
 #include "COSOperator.h"
 #include "CColorConverter.h"
 #include "SIrrCreationParameters.h"
+#include "CEGLManager.h"
 
 #include <linux/input.h>
+
+namespace irr
+{
+	namespace video
+	{
+#ifdef _IRR_COMPILE_WITH_OGLES1_
+		IVideoDriver* createOGLES1Driver(const SIrrlichtCreationParameters& params,
+			io::IFileSystem* io, video::IContextManager* contextManager);
+#endif
+
+#ifdef _IRR_COMPILE_WITH_OGLES2_
+		IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params,
+			io::IFileSystem* io, video::IContextManager* contextManager);
+#endif
+	}
+}
 
 namespace irr
 {
@@ -45,7 +62,7 @@ CIrrDeviceFB::CIrrDeviceFB(const SIrrlichtCreationParameters& params)
 	// print version, distribution etc.
 	// thx to LynxLuna for pointing me to the uname function
 	core::stringc linuxversion;
-	struct utsname FBInfo; 
+	struct utsname FBInfo;
 	uname(&FBInfo);
 
 	linuxversion += FBInfo.sysname;
@@ -116,10 +133,10 @@ bool CIrrDeviceFB::createWindow(const core::dimension2d<u32>& windowSize, u32 bi
 	if (ioctl(KeyboardDevice, KDSETMODE, KD_GRAPHICS) <0)
 		perror("Set keyboard mode");
 
-	Framebuffer=open("/dev/fb/0", O_RDWR); 
+	Framebuffer=open("/dev/fb/0", O_RDWR);
 	if (Framebuffer == -1)
 	{
-		Framebuffer=open("/dev/fb0", O_RDWR); 
+		Framebuffer=open("/dev/fb0", O_RDWR);
 		if (Framebuffer == -1)
 		{
 			perror("Open framebuffer");
@@ -133,7 +150,7 @@ bool CIrrDeviceFB::createWindow(const core::dimension2d<u32>& windowSize, u32 bi
 	// make format settings
 	ioctl(Framebuffer, FBIOGET_FSCREENINFO, &fbfixscreeninfo);
 	ioctl(Framebuffer, FBIOGET_VSCREENINFO, &oldscreeninfo);
-snprintf(buf, 256, "Original resolution: %d x %d\nARGB%d%d%d%d\n",oldscreeninfo.xres,oldscreeninfo.yres,
+	snprintf_irr(buf, 256, "Original resolution: %d x %d\nARGB%d%d%d%d\n",oldscreeninfo.xres,oldscreeninfo.yres,
 		oldscreeninfo.transp.length,oldscreeninfo.red.length,oldscreeninfo.green.length,oldscreeninfo.blue.length);
 		os::Printer::log(buf);
 	memcpy(&fbscreeninfo, &oldscreeninfo, sizeof(struct fb_var_screeninfo));
@@ -153,7 +170,7 @@ snprintf(buf, 256, "Original resolution: %d x %d\nARGB%d%d%d%d\n",oldscreeninfo.
 		ioctl(Framebuffer, FBIOPUT_VSCREENINFO, &fbscreeninfo);
 		ioctl(Framebuffer, FBIOGET_VSCREENINFO, &fbscreeninfo);
 
-snprintf(buf, 256, "New resolution: %d x %d (%d x %d)\nARGB%d%d%d%d\n",fbscreeninfo.xres,fbscreeninfo.yres,fbscreeninfo.xres_virtual,fbscreeninfo.yres_virtual,
+		snprintf_irr(buf, 256, "New resolution: %d x %d (%d x %d)\nARGB%d%d%d%d\n",fbscreeninfo.xres,fbscreeninfo.yres,fbscreeninfo.xres_virtual,fbscreeninfo.yres_virtual,
 		fbscreeninfo.transp.length,fbscreeninfo.red.length,fbscreeninfo.green.length,fbscreeninfo.blue.length);
 		os::Printer::log(buf);
 
@@ -197,7 +214,7 @@ void CIrrDeviceFB::createDriver()
 		os::Printer::log("No Software driver support compiled in.", ELL_WARNING);
 		#endif
 		break;
-		
+
 	case video::EDT_BURNINGSVIDEO:
 		#ifdef _IRR_COMPILE_WITH_BURNINGSVIDEO_
 		VideoDriver = video::createBurningVideoDriver(CreationParams, FileSystem, this);
@@ -206,8 +223,44 @@ void CIrrDeviceFB::createDriver()
 		#endif
 		break;
 
+	case video::EDT_OGLES2:
+		#ifdef _IRR_COMPILE_WITH_OGLES2_
+		{
+			video::SExposedVideoData data;
+			s32 width = 0;
+			s32 height = 0;
+			NativeDisplayType display = fbGetDisplay(0);
+			fbGetDisplayGeometry(display, &width, &height);
+			data.OpenGLFB.Window = (void*)fbCreateWindow(display, 0, 0, width, height);
+			ContextManager = new video::CEGLManager();
+			ContextManager->initialize(CreationParams, data);
+			VideoDriver = video::createOGLES2Driver(CreationParams, FileSystem, ContextManager);
+		}
+		#else
+		os::Printer::log("No OpenGL-ES2 support compiled in.", ELL_ERROR);
+		#endif
+		break;
+
+	case video::EDT_OGLES1:
+		#ifdef _IRR_COMPILE_WITH_OGLES1_
+		{
+			video::SExposedVideoData data;
+			s32 width = 0;
+			s32 height = 0;
+			NativeDisplayType display = fbGetDisplay(0);
+			fbGetDisplayGeometry(display, &width, &height);
+			data.OpenGLFB.Window = (void*)fbCreateWindow(display, 0, 0, width, height);
+			ContextManager = new video::CEGLManager();
+			ContextManager->initialize(CreationParams, data);
+			VideoDriver = video::createOGLES1Driver(CreationParams, FileSystem, ContextManager);
+		}
+		#else
+		os::Printer::log("No OpenGL-ES1 support compiled in.", ELL_ERROR);
+		#endif
+		break;
+
+	case video::DEPRECATED_EDT_DIRECT3D8_NO_LONGER_EXISTS:
 	case video::EDT_OPENGL:
-	case video::EDT_DIRECT3D8:
 	case video::EDT_DIRECT3D9:
 		os::Printer::log("This driver is not available in FB. Try Software renderer.",
 			ELL_WARNING);
@@ -235,8 +288,8 @@ bool CIrrDeviceFB::run()
 		{
 			irr::SEvent irrevent;
 			irrevent.EventType = irr::EET_KEY_INPUT_EVENT;
-			irrevent.KeyInput.PressedDown = true;
-			
+			irrevent.KeyInput.PressedDown = (ev.value == 1);
+
 			switch (ev.code)
 			{
 				case KEY_RIGHTCTRL:
@@ -265,6 +318,84 @@ bool CIrrDeviceFB::run()
 				case KEY_DOWN:
 					irrevent.KeyInput.Key = (EKEY_CODE)0x28;
 				break;
+				case KEY_A:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x41;
+				break;
+				case KEY_B:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x42;
+				break;
+				case KEY_C:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x43;
+				break;
+				case KEY_D:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x44;
+				break;
+				case KEY_E:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x45;
+				break;
+				case KEY_F:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x46;
+				break;
+				case KEY_G:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x47;
+				break;
+				case KEY_H:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x48;
+				break;
+				case KEY_I:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x49;
+				break;
+				case KEY_J:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4A;
+				break;
+				case KEY_K:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4B;
+				break;
+				case KEY_L:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4C;
+				break;
+				case KEY_M:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4D;
+				break;
+				case KEY_N:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4E;
+				break;
+				case KEY_O:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x4F;
+				break;
+				case KEY_P:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x50;
+				break;
+				case KEY_Q:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x51;
+				break;
+				case KEY_R:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x52;
+				break;
+				case KEY_S:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x53;
+				break;
+				case KEY_T:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x54;
+				break;
+				case KEY_U:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x55;
+				break;
+				case KEY_V:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x56;
+				break;
+				case KEY_W:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x57;
+				break;
+				case KEY_X:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x58;
+				break;
+				case KEY_Y:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x59;
+				break;
+				case KEY_Z:
+					irrevent.KeyInput.Key = (EKEY_CODE)0x5A;
+				break;
 				default:
 					irrevent.KeyInput.Key = (EKEY_CODE)0;
 				break;
@@ -289,7 +420,7 @@ void CIrrDeviceFB::yield()
 void CIrrDeviceFB::sleep(u32 timeMs, bool pauseTimer=false)
 {
 	bool wasStopped = Timer ? Timer->isStopped() : true;
-	
+
 	struct timespec ts;
 	ts.tv_sec = (time_t) (timeMs / 1000);
 	ts.tv_nsec = (long) (timeMs % 1000) * 1000000;

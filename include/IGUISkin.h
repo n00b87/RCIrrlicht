@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_GUI_SKIN_H_INCLUDED__
-#define __I_GUI_SKIN_H_INCLUDED__
+#ifndef IRR_I_GUI_SKIN_H_INCLUDED
+#define IRR_I_GUI_SKIN_H_INCLUDED
 
 #include "IAttributeExchangingObject.h"
 #include "EGUIAlignment.h"
@@ -149,11 +149,11 @@ namespace gui
 	//! Enumeration for default sizes.
 	enum EGUI_DEFAULT_SIZE
 	{
-		//! default with / height of scrollbar
+		//! default with / height of scrollbar. Also width of drop-down button in comboboxes.
 		EGDS_SCROLLBAR_SIZE = 0,
 		//! height of menu
 		EGDS_MENU_HEIGHT,
-		//! width of a window button
+		//! width and height of a window titlebar button (like minimize/maximize/close buttons). The titlebar height is also calculated from that.
 		EGDS_WINDOW_BUTTON_WIDTH,
 		//! width of a checkbox check
 		EGDS_CHECK_BOX_WIDTH,
@@ -163,7 +163,7 @@ namespace gui
 		EGDS_MESSAGE_BOX_HEIGHT,
 		//! width of a default button
 		EGDS_BUTTON_WIDTH,
-		//! height of a default button
+		//! height of a default button (OK and cancel buttons)
 		EGDS_BUTTON_HEIGHT,
 		//! distance for text from background
 		EGDS_TEXT_DISTANCE_X,
@@ -183,14 +183,18 @@ namespace gui
 		EGDS_MESSAGE_BOX_MIN_TEXT_HEIGHT,
 		//! maximal space to reserve for messagebox text-height
 		EGDS_MESSAGE_BOX_MAX_TEXT_HEIGHT,
-		//! pixels to move the button image to the right when a pushbutton is pressed
+		//! pixels to move an unscaled button image to the right when a button is pressed and the unpressed image looks identical
 		EGDS_BUTTON_PRESSED_IMAGE_OFFSET_X,
-		//! pixels to move the button image down when a pushbutton is pressed
+		//! pixels to move an unscaled button image down when a button is pressed  and the unpressed image looks identical
 		EGDS_BUTTON_PRESSED_IMAGE_OFFSET_Y,
-		//! pixels to move the button text to the right when a pushbutton is pressed
+		//! pixels to move the button text to the right when a button is pressed
 		EGDS_BUTTON_PRESSED_TEXT_OFFSET_X,
-		//! pixels to move the button text down when a pushbutton is pressed
+		//! pixels to move the button text down when a button is pressed
 		EGDS_BUTTON_PRESSED_TEXT_OFFSET_Y,
+		//! pixels to move an unscaled button sprite to the right when a button is pressed
+		EGDS_BUTTON_PRESSED_SPRITE_OFFSET_X,
+		//! pixels to move an unscaled button sprite down when a button is pressed
+		EGDS_BUTTON_PRESSED_SPRITE_OFFSET_Y,
 
 		//! this value is not used, it only specifies the amount of default sizes
 		//! available.
@@ -222,6 +226,8 @@ namespace gui
 		"ButtonPressedImageOffsetY",
 		"ButtonPressedTextOffsetX",
 		"ButtonPressedTextOffsetY",
+		"ButtonPressedSpriteOffsetX",
+		"ButtonPressedSpriteOffsetY",
 		0
 	};
 
@@ -571,4 +577,3 @@ namespace gui
 } // end namespace irr
 
 #endif
-

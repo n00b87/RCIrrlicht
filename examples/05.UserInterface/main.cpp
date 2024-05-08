@@ -11,7 +11,11 @@ a counter variable for changing the creation position of a window,
 and a pointer to a listbox.
 */
 #include <irrlicht.h>
+
+#include <SDL2/SDL.h>
+
 #include "driverChoice.h"
+#include "exampleHelper.h"
 
 using namespace irr;
 
@@ -21,7 +25,7 @@ using namespace video;
 using namespace io;
 using namespace gui;
 
-#ifdef _IRR_WINDOWS_
+#ifdef _MSC_VER
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
@@ -59,8 +63,8 @@ void setSkinTransparency(s32 alpha, irr::gui::IGUISkin * skin)
 /*
 The Event Receiver is not only capable of getting keyboard and
 mouse input events, but also events of the graphical user interface
-(gui). There are events for almost everything: Button click,
-Listbox selection change, events that say that a element was hovered
+(gui). There are events for almost everything: button click,
+listbox selection change, events that say that a element was hovered
 and so on. To be able to react to some of these events, we create
 an event receiver.
 We only react to gui events, and if it's such an event, we get the
@@ -84,8 +88,8 @@ public:
 
 			/*
 			If a scrollbar changed its scroll position, and it is
-			'our' scrollbar (the one with id GUI_ID_TRANSPARENCY_SCROLL_BAR), then we change
-			the transparency of all gui elements. This is a very
+			'our' scrollbar (the one with id GUI_ID_TRANSPARENCY_SCROLL_BAR),
+			then we change the transparency of all gui elements. This is an
 			easy task: There is a skin object, in which all color
 			settings are stored. We simply go through all colors
 			stored in the skin and change their alpha value.
@@ -171,20 +175,33 @@ private:
 
 
 /*
-Ok, now for the more interesting part. First, create the Irrlicht device. As in
+OK, now for the more interesting part. First, create the Irrlicht device. As in
 some examples before, we ask the user which driver he wants to use for this
-example:
+example.
 */
 int main()
 {
 	// ask user for driver
-	video::E_DRIVER_TYPE driverType=driverChoiceConsole();
-	if (driverType==video::EDT_COUNT)
-		return 1;
+	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
+    {
+        //os::Printer::log("SDL_Init Error: ", SDL_GetError());
+        std::cout << "No DICE" << std::endl;
+        return 0;
+    }
 
-	// create device and exit if creation failed
+    SDL_Window* window = SDL_CreateWindow("OGLES2 gui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
-	IrrlichtDevice * device = createDevice(driverType, core::dimension2d<u32>(640, 480));
+	SIrrlichtCreationParameters p;
+		p.DriverType = EDT_OPENGL;
+		p.WindowSize = dimension2d<u32>(640, 480);
+		p.Bits = 32;
+		p.Fullscreen = false;
+		p.Stencilbuffer = false;
+		p.Vsync = false;
+		p.EventReceiver = 0;
+		p.DeviceType = EIDT_SDL;
+		p.WindowId = window;
+	IrrlichtDevice *device = createDeviceEx(p);
 
 	if (device == 0)
 		return 1; // could not create selected driver.
@@ -198,6 +215,8 @@ int main()
 	video::IVideoDriver* driver = device->getVideoDriver();
 	IGUIEnvironment* env = device->getGUIEnvironment();
 
+	const io::path mediaPath = getExampleMediaPath();
+
 	/*
 	To make the font a little bit nicer, we load an external font
 	and set it as the new default font in the skin.
@@ -206,7 +225,7 @@ int main()
 	*/
 
 	IGUISkin* skin = env->getSkin();
-	IGUIFont* font = env->getFont("../../media/fonthaettenschweiler.bmp");
+	IGUIFont* font = env->getFont(mediaPath + "fonthaettenschweiler.bmp");
 	if (font)
 		skin->setFont(font);
 
@@ -217,7 +236,7 @@ int main()
 	creates a window and the third opens a file open dialog. The third
 	parameter is the id of the button, with which we can easily identify
 	the button in the event receiver.
-	*/	
+	*/
 
 	env->addButton(rect<s32>(10,240,110,240 + 32), 0, GUI_ID_QUIT_BUTTON,
 			L"Quit", L"Exits Program");
@@ -262,9 +281,9 @@ int main()
 
 
 	/*
-	And at last, we create a nice Irrlicht Engine logo in the top left corner. 
+	And at last, we create a nice Irrlicht Engine logo in the top left corner.
 	*/
-	env->addImage(driver->getTexture("../../media/irrlichtlogo2.png"),
+	env->addImage(driver->getTexture(mediaPath + "irrlichtlogo3.png"),
 			position2d<int>(10,10));
 
 
@@ -272,16 +291,44 @@ int main()
 	That's all, we only have to draw everything.
 	*/
 
-	while(device->run() && driver)
+	SDL_Event event;
+	bool quit = false;
+
+	while(device->run() && driver && (!quit))
 	if (device->isWindowActive())
 	{
-		driver->beginScene(true, true, SColor(0,200,200,200));
+	    while(SDL_PollEvent(&event))
+        {
+            switch(event.type)
+            {
+                case SDL_WINDOWEVENT:
+                    if(event.window.event == SDL_WINDOWEVENT_RESIZED)
+                    {
+
+                    }
+                    else if(event.window.event == SDL_WINDOWEVENT_CLOSE)
+                    {
+                        if(SDL_QuitRequested() != 0)
+                        {
+                            //SDL_PumpEvents();
+                            SDL_FlushEvent(SDL_QUIT);
+                            quit = true;
+                        }
+                        std::cout << "SDL QUIT" << std::endl;
+                    }
+                    break;
+            }
+        }
+
+		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
 
 		env->drawAll();
-	
+
 		driver->endScene();
 	}
 
+	SDL_DestroyWindow(window);
+	SDL_Quit();
 	device->drop();
 
 	return 0;

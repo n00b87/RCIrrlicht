@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_IRRLICHT_DEVICE_H_INCLUDED__
-#define __I_IRRLICHT_DEVICE_H_INCLUDED__
+#ifndef IRR_I_IRRLICHT_DEVICE_H_INCLUDED
+#define IRR_I_IRRLICHT_DEVICE_H_INCLUDED
 
 #include "IReferenceCounted.h"
 #include "dimension2d.h"
@@ -33,6 +33,10 @@ namespace irr
 	namespace scene {
 		class ISceneManager;
 	} // end namespace scene
+
+	namespace video {
+		class IContextManager;
+	} // end namespace video
 
 	//! The Irrlicht device. You can create it with createDevice() or createDeviceEx().
 	/** This is the most important class of the Irrlicht Engine. You can
@@ -67,18 +71,22 @@ namespace irr
 		DispatchMessage and whatever and simply don't use this method.
 		But note that Irrlicht will not be able to fetch user input
 		then. See irr::SIrrlichtCreationParameters::WindowId for more
-		informations and example code.
+		information and example code.
 		*/
 		virtual bool run() = 0;
 
 		//! Cause the device to temporarily pause execution and let other processes run.
-		/** This should bring down processor usage without major
-		performance loss for Irrlicht */
+		/** This should bring down processor usage without major performance loss for Irrlicht.
+		But this is system dependent, so there's a chance your thread won't get control back quickly.
+		*/
 		virtual void yield() = 0;
 
 		//! Pause execution and let other processes to run for a specified amount of time.
-		/** It may not wait the full given time, as sleep may be interrupted
-		\param timeMs: Time to sleep for in milisecs.
+		/** It may not wait the full given time, as sleep may be interrupted and also may wait longer on some OS.
+		\param timeMs: Time to sleep for in milliseconds. Note that the OS can round up this number.
+                       On Windows you usually get at least 15ms sleep time minium for any value > 0. 
+					   So if you call this in your main loop you can't get more than 65 FPS anymore in your game.
+					   On most Linux systems it's relatively exact, but also no guarantee.
 		\param pauseTimer: If true, pauses the device timer while sleeping
 		*/
 		virtual void sleep(u32 timeMs, bool pauseTimer=false) = 0;
@@ -108,19 +116,19 @@ namespace irr
 		virtual ILogger* getLogger() = 0;
 
 		//! Gets a list with all video modes available.
-		/** If you are confused now, because you think you have to
-		create an Irrlicht Device with a video mode before being able
-		to get the video mode list, let me tell you that there is no
-		need to start up an Irrlicht Device with EDT_DIRECT3D8,
-		EDT_OPENGL or EDT_SOFTWARE: For this (and for lots of other
-		reasons) the null driver, EDT_NULL exists.
+		/** You only need a null driver (ED_NULL) to access
+		those video modes. So you can get the available modes
+		before starting any other video driver.
 		\return Pointer to a list with all video modes supported
 		by the gfx adapter. */
 		virtual video::IVideoModeList* getVideoModeList() = 0;
 
+		//! Get context manager
+		virtual video::IContextManager* getContextManager() = 0;
+
 		//! Provides access to the operation system operator object.
 		/** The OS operator provides methods for
-		getting system specific informations and doing system
+		getting system specific information and doing system
 		specific operations, such as exchanging data with the clipboard
 		or reading the operation system version.
 		\return Pointer to the OS operator. */
@@ -227,6 +235,13 @@ namespace irr
 		\param resize Flag whether the window should be resizable. */
 		virtual void setResizable(bool resize=false) = 0;
 
+		//! Resize the render window.
+		/**	This will only work in windowed mode and is not yet supported on all systems.
+		It does set the drawing/clientDC size of the window, the window decorations are added to that.
+		You get the current window size with IVideoDriver::getScreenSize() (might be unified in future)
+		*/
+		virtual void setWindowSize(const irr::core::dimension2d<u32>& size) = 0;
+
 		//! Minimizes the window if possible.
 		virtual void minimizeWindow() =0;
 
@@ -235,6 +250,9 @@ namespace irr
 
 		//! Restore the window to normal size if possible.
 		virtual void restoreWindow() =0;
+
+		//! Get the position of the frame on-screen
+		virtual core::position2di getWindowPosition() = 0;
 
 		//! Activate any joysticks, and generate events for them.
 		/** Irrlicht contains support for joysticks, but does not generate joystick events by default,
@@ -246,6 +264,42 @@ namespace irr
 		*/
 		virtual bool activateJoysticks(core::array<SJoystickInfo>& joystickInfo) =0;
 
+        //! Activate accelerometer.
+        virtual bool activateAccelerometer(float updateInterval = 0.016666f) = 0;
+
+        //! Deactivate accelerometer.
+        virtual bool deactivateAccelerometer() = 0;
+
+        //! Is accelerometer active.
+        virtual bool isAccelerometerActive() = 0;
+
+        //! Is accelerometer available.
+        virtual bool isAccelerometerAvailable() = 0;
+
+        //! Activate gyroscope.
+        virtual bool activateGyroscope(float updateInterval = 0.016666f) = 0;
+
+        //! Deactivate gyroscope.
+        virtual bool deactivateGyroscope() = 0;
+
+        //! Is gyroscope active.
+        virtual bool isGyroscopeActive() = 0;
+
+        //! Is gyroscope available.
+        virtual bool isGyroscopeAvailable() = 0;
+
+        //! Activate device motion.
+        virtual bool activateDeviceMotion(float updateInterval = 0.016666f) = 0;
+
+        //! Deactivate device motion.
+        virtual bool deactivateDeviceMotion() = 0;
+
+        //! Is device motion active.
+        virtual bool isDeviceMotionActive() = 0;
+
+        //! Is device motion available.
+        virtual bool isDeviceMotionAvailable() = 0;
+
 		//! Set the current Gamma Value for the Display
 		virtual bool setGammaRamp(f32 red, f32 green, f32 blue,
 					f32 relativebrightness, f32 relativecontrast) =0;
@@ -253,6 +307,18 @@ namespace irr
 		//! Get the current Gamma Value for the Display
 		virtual bool getGammaRamp(f32 &red, f32 &green, f32 &blue,
 					f32 &brightness, f32 &contrast) =0;
+
+		//! Set the maximal elapsed time between 2 clicks to generate doubleclicks for the mouse. It also affects tripleclick behavior.
+		/** When set to 0 no double- and tripleclicks will be generated.
+		\param timeMs maximal time in milliseconds for two consecutive clicks to be recognized as double click
+		*/
+		virtual void setDoubleClickTime(u32 timeMs) =0;
+
+		//! Get the maximal elapsed time between 2 clicks to generate double- and tripleclicks for the mouse.
+		/** When return value is 0 no double- and tripleclicks will be generated.
+		\return maximal time in milliseconds for two consecutive clicks to be recognized as double click
+		*/
+		virtual u32 getDoubleClickTime() const =0;
 
 		//! Remove messages pending in the system message loop
 		/** This function is usually used after messages have been buffered for a longer time, for example
@@ -292,12 +358,6 @@ namespace irr
 #else
 					return false;
 #endif
-				case video::EDT_DIRECT3D8:
-#ifdef _IRR_COMPILE_WITH_DIRECT3D_8_
-					return true;
-#else
-					return false;
-#endif
 				case video::EDT_DIRECT3D9:
 #ifdef _IRR_COMPILE_WITH_DIRECT3D_9_
 					return true;
@@ -306,6 +366,24 @@ namespace irr
 #endif
 				case video::EDT_OPENGL:
 #ifdef _IRR_COMPILE_WITH_OPENGL_
+					return true;
+#else
+					return false;
+#endif
+				case video::EDT_OGLES1:
+#ifdef _IRR_COMPILE_WITH_OGLES1_
+					return true;
+#else
+					return false;
+#endif
+				case video::EDT_OGLES2:
+#ifdef _IRR_COMPILE_WITH_OGLES2_
+					return true;
+#else
+					return false;
+#endif
+				case video::EDT_WEBGL1:
+#ifdef _IRR_COMPILE_WITH_WEBGL1_
 					return true;
 #else
 					return false;
@@ -319,4 +397,3 @@ namespace irr
 } // end namespace irr
 
 #endif
-

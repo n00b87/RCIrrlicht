@@ -6,8 +6,8 @@
 #ifdef _IRR_COMPILE_WITH_DIRECT3D_9_
 
 #include "CD3D9ParallaxMapRenderer.h"
+#include "CD3D9Driver.h"
 #include "IMaterialRendererServices.h"
-#include "IVideoDriver.h"
 #include "os.h"
 #include "SLight.h"
 
@@ -185,12 +185,12 @@ namespace video
 		"mov r0.xy, t0          ; color map  \n"\
 		" \n"\
 		"; original parallax mapping: \n"\
-		"; emulate ps1x _bx2, so substract 0.5f and multiply by 2 \n"\
+		"; emulate ps1x _bx2, so subtract 0.5f and multiply by 2 \n"\
 		"mad r1.xyz, r1, r11, c0; \n"\
 		" \n"\
 		"mul r3, r1.wwww, c6;   ; r3 = (height, height, height) * scale \n"\
 		" \n"\
-		"; emulate ps1x _bx2, so substract 0.5f and multiply by 2 \n"\
+		"; emulate ps1x _bx2, so subtract 0.5f and multiply by 2 \n"\
 		"mad r4.xyz, r4, r11, c0; \n"\
 		" \n"\
 		"mad r2.xy, r3, r4, r0  ; newTexCoord = height * eye + oldTexCoord  \n"\
@@ -205,7 +205,7 @@ namespace video
 		"mov r2.xyz, t2          ; fetch light vector 1 \n"\
 		"mov r3.xyz, t3          ; fetch light vector 2 \n"\
 		" \n"\
-		"; emulate ps1x _bx2, so substract 0.5f and multiply by 2 \n"\
+		"; emulate ps1x _bx2, so subtract 0.5f and multiply by 2 \n"\
 		"mad r1.xyz, r1, r11, c0; \n"\
 		"mad r2.xyz, r2, r11, c0; \n"\
 		"mad r3.xyz, r3, r11, c0; \n"\
@@ -222,22 +222,21 @@ namespace video
 		"\n";
 
 	CD3D9ParallaxMapRenderer::CD3D9ParallaxMapRenderer(
-		IDirect3DDevice9* d3ddev, video::IVideoDriver* driver,
+		IDirect3DDevice9* d3ddev, video::CD3D9Driver* driver,
 		s32& outMaterialTypeNr, IMaterialRenderer* baseMaterial)
 		: CD3D9ShaderMaterialRenderer(d3ddev, driver, 0, baseMaterial),
 		CurrentScale(0.0f)
 	{
-	
 		#ifdef _DEBUG
 		setDebugName("CD3D9ParallaxMapRenderer");
 		#endif
-	
+
 		// set this as callback. We could have done this in
 		// the initialization list, but some compilers don't like it.
 
 		CallBack = this;
 
-		// basicly, this thing simply compiles these hardcoded shaders if the
+		// basically, this thing simply compiles these hardcoded shaders if the
 		// hardware is able to do them, otherwise it maps to the base material
 
 		if (!driver->queryFeature(video::EVDF_PIXEL_SHADER_1_4) ||

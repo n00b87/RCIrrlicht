@@ -7,7 +7,6 @@
 #ifdef __IRR_COMPILE_WITH_MOUNT_ARCHIVE_LOADER_
 
 #include "CReadFile.h"
-#include "os.h"
 
 namespace irr
 {
@@ -155,7 +154,7 @@ IReadFile* CMountPointReader::createAndOpenFile(u32 index)
 	if (index >= Files.size())
 		return 0;
 
-	return createReadFile(RealFileNames[Files[index].ID]);
+	return CReadFile::createReadFile(RealFileNames[Files[index].ID]);
 }
 
 //! opens a file by file name

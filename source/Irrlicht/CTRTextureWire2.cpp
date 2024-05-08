@@ -34,43 +34,42 @@
 #define WRITE_W
 
 
-//#define IPOL_C0
-#define IPOL_T0
+#define IPOL_C0
+//#define IPOL_T0
 //#define IPOL_T1
 
 // apply global override
 #ifndef SOFTWARE_DRIVER_2_PERSPECTIVE_CORRECT
-	#undef INVERSE_W
+#undef INVERSE_W
 #endif
 
 #ifndef SOFTWARE_DRIVER_2_SUBTEXEL
-	#undef SUBTEXEL
+#undef SUBTEXEL
+#endif
+
+#if BURNING_MATERIAL_MAX_COLORS < 1
+#undef IPOL_C0
 #endif
 
 #if !defined ( SOFTWARE_DRIVER_2_USE_WBUFFER ) && defined ( USE_ZBUFFER )
-	#ifndef SOFTWARE_DRIVER_2_PERSPECTIVE_CORRECT
-		#undef IPOL_W
-	#endif
-	#define IPOL_Z
+#ifndef SOFTWARE_DRIVER_2_PERSPECTIVE_CORRECT
+#undef IPOL_W
+#endif
+#define IPOL_Z
 
-	#ifdef CMP_W
-		#undef CMP_W
-		#define CMP_Z
-	#endif
+#ifdef CMP_W
+#undef CMP_W
+#define CMP_Z
+#endif
 
-	#ifdef WRITE_W
-		#undef WRITE_W
-		#define WRITE_Z
-	#endif
+#ifdef WRITE_W
+#undef WRITE_W
+#define WRITE_Z
+#endif
 
 #endif
 
-
-namespace irr
-{
-
-namespace video
-{
+burning_namespace_start
 
 class CTRTextureWire2 : public IBurningShader
 {
@@ -79,49 +78,58 @@ public:
 	//! constructor
 	CTRTextureWire2(CBurningVideoDriver* driver);
 
+	virtual void OnSetMaterialBurning(const SBurningShaderMaterial& material) IRR_OVERRIDE;
+
 	//! draws an indexed triangle list
-	virtual void drawTriangle ( const s4DVertex *a,const s4DVertex *b,const s4DVertex *c );
-	virtual void drawLine ( const s4DVertex *a,const s4DVertex *b);
+	virtual void drawTriangle(const s4DVertex* burning_restrict a, const s4DVertex* burning_restrict b, const s4DVertex* burning_restrict c) IRR_OVERRIDE;
+	virtual void drawLine(const s4DVertex* a, const s4DVertex* b) IRR_OVERRIDE;
+	virtual void drawPoint(const s4DVertex* a) IRR_OVERRIDE;
+	virtual bool canWireFrame() IRR_OVERRIDE { return true; }
+	virtual bool canPointCloud() IRR_OVERRIDE { return true; }
 
+protected:
 
+	void renderLine(const s4DVertex* a, const s4DVertex* b) const;
 
-private:
-	void renderAlphaLine ( const s4DVertex *a,const s4DVertex *b ) const;
-	void renderLine ( const s4DVertex *a,const s4DVertex *b ) const;
-
+	int renderZero;
+	int depth_pass;
+	int depth_write;
 };
 
 //! constructor
 CTRTextureWire2::CTRTextureWire2(CBurningVideoDriver* driver)
-: IBurningShader(driver)
+	: IBurningShader(driver, EMT_SOLID)
 {
-	#ifdef _DEBUG
+#ifdef _DEBUG
 	setDebugName("CTRTextureWire2");
-	#endif
+#endif
+	renderZero = 0;
+	depth_pass = 1;
+	depth_write = 0;
 }
 
-
-// swap integer with xor
-static inline void swap_xor ( s32 &a, s32 &b )
+void CTRTextureWire2::OnSetMaterialBurning(const SBurningShaderMaterial& material)
 {
-	a ^= b;
-	b ^= a;
-	a ^= b;
+	depth_pass = material.depth_test == 0;
+	depth_write = material.depth_write;
 }
 
 
 /*!
+	2d line
 */
-void CTRTextureWire2::renderLine ( const s4DVertex *a,const s4DVertex *b ) const
+void CTRTextureWire2::renderLine(const s4DVertex* a, const s4DVertex* b) const
 {
-	
-	int pitch0 = RenderTarget->getDimension().Width << VIDEO_SAMPLE_GRANULARITY;
-	int pitch1 = RenderTarget->getDimension().Width << 2;
+	const int pitch0 = RenderTarget->getDimension().Width << SOFTWARE_DRIVER_2_RENDERTARGET_GRANULARITY;
+#ifdef USE_ZBUFFER
+	const int pitch1 = RenderTarget->getDimension().Width * sizeof(fp24);
+#endif
 
-	int aposx = (int) a->Pos.x;
-	int aposy = (int) a->Pos.y;
-	int bposx = (int) b->Pos.x;
-	int bposy = (int) b->Pos.y;
+	//todo: fill_convention_none!
+	int aposx = fill_convention_none(a->Pos.x);
+	int aposy = fill_convention_none(a->Pos.y);
+	int bposx = fill_convention_none(b->Pos.x);
+	int bposy = fill_convention_none(b->Pos.y);
 
 	int dx = bposx - aposx;
 	int dy = bposy - aposy;
@@ -131,100 +139,137 @@ void CTRTextureWire2::renderLine ( const s4DVertex *a,const s4DVertex *b ) const
 	int d = 0;
 	int run;
 
-	tVideoSample *dst;
+	tVideoSample* dst;
 #ifdef USE_ZBUFFER
-	fp24 *z;
+	fp24* z;
 #endif
 
-	int xInc0 = 1 << VIDEO_SAMPLE_GRANULARITY;
+	int xInc0 = 1 << SOFTWARE_DRIVER_2_RENDERTARGET_GRANULARITY;
 	int yInc0 = pitch0;
 
-	int xInc1 = 4;
+#ifdef USE_ZBUFFER
+	int xInc1 = sizeof(fp24);
 	int yInc1 = pitch1;
-
-	tVideoSample color;
-
-#ifdef SOFTWARE_DRIVER_2_USE_VERTEX_COLOR
-	tFixPoint r0, g0, b0;
-	getSample_color ( r0, g0, b0, a->Color[0] );
-	color = fix_to_color ( r0, g0, b0 );
-#else
-	color = (tVideoSample) 0xFFFFFFFF;
 #endif
 
-	if ( dx < 0 )
+	if (dx < 0)
 	{
-		xInc0 = - ( 1 << VIDEO_SAMPLE_GRANULARITY);
+		xInc0 = -xInc0;
+#ifdef USE_ZBUFFER
 		xInc1 = -4;
+#endif
 		dx = -dx;
 	}
 
-	if ( dy > dx )
+	if (dy > dx)
 	{
-		swap_xor ( dx, dy );
-		swap_xor ( xInc0, yInc0 );
-		swap_xor ( xInc1, yInc1 );
+		//swap
+		s32 t;
+		t = dx; dx = dy; dy = t;
+		t = xInc0; xInc0 = yInc0; yInc0 = t;
+#ifdef USE_ZBUFFER
+		t = xInc1; xInc1 = yInc1; yInc1 = t;
+#endif
 	}
 
-	if ( 0 == dx )
-		return;
+	if (0 == dx)
+	{
+		if (!renderZero) return;
+		dx = 1;
+	}
 
-	dst = (tVideoSample*) ( (u8*) (tVideoSample*)RenderTarget->lock() + ( aposy * pitch0 ) + (aposx << VIDEO_SAMPLE_GRANULARITY ) );
+	SOFTWARE_DRIVER_2_CLIPCHECK_WIRE;
+	dst = (tVideoSample*)((u8*)RenderTarget->getData() + (aposy * pitch0) + (aposx << SOFTWARE_DRIVER_2_RENDERTARGET_GRANULARITY));
+
 #ifdef USE_ZBUFFER
-	z = (fp24*) ( (u8*) (fp24*) DepthBuffer->lock() + ( aposy * pitch1 ) + (aposx << 2 ) );
+	z = (fp24*)((u8*)DepthBuffer->lock() + (aposy * pitch1) + (aposx << 2));
 #endif
 
 	c = dx << 1;
 	m = dy << 1;
 
+	// slopes
+	const f32 invDeltaX = fill_step_x((f32)dx);
+
 #ifdef IPOL_Z
-	f32 slopeZ = (b->Pos.z - a->Pos.z) / f32(dx);
+	f32 slopeZ = (b->Pos.z - a->Pos.z) * invDeltaX;
 	f32 dataZ = a->Pos.z;
 #endif
 
 #ifdef IPOL_W
-	fp24 slopeW = (b->Pos.w - a->Pos.w) / f32( dx );
+	fp24 slopeW = (b->Pos.w - a->Pos.w) * invDeltaX;
 	fp24 dataW = a->Pos.w;
 #endif
 
+	f32 inversew = FIX_POINT_F32_MUL;
+
+	tVideoSample color;
+#if BURNING_MATERIAL_MAX_COLORS > 0
+	tFixPoint r0, g0, b0;
+#ifdef IPOL_C0
+	sVec4 slopeC;
+	sVec4 C;
+	slopeC = (b->Color[0] - a->Color[0]) * invDeltaX;
+	C = a->Color[0];
+#endif
+
+#ifdef INVERSE_W
+	inversew = fix_inverse32_color(dataW);
+#endif
+
+	vec4_to_fix(r0, g0, b0, a->Color[0], inversew);
+	color = fix_to_sample(r0, g0, b0);
+
+#else
+	color = (tVideoSample)0xFFFFFFFF;
+#endif
+
+
 	run = dx;
-	while ( run )
+	while (run)
 	{
 #ifdef CMP_Z
-		if ( *z >= dataZ )
+		if (*z >= dataZ)
 #endif
 #ifdef CMP_W
-		if ( dataW >= *z )
+		if (depth_pass || dataW >= *z)
 #endif
 		{
 #ifdef WRITE_Z
 			*z = dataZ;
 #endif
 #ifdef WRITE_W
-			*z = dataW;
+			if (depth_write) *z = dataW;
 #endif
 
-		*dst = color;
+#ifdef IPOL_C0
+#ifdef INVERSE_W
+			inversew = fix_inverse32_color(dataW);
+#endif
+			vec4_to_fix(r0, g0, b0, C, inversew);
+			color = fix_to_sample(r0, g0, b0);
+#endif
+			* dst = color;
 
 		}
 
-		dst = (tVideoSample*) ( (u8*) dst + xInc0 );	// x += xInc
-#ifdef IPOL_Z
-		z = (fp24*) ( (u8*) z + xInc1 );
+		dst = (tVideoSample*)((u8*)dst + xInc0);	// x += xInc
+#ifdef CMP_Z
+		z = (fp24*)((u8*)z + xInc1);
 #endif
-#ifdef IPOL_W
-		z = (fp24*) ( (u8*) z + xInc1 );
+#ifdef CMP_W
+		z = (fp24*)((u8*)z + xInc1);
 #endif
 
 		d += m;
-		if ( d > dx )
+		if (d > dx)
 		{
-			dst = (tVideoSample*) ( (u8*) dst + yInc0 );	// y += yInc
-#ifdef IPOL_Z
-			z = (fp24*) ( (u8*) z + yInc1 );
+			dst = (tVideoSample*)((u8*)dst + yInc0);	// y += yInc
+#ifdef CMP_Z
+			z = (fp24*)((u8*)z + yInc1);
 #endif
-#ifdef IPOL_W
-			z = (fp24*) ( (u8*) z + yInc1 );
+#ifdef CMP_W
+			z = (fp24*)((u8*)z + yInc1);
 #endif
 
 			d -= c;
@@ -236,63 +281,65 @@ void CTRTextureWire2::renderLine ( const s4DVertex *a,const s4DVertex *b ) const
 #ifdef IPOL_W
 		dataW += slopeW;
 #endif
+#ifdef IPOL_C0
+		C += slopeC;
+#endif
 
 	}
 
 }
 
-void CTRTextureWire2::drawTriangle ( const s4DVertex *a,const s4DVertex *b,const s4DVertex *c )
+void CTRTextureWire2::drawTriangle(const s4DVertex* burning_restrict a, const s4DVertex* burning_restrict b, const s4DVertex* burning_restrict c)
 {
-	sScanLineData line;
-
 	// sort on height, y
-	if ( F32_A_GREATER_B ( a->Pos.y , b->Pos.y ) ) swapVertexPointer(&a, &b);
-	if ( F32_A_GREATER_B ( b->Pos.y , c->Pos.y ) ) swapVertexPointer(&b, &c);
-	if ( F32_A_GREATER_B ( a->Pos.y , b->Pos.y ) ) swapVertexPointer(&a, &b);
+	if (F32_A_GREATER_B(a->Pos.y, b->Pos.y)) swapVertexPointer(&a, &b);
+	if (F32_A_GREATER_B(b->Pos.y, c->Pos.y)) swapVertexPointer(&b, &c);
+	if (F32_A_GREATER_B(a->Pos.y, b->Pos.y)) swapVertexPointer(&a, &b);
 
-	renderLine ( a, b );
-	renderLine ( b, c );
-	renderLine ( a, c );
+	renderLine(a, b);
+	renderLine(b, c);
+	renderLine(a, c);
 
 }
 
 
-void CTRTextureWire2::drawLine ( const s4DVertex *a,const s4DVertex *b)
+void CTRTextureWire2::drawLine(const s4DVertex* a, const s4DVertex* b)
 {
-
 	// query access to TexMaps
 
 	// sort on height, y
-	if ( a->Pos.y > b->Pos.y ) swapVertexPointer(&a, &b);
+	if (F32_A_GREATER_B(a->Pos.y, b->Pos.y)) swapVertexPointer(&a, &b);
 
-	renderLine ( a, b );
-
+	renderLine(a, b);
 }
 
+void CTRTextureWire2::drawPoint(const s4DVertex* a)
+{
+	if ((a->flag & VERTEX4D_CLIPMASK) == VERTEX4D_INSIDE)
+	{
+		renderZero = 1;
+		renderLine(a, a);
+		renderZero = 0;
+	}
+}
 
-} // end namespace video
-} // end namespace irr
+burning_namespace_end
 
 #endif // _IRR_COMPILE_WITH_BURNINGSVIDEO_
 
-namespace irr
-{
-namespace video
-{
-
+burning_namespace_start
 
 //! creates a flat triangle renderer
 IBurningShader* createTriangleRendererTextureGouraudWire2(CBurningVideoDriver* driver)
 {
-	#ifdef _IRR_COMPILE_WITH_BURNINGSVIDEO_
+	//ETR_TEXTURE_GOURAUD_WIRE
+#ifdef _IRR_COMPILE_WITH_BURNINGSVIDEO_
 	return new CTRTextureWire2(driver);
-	#else
+#else
 	return 0;
-	#endif // _IRR_COMPILE_WITH_BURNINGSVIDEO_
+#endif // _IRR_COMPILE_WITH_BURNINGSVIDEO_
 }
 
 
-} // end namespace video
-} // end namespace irr
-
+burning_namespace_end
 

@@ -1,11 +1,12 @@
 /** Example 024 CursorControl
 
-Show how to modify cursors and offer some useful tool-functions for creating cursors.
+Show how to modify cursors and offer some useful tool functions for creating cursors.
 It can also be used for experiments with the mouse in general.
 */
 
 #include <irrlicht.h>
 #include "driverChoice.h"
+#include "exampleHelper.h"
 
 using namespace irr;
 using namespace core;
@@ -14,7 +15,7 @@ using namespace video;
 using namespace io;
 using namespace gui;
 
-#ifdef _IRR_WINDOWS_
+#ifdef _MSC_VER
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
@@ -141,7 +142,7 @@ void PrintMouseEventName(const SEvent& event, stringw &result)
 }
 
 /*
-	Helper function to print all the state information which get from a mouse-event into a stringw
+	Helper function to print all the state information from a mouse event into a stringw
 */
 void PrintMouseState(const SEvent& event, stringw &result)
 {
@@ -294,6 +295,17 @@ public:
 			}
 		}
 
+		if ( event.EventType == EET_KEY_INPUT_EVENT)
+		{
+			// Allow invisible cursor to show up again when users presses ESC
+			if ( !event.KeyInput.PressedDown && event.KeyInput.Key == irr::KEY_ESCAPE )
+			{
+				TimerAction action;
+				action.Action = ETA_MOUSE_VISIBLE;
+				Context.runTimerAction(action);
+			}
+		}
+
 		return false;
 	}
 
@@ -302,7 +314,7 @@ private:
 };
 
 /*
-	Use several imagefiles as animation frames for a sprite which can be used as cursor icon.
+	Use several image files as animation frames for a sprite which can then be used as a cursor icon.
 	The images in those files all need to have the same size.
 	Return sprite index on success or -1 on failure
 */
@@ -344,7 +356,7 @@ s32 AddAnimatedIconToSpriteBank( gui::IGUISpriteBank * spriteBank, video::IVideo
 }
 
 /*
-	Use several images within one imagefile as animation frames for a sprite which can be used as cursor icon
+	Use several images within one image file as animation frames for a sprite which can then be used as a cursor icon
 	The sizes of the icons within that file all need to have the same size
 	Return sprite index on success or -1 on failure
 */
@@ -432,8 +444,6 @@ int main()
 	video::IVideoDriver* driver = device->getVideoDriver();
 	IGUIEnvironment* env = device->getGUIEnvironment();
 
-	gui::IGUISpriteBank * SpriteBankIcons;
-
 	SAppContext context;
 	context.Device = device;
 
@@ -442,23 +452,24 @@ int main()
 	rectInfoStatic.UpperLeftCorner += dimension2di(0, 15);
 	context.InfoStatic = env->addStaticText (L"", rectInfoStatic, true, true);
 	rect< s32 > rectEventBox(10,210, 200, 400);
-	env->addStaticText (L"click events (new on top)", rectEventBox, true, true);
+	env->addStaticText (L"Click events (new on top)", rectEventBox, true, true);
 	rectEventBox.UpperLeftCorner += dimension2di(0, 15);
 	context.EventBox = env->addListBox(rectEventBox);
 	rect< s32 > rectCursorBox(210,10, 400, 250);
-	env->addStaticText (L"cursors, click to set the active one", rectCursorBox, true, true);
+	env->addStaticText (L"Cursors, click to set the active one", rectCursorBox, true, true);
 	rectCursorBox.UpperLeftCorner += dimension2di(0, 15);
 	context.CursorBox = env->addListBox(rectCursorBox);
 	rect< s32 > rectSpriteBox(210,260, 400, 400);
-	env->addStaticText (L"sprites", rectSpriteBox, true, true);
+	env->addStaticText (L"Sprites", rectSpriteBox, true, true);
 	rectSpriteBox.UpperLeftCorner += dimension2di(0, 15);
 	context.SpriteBox = env->addListBox(rectSpriteBox);
 
-	context.ButtonSetVisible = env->addButton( rect<s32>( 410, 20, 560, 40 ), 0, -1, L"set visible (delayed)" );
-	context.ButtonSetInvisible = env->addButton( rect<s32>( 410, 50, 560, 70 ), 0, -1, L"set invisible (delayed)" );
-	context.ButtonSimulateBadFps = env->addButton( rect<s32>( 410, 80, 560, 100 ), 0, -1, L"simulate bad FPS" );
+	context.ButtonSetVisible = env->addButton( rect<s32>( 410, 20, 560, 40 ), 0, -1, L"Set visible (delayed)" );
+	context.ButtonSetInvisible = env->addButton( rect<s32>( 410, 50, 560, 70 ), 0, -1, L"Set invisible (delayed)" );
+	context.ButtonSimulateBadFps = env->addButton( rect<s32>( 410, 80, 560, 100 ), 0, -1, L"Simulate bad FPS" );
 	context.ButtonSimulateBadFps->setIsPushButton(true);
-	context.ButtonChangeIcon = env->addButton( rect<s32>( 410, 140, 560, 160 ), 0, -1, L"replace cursor icon\n(cursor+sprite must be selected)" );
+	s32 t = context.SpriteBox->getAbsolutePosition().UpperLeftCorner.Y;
+	context.ButtonChangeIcon = env->addButton( rect<s32>( 410, t, 560, t+20), 0, -1, L"Replace cursor icon\n(cursor+sprite must be selected)" );
 
 	// set the names for all the system cursors
 	for ( int i=0; i < (int)gui::ECI_COUNT; ++i )
@@ -469,16 +480,18 @@ int main()
 	/*
 		Create sprites which then can be used as cursor icons.
 	 */
-	SpriteBankIcons = env->addEmptySpriteBank(io::path("cursor_icons"));
+	gui::IGUISpriteBank * SpriteBankIcons = env->addEmptySpriteBank(io::path("cursor_icons"));
 	context.SpriteBox->setSpriteBank(SpriteBankIcons);
+
+	const io::path mediaPath = getExampleMediaPath();
 
 	// create one animated icon from several files
 	array< io::path > files;
-	files.push_back( io::path("../../media/icon_crosshairs16x16bw1.png") );
-	files.push_back( io::path("../../media/icon_crosshairs16x16bw2.png") );
-	files.push_back( io::path("../../media/icon_crosshairs16x16bw3.png") );
-	files.push_back( io::path("../../media/icon_crosshairs16x16bw3.png") );
-	files.push_back( io::path("../../media/icon_crosshairs16x16bw2.png") );
+	files.push_back( io::path(mediaPath + "icon_crosshairs16x16bw1.png") );
+	files.push_back( io::path(mediaPath + "icon_crosshairs16x16bw2.png") );
+	files.push_back( io::path(mediaPath + "icon_crosshairs16x16bw3.png") );
+	files.push_back( io::path(mediaPath + "icon_crosshairs16x16bw3.png") );
+	files.push_back( io::path(mediaPath + "icon_crosshairs16x16bw2.png") );
 	SCursorSprite spriteBw;	// the sprite + some additional information needed for cursors
 	spriteBw.SpriteId = AddAnimatedIconToSpriteBank( SpriteBankIcons, driver, files, 200 );
 	spriteBw.SpriteBank = SpriteBankIcons;
@@ -493,7 +506,7 @@ int main()
 	iconRects.push_back( rect<s32>(0,16, 16, 32) );
 	iconRects.push_back( rect<s32>(16,0, 32, 16) );
 	SCursorSprite spriteCol;	// the sprite + some additional information needed for cursors
-	spriteCol.SpriteId = AddAnimatedIconToSpriteBank( SpriteBankIcons, driver, io::path("../../media/icon_crosshairs16x16col.png"), iconRects, 200 );
+	spriteCol.SpriteId = AddAnimatedIconToSpriteBank( SpriteBankIcons, driver, io::path(mediaPath + "icon_crosshairs16x16col.png"), iconRects, 200 );
 	spriteCol.HotSpot = position2d<s32>(7,7);
 	spriteCol.SpriteBank = SpriteBankIcons;
 	context.addIcon(L"crosshair_colored", spriteCol);
@@ -503,15 +516,15 @@ int main()
 	SCursorSprite spriteNonAnimated(SpriteBankIcons, 0, position2d<s32>(7,7));
 
 	rectIcon = rect<s32>(0,0, 16, 16);
-	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path("../../media/icon_crosshairs16x16col.png"), rectIcon );
+	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path(mediaPath + "icon_crosshairs16x16col.png"), rectIcon );
 	context.addIcon(L"crosshair_col1", spriteNonAnimated, false);
 
 	rectIcon = rect<s32>(16,0, 32, 16);
-	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path("../../media/icon_crosshairs16x16col.png"), rectIcon );
+	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path(mediaPath + "icon_crosshairs16x16col.png"), rectIcon );
 	context.addIcon(L"crosshair_col2", spriteNonAnimated, false);
 
 	rectIcon = rect<s32>(0,16, 16, 32);
-	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path("../../media/icon_crosshairs16x16col.png"), rectIcon );
+	spriteNonAnimated.SpriteId = AddIconToSpriteBank( SpriteBankIcons, driver, io::path(mediaPath + "icon_crosshairs16x16col.png"), rectIcon );
 	context.addIcon(L"crosshair_col3", spriteNonAnimated, false);
 
 
@@ -526,7 +539,7 @@ int main()
 
 			context.update();
 
-			driver->beginScene(true, true, SColor(0,200,200,200));
+			driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
 
 			env->drawAll();
 
@@ -543,14 +556,15 @@ int main()
 			driver->endScene();
 		}
 
-		// By simulating bad fps we can find out if hardware-support for cursors works or not. If it works the cursor will move as usual,while it otherwise will just update with 2 fps now.
+		// By simulating a bad frame rate we can find out if hardware support for cursors works or not. 
+		// If it works the cursor will move as usual, otherwise it will update with only 2 fps when SimulateBadFps is true.
 		if ( context.SimulateBadFps )
 		{
 			device->sleep(500);	// 2 fps
 		}
 		else
 		{
-			device->sleep(10);
+			device->yield(); // be nice
 		}
 	}
 

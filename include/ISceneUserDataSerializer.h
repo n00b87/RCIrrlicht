@@ -2,10 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_SCENE_USER_DATA_SERIALIZER_H_INCLUDED__
-#define __I_SCENE_USER_DATA_SERIALIZER_H_INCLUDED__
-
-#include "IReferenceCounted.h"
+#ifndef IRR_I_SCENE_USER_DATA_SERIALIZER_H_INCLUDED
+#define IRR_I_SCENE_USER_DATA_SERIALIZER_H_INCLUDED
 
 namespace irr
 {
@@ -29,7 +27,7 @@ public:
 
 	//! Called when the scene manager create a scene node while loading a file.
 	virtual void OnCreateNode(ISceneNode* node) = 0;
-	
+
 	//! Called when the scene manager read a scene node while loading a file.
 	/** The userData pointer contains a list of attributes with userData which
 	were attached to the scene node in the read scene file.*/
@@ -48,4 +46,3 @@ public:
 } // end namespace irr
 
 #endif
-

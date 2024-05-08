@@ -1,15 +1,15 @@
 /** Example 021 Quake3 Explorer
 
-This Tutorial shows how to load different Quake 3 maps.
+This tutorial shows how to load different Quake 3 maps.
 
 Features:
-	- Load BSP Archives at Runtime from the menu
-	- Load a Map from the menu. Showing with Screenshot
+	- Load BSP archives at runtime from the menu
+	- Load a map from the menu. Showing with screenshot
 	- Set the VideoDriver at runtime from menu
 	- Adjust GammaLevel at runtime
-	- Create SceneNodes for the Shaders
-	- Load EntityList and create Entity SceneNodes
-	- Create Players with Weapons and with Collision Response
+	- Create SceneNodes for the shaders
+	- Load EntityList and create entity SceneNodes
+	- Create players with weapons and with collision response
 	- Play music
 
 You can download the Quake III Arena demo ( copyright id software )
@@ -19,13 +19,14 @@ ftp://ftp.idsoftware.com/idstuff/quake3/win32/q3ademo.exe
 Copyright 2006-2011 Burningwater, Thomas Alten
 */
 
-#include "driverChoice.h"
 #include <irrlicht.h>
+#include "driverChoice.h"
+#include "exampleHelper.h"
 #include "q3factory.h"
 #include "sound.h"
 
 /*
-	Game Data is used to hold Data which is needed to drive the game
+	GameData is used to hold data which is needed to drive the game
 */
 struct GameData
 {
@@ -81,7 +82,7 @@ void GameData::setDefault ()
 #if defined ( _IRR_WINDOWS_ )
 	deviceParam.DriverType = EDT_DIRECT3D9;
 #else
-	deviceParam.DriverType = EDT_OPENGL;
+	deviceParam.DriverType = EDT_OGLES2;	// TODO: have to figure out what to use when we merge ogl-es with trunk.
 #endif
 	deviceParam.WindowSize.Width = 800;
 	deviceParam.WindowSize.Height = 600;
@@ -99,7 +100,7 @@ void GameData::setDefault ()
 	loadParam.mergeShaderBuffer = 1;		// merge meshbuffers with same material
 	loadParam.cleanUnResolvedMeshes = 1;	// should unresolved meshes be cleaned. otherwise blue texture
 	loadParam.loadAllShaders = 1;			// load all scripts in the script directory
-	loadParam.loadSkyShader = 0;			// load sky Shader
+	loadParam.loadSkyShader = 0;			// load sky shader
 	loadParam.alpharef = 1;
 
 	sound = 0;
@@ -107,14 +108,16 @@ void GameData::setDefault ()
 	CurrentMapName = "";
 	CurrentArchiveList.clear ();
 
+	const io::path mediaPath = getExampleMediaPath();
+
 	// Explorer Media directory
-	CurrentArchiveList.push_back ( StartupDir + "../../media/" );
+	CurrentArchiveList.push_back ( StartupDir + mediaPath );
 
 	// Add the original quake3 files before you load your custom map
 	// Most mods are using the original shaders, models&items&weapons
 	CurrentArchiveList.push_back("/q/baseq3/");
 
-	CurrentArchiveList.push_back(StartupDir + "../../media/map-20kdm2.pk3");
+	CurrentArchiveList.push_back(StartupDir + mediaPath + "map-20kdm2.pk3");
 }
 
 /*
@@ -165,18 +168,18 @@ s32 GameData::load ( const path &filename )
 }
 
 /*
-	Store the current game State in a quake3 configuration file
+	Store the current game state in a quake3 configuration file
 */
 s32 GameData::save ( const path &filename )
 {
-	return 0;
+	return 0;	// TODO: Anyone knows why it just returns? 
 	if (!Device)
 		return 0;
 
 	c8 buf[128];
 	u32 i;
 
-	// Store current Archive for restart
+	// Store current archive for restart
 	CurrentArchiveList.clear();
 	IFileSystem *fs = Device->getFileSystem();
 	for ( i = 0; i != fs->getFileArchiveCount(); ++i )
@@ -184,7 +187,7 @@ s32 GameData::save ( const path &filename )
 		CurrentArchiveList.push_back ( fs->getFileArchive(i)->getFileList()->getPath() );
 	}
 
-	// Store Player Position and Rotation
+	// Store player position and rotation
 	ICameraSceneNode * camera = Device->getSceneManager()->getActiveCamera ();
 	if ( camera )
 	{
@@ -196,13 +199,13 @@ s32 GameData::save ( const path &filename )
 	if (!file)
 		return 0;
 
-	snprintf ( buf, 128, "playerposition %.f %.f %.f\nplayerrotation %.f %.f %.f\n",
+	snprintf_irr ( buf, 128, "playerposition %.f %.f %.f\nplayerrotation %.f %.f %.f\n",
 			PlayerPosition.X, PlayerPosition.Z, PlayerPosition.Y,
 			PlayerRotation.X, PlayerRotation.Z, PlayerRotation.Y);
 	file->write ( buf, (s32) strlen ( buf ) );
 	for ( i = 0; i != fs->getFileArchiveCount(); ++i )
 	{
-		snprintf ( buf, 128, "archive %s\n",stringc ( fs->getFileArchive(i)->getFileList()->getPath() ).c_str () );
+		snprintf_irr ( buf, 128, "archive %s\n",stringc ( fs->getFileArchive(i)->getFileList()->getPath() ).c_str () );
 		file->write ( buf, (s32) strlen ( buf ) );
 	}
 
@@ -276,7 +279,7 @@ void Q3Player::create ( IrrlichtDevice *device, IQ3LevelMesh* mesh, ISceneNode *
 
 	if (!device)
 		return;
-	// load FPS weapon to Camera
+	// load FPS weapon to camera
 	Device = device;
 	Mesh = mesh;
 	MapParent = mapNode;
@@ -286,7 +289,8 @@ void Q3Player::create ( IrrlichtDevice *device, IQ3LevelMesh* mesh, ISceneNode *
 
 	ICameraSceneNode* camera = 0;
 
-	SKeyMap keyMap[10];
+	core::array<SKeyMap> keyMap;
+	keyMap.set_used(12);
 	keyMap[0].Action = EKA_MOVE_FORWARD;
 	keyMap[0].KeyCode = KEY_UP;
 	keyMap[1].Action = EKA_MOVE_FORWARD;
@@ -313,7 +317,13 @@ void Q3Player::create ( IrrlichtDevice *device, IQ3LevelMesh* mesh, ISceneNode *
 	keyMap[9].Action = EKA_CROUCH;
 	keyMap[9].KeyCode = KEY_KEY_C;
 
-	camera = smgr->addCameraSceneNodeFPS(0, 100.0f, 0.6f, -1, keyMap, 10, false, 0.6f);
+	keyMap[10].Action = EKA_ROTATE_LEFT;
+	keyMap[10].KeyCode = KEY_KEY_Q;
+
+	keyMap[11].Action = EKA_ROTATE_RIGHT;
+	keyMap[11].KeyCode = KEY_KEY_E;
+
+	camera = smgr->addCameraSceneNodeFPS(0, 100.0f, 0.6f, -1, keyMap.pointer(), keyMap.size(), false, 600.f);
 	camera->setName ( "First Person Camera" );
 	//camera->setFOV ( 100.f * core::DEGTORAD );
 	camera->setFarValue( 20000.f );
@@ -327,7 +337,7 @@ void Q3Player::create ( IrrlichtDevice *device, IQ3LevelMesh* mesh, ISceneNode *
 		s32 count = weaponMesh->getAnimationCount();
 		for ( s32 i = 0; i != count; ++i )
 		{
-			snprintf ( buf, 64, "Animation: %s", weaponMesh->getAnimationName(i) );
+			snprintf_irr ( buf, 64, "Animation: %s", weaponMesh->getAnimationName(i) );
 			device->getLogger()->log(buf, ELL_INFORMATION);
 		}
 	}
@@ -367,8 +377,8 @@ void Q3Player::create ( IrrlichtDevice *device, IQ3LevelMesh* mesh, ISceneNode *
 
 
 /*
-	so we need a good starting Position in the level.
-	we can ask the Quake3 Loader for all entities with class_name "info_player_deathmatch"
+	So we need a good starting position in the level.
+	We can ask the Quake3 loader for all entities with class_name "info_player_deathmatch"
 */
 void Q3Player::respawn ()
 {
@@ -378,17 +388,15 @@ void Q3Player::respawn ()
 
 	Device->getLogger()->log( "respawn" );
 
-	if ( StartPositionCurrent >= Q3StartPosition (
-			Mesh, camera,StartPositionCurrent++,
-			cam ()->getEllipsoidTranslation() )
-		)
-	{
+	if (StartPositionCurrent >= Q3StartPosition(Mesh, camera,
+			StartPositionCurrent, cam()->getEllipsoidTranslation()))
 		StartPositionCurrent = 0;
-	}
+	else
+		++StartPositionCurrent;
 }
 
 /*
-	set Player position from saved coordinates
+	set player position from saved coordinates
 */
 void Q3Player::setpos ( const vector3df &pos, const vector3df &rotation )
 {
@@ -406,13 +414,13 @@ void Q3Player::setpos ( const vector3df &pos, const vector3df &rotation )
 	}
 }
 
-/* set the Animation of the player and weapon
+/* set the animation of the player and weapon
 */
 void Q3Player::setAnim ( const c8 *name )
 {
 	if ( name )
 	{
-		snprintf ( animation, 64, "%s", name );
+		snprintf_irr ( animation, 64, "%s", name );
 		if ( WeaponNode )
 		{
 			WeaponNode->setAnimationEndCallback ( this );
@@ -438,7 +446,7 @@ void Q3Player::OnAnimationEnd(IAnimatedMeshSceneNode* node)
 
 
 
-/* GUI Elements
+/* GUI elements
 */
 struct GUI
 {
@@ -552,13 +560,13 @@ CQuake3EventHandler::CQuake3EventHandler( GameData *game )
 	BulletParent(0), FogParent(0), SkyNode(0), Meta(0)
 {
 	buf[0]=0;
-	// Also use 16 Bit Textures for 16 Bit RenderDevice
+	// Also use 16 bit textures for 16 bit RenderDevice
 	if ( Game->deviceParam.Bits == 16 )
 	{
 		game->Device->getVideoDriver()->setTextureCreationFlag(ETCF_ALWAYS_16_BIT, true);
 	}
 
-	// Quake3 Shader controls Z-Writing
+	// Quake3 shader controls Z-writing
 	game->Device->getSceneManager()->getParameters()->setAttribute(scene::ALLOW_ZWRITE_ON_TRANSPARENT, true);
 
 	// create internal textures
@@ -591,23 +599,11 @@ void CQuake3EventHandler::createTextures()
 
 	video::IImage* image;
 	u32 i;
-	u32 x;
-	u32 y;
-	u32 * data;
 	for ( i = 0; i != 8; ++i )
 	{
 		image = driver->createImage ( video::ECF_A8R8G8B8, dim);
-		data = (u32*) image->lock ();
-		for ( y = 0; y != dim.Height; ++y )
-		{
-			for ( x = 0; x != dim.Width; ++x )
-			{
-				data [x] = 0xFFFFFFFF;
-			}
-			data = (u32*) ( (u8*) data + image->getPitch() );
-		}
-		image->unlock();
-		snprintf ( buf, 64, "smoke_%02d", i );
+		image->fill(SColor(0xFFFFFFFF));
+		snprintf_irr ( buf, 64, "smoke_%02d", i );
 		driver->addTexture( buf, image );
 		image->drop ();
 	}
@@ -616,17 +612,8 @@ void CQuake3EventHandler::createTextures()
 	for ( i = 0; i != 1; ++i )
 	{
 		image = driver->createImage ( video::ECF_A8R8G8B8, dim);
-		data = (u32*) image->lock ();
-		for ( y = 0; y != dim.Height; ++y )
-		{
-			for ( x = 0; x != dim.Width; ++x )
-			{
-				data [x] = 0xFFFFFFFF;
-			}
-			data = (u32*) ( (u8*) data + image->getPitch() );
-		}
-		image->unlock();
-		snprintf ( buf, 64, "fog_%02d", i );
+		image->fill(SColor(0xFFFFFFFF));
+		snprintf_irr ( buf, 64, "fog_%02d", i );
 		driver->addTexture( buf, image );
 		image->drop ();
 	}
@@ -638,7 +625,6 @@ void CQuake3EventHandler::createTextures()
 */
 void CQuake3EventHandler::CreateGUI()
 {
-
 	IGUIEnvironment *env = Game->Device->getGUIEnvironment();
 	IVideoDriver * driver = Game->Device->getVideoDriver();
 
@@ -657,15 +643,6 @@ void CQuake3EventHandler::CreateGUI()
 
 	// minimal gui size 800x600
 	dimension2d<u32> dim ( 800, 600 );
-	dimension2d<u32> vdim ( Game->Device->getVideoDriver()->getScreenSize() );
-
-	if ( vdim.Height >= dim.Height && vdim.Width >= dim.Width )
-	{
-		//dim = vdim;
-	}
-	else
-	{
-	}
 
 	gui.Window = env->addWindow ( rect<s32> ( 0, 0, dim.Width, dim.Height ), false, L"Quake3 Explorer" );
 	gui.Window->setToolTipText ( L"Quake3Explorer. Loads and show various BSP File Format and Shaders." );
@@ -680,9 +657,8 @@ void CQuake3EventHandler::CreateGUI()
 	env->addStaticText ( L"VideoDriver:", rect<s32>( dim.Width - 400, 24, dim.Width - 310, 40 ),false, false, gui.Window, -1, false );
 	gui.VideoDriver = env->addComboBox(rect<s32>( dim.Width - 300, 24, dim.Width - 10, 40 ),gui.Window);
 	gui.VideoDriver->addItem(L"Direct3D 9.0c", EDT_DIRECT3D9 );
-	gui.VideoDriver->addItem(L"Direct3D 8.1", EDT_DIRECT3D8 );
 	gui.VideoDriver->addItem(L"OpenGL 1.5", EDT_OPENGL);
-	gui.VideoDriver->addItem(L"Software Renderer", EDT_SOFTWARE);
+	gui.VideoDriver->addItem(L"Software Renderer", EDT_OGLES1);
 	gui.VideoDriver->addItem(L"Burning's Video (TM) Thomas Alten", EDT_BURNINGSVIDEO);
 	gui.VideoDriver->setSelected ( gui.VideoDriver->getIndexForItemData ( Game->deviceParam.DriverType ) );
 	gui.VideoDriver->setToolTipText ( L"Use a VideoDriver" );
@@ -715,7 +691,7 @@ void CQuake3EventHandler::CreateGUI()
 			else if ( core::equals ( aspect, 1.6f ) ) a = "16:10 widescreen";
 			else if ( core::equals ( aspect, 2.133333f ) ) a = "20:9 widescreen";
 
-			snprintf ( buf, sizeof ( buf ), "%d x %d, %s",w, h, a );
+			snprintf_irr ( buf, sizeof ( buf ), "%d x %d, %s",w, h, a );
 			gui.VideoMode->addItem ( stringw ( buf ).c_str(), val );
 		}
 	}
@@ -758,7 +734,7 @@ void CQuake3EventHandler::CreateGUI()
 	gui.Tesselation->setMax ( 12 );
 	gui.Tesselation->setSmallStep ( 1 );
 	gui.Tesselation->setLargeStep ( 1 );
-	gui.Tesselation->setPos ( Game->loadParam.patchTesselation );
+	gui.Tesselation->setPos ( Game->loadParam.patchTessellation );
 	gui.Tesselation->setToolTipText ( L"How smooth should curved surfaces be rendered" );
 
 	gui.Collision = env->addCheckBox ( true, rect<s32>( dim.Width - 400, 150, dim.Width - 300, 166 ), gui.Window,-1, L"Collision" );
@@ -855,7 +831,7 @@ void CQuake3EventHandler::AddArchive ( const path& archiveName )
 	}
 
 	// store the current archives in game data
-	// show the attached Archive in proper order
+	// show the attached archive in proper order
 	if ( gui.ArchiveList )
 	{
 		gui.ArchiveList->clearRows();
@@ -993,7 +969,7 @@ void CQuake3EventHandler::AddArchive ( const path& archiveName )
 }
 
 /*
-	clears the Map in Memory
+	clears the map in memory
 */
 void CQuake3EventHandler::dropMap ()
 {
@@ -1108,9 +1084,9 @@ void CQuake3EventHandler::LoadMap ( const stringw &mapName, s32 collision )
 		BulletParent->setName ( "Bullet Container" );
 
 	/*
-		now construct SceneNodes for each Shader
-		The Objects are stored in the quake mesh E_Q3_MESH_ITEMS
-		and the Shader ID is stored in the MaterialParameters
+		now construct SceneNodes for each shader
+		The objects are stored in the quake mesh E_Q3_MESH_ITEMS
+		and the shader ID is stored in the MaterialParameters
 		mostly dark looking skulls and moving lava.. or green flashing tubes?
 	*/
 	Q3ShaderFactory ( Game->loadParam, Game->Device, Mesh, E_Q3_MESH_ITEMS,ShaderParent, Meta, false );
@@ -1118,13 +1094,13 @@ void CQuake3EventHandler::LoadMap ( const stringw &mapName, s32 collision )
 	Q3ShaderFactory ( Game->loadParam, Game->Device, Mesh, E_Q3_MESH_UNRESOLVED,UnresolvedParent, Meta, true );
 
 	/*
-		Now construct Models from Entity List
+		Now construct models from entity list
 	*/
 	Q3ModelFactory ( Game->loadParam, Game->Device, Mesh, ItemParent, false );
 }
 
 /*
-	Adds a SceneNode with an icon to the Scene Tree
+	Adds a SceneNode with an icon to the scene tree
 */
 void CQuake3EventHandler::addSceneTreeItem( ISceneNode * parent, IGUITreeViewNode* nodeParent)
 {
@@ -1152,24 +1128,24 @@ void CQuake3EventHandler::addSceneTreeItem( ISceneNode * parent, IGUITreeViewNod
 
 		if ( imageIndex < 0 )
 		{
-			swprintf ( msg, 128, L"%hs,%hs",
+			swprintf_irr ( msg, 128, L"%hs,%hs",
 				Game->Device->getSceneManager ()->getSceneNodeTypeName ( (*it)->getType () ),
 				(*it)->getName()
 				);
 		}
 		else
 		{
-			swprintf ( msg, 128, L"%hs",(*it)->getName() );
+			swprintf_irr ( msg, 128, L"%hs",(*it)->getName() );
 		}
 
 		node = nodeParent->addChildBack( msg, 0, imageIndex );
 
-		// Add all Animators
+		// Add all animators
 		list<ISceneNodeAnimator*>::ConstIterator ait = (*it)->getAnimators().begin();
 		for (; ait != (*it)->getAnimators().end(); ++ait)
 		{
 			imageIndex = -1;
-			swprintf ( msg, 128, L"%hs",
+			swprintf_irr ( msg, 128, L"%hs",
 				Game->Device->getSceneManager ()->getAnimatorTypeName ( (*ait)->getType () )
 				);
 
@@ -1219,14 +1195,14 @@ void CQuake3EventHandler::AddSky( u32 dome, const c8 *texture)
 		static const c8*p[] = { "ft", "rt", "bk", "lf", "up", "dn" };
 
 		u32 i = 0;
-		snprintf ( buf, 64, "%s_%s.jpg", texture, p[i] );
+		snprintf_irr ( buf, 64, "%s_%s.jpg", texture, p[i] );
 		SkyNode = smgr->addSkyBoxSceneNode( driver->getTexture ( buf ), 0, 0, 0, 0, 0 );
 
 		if (SkyNode)
 		{
 			for ( i = 0; i < 6; ++i )
 			{
-				snprintf ( buf, 64, "%s_%s.jpg", texture, p[i] );
+				snprintf_irr ( buf, 64, "%s_%s.jpg", texture, p[i] );
 				SkyNode->getMaterial(i).setTexture ( 0, driver->getTexture ( buf ) );
 			}
 		}
@@ -1234,7 +1210,7 @@ void CQuake3EventHandler::AddSky( u32 dome, const c8 *texture)
 	else
 	if ( 1 == dome )
 	{
-		snprintf ( buf, 64, "%s.jpg", texture );
+		snprintf_irr ( buf, 64, "%s.jpg", texture );
 		SkyNode = smgr->addSkyDomeSceneNode(
 				driver->getTexture( buf ), 32,32,
 				1.f, 1.f, 1000.f, 0, 11);
@@ -1242,7 +1218,7 @@ void CQuake3EventHandler::AddSky( u32 dome, const c8 *texture)
 	else
 	if ( 2 == dome )
 	{
-		snprintf ( buf, 64, "%s.jpg", texture );
+		snprintf_irr ( buf, 64, "%s.jpg", texture );
 		SkyNode = smgr->addSkyDomeSceneNode(
 				driver->getTexture( buf ), 16,8,
 				0.95f, 2.f, 1000.f, 0, 11);
@@ -1349,7 +1325,7 @@ bool CQuake3EventHandler::OnEvent(const SEvent& eve)
 		else
 		if ( eve.GUIEvent.Caller == gui.ArchiveFileOpen && eve.GUIEvent.EventType == gui::EGET_FILE_SELECTED )
 		{
-			AddArchive ( gui.ArchiveFileOpen->getFileName() );
+			AddArchive ( gui.ArchiveFileOpen->getFileNameP() );
 			gui.ArchiveFileOpen = 0;
 		}
 		else
@@ -1405,7 +1381,7 @@ bool CQuake3EventHandler::OnEvent(const SEvent& eve)
 		else
 		if ( eve.GUIEvent.Caller == gui.Tesselation && eve.GUIEvent.EventType == gui::EGET_SCROLL_BAR_CHANGED )
 		{
-			Game->loadParam.patchTesselation = gui.Tesselation->getPos ();
+			Game->loadParam.patchTessellation = gui.Tesselation->getPos ();
 		}
 		else
 		if ( eve.GUIEvent.Caller == gui.Gamma && eve.GUIEvent.EventType == gui::EGET_SCROLL_BAR_CHANGED )
@@ -1520,11 +1496,8 @@ bool CQuake3EventHandler::OnEvent(const SEvent& eve)
 					rot = cam->getRotation ();
 				}
 
-				static const c8 *dName[] = { "null", "software", "burning",
-					"d3d8", "d3d9", "opengl" };
-
-				snprintf(buf, 256, "%s_%ls_%.0f_%.0f_%.0f_%.0f_%.0f_%.0f.jpg",
-						dName[Game->Device->getVideoDriver()->getDriverType()],
+				snprintf_irr(buf, 256, "%s_%ls_%.0f_%.0f_%.0f_%.0f_%.0f_%.0f.jpg",
+						DRIVER_TYPE_NAMES_SHORT[Game->Device->getVideoDriver()->getDriverType()],
 						Game->CurrentMapName.c_str(),
 						pos.X, pos.Y, pos.Z,
 						rot.X, rot.Y, rot.Z
@@ -1751,7 +1724,7 @@ void CQuake3EventHandler::useItem( Q3Player * player)
 	}
 	else
 	{
-		// doesnt collide with wall
+		// doesn't collide with wall
 		vector3df start = camera->getPosition();
 		if ( player->WeaponNode )
 		{
@@ -1787,7 +1760,7 @@ void CQuake3EventHandler::useItem( Q3Player * player)
 	node->addAnimator(anim);
 	anim->drop();
 
-	snprintf ( buf, 64, "bullet: %s on %.1f,%1.f,%1.f",
+	snprintf_irr ( buf, 64, "bullet: %s on %.1f,%1.f,%1.f",
 				imp.when ? "hit" : "nohit", end.X, end.Y, end.Z );
 	node->setName ( buf );
 
@@ -1855,7 +1828,7 @@ void CQuake3EventHandler::createParticleImpacts( u32 now )
 		{
 			pas = sm->addParticleSystemSceneNode(false, BulletParent, -1, Impacts[i].pos);
 
-			snprintf ( buf, 64, "bullet impact smoke at %.1f,%.1f,%1.f",
+			snprintf_irr ( buf, 64, "bullet impact smoke at %.1f,%.1f,%1.f",
 				Impacts[i].pos.X,Impacts[i].pos.Y,Impacts[i].pos.Z);
 			pas->setName ( buf );
 
@@ -1931,7 +1904,7 @@ void CQuake3EventHandler::Render()
 	if (anaglyph)
 	{
 		scene::ICameraSceneNode* cameraOld = Game->Device->getSceneManager()->getActiveCamera();
-		driver->beginScene(true, true, SColor(0,0,0,0));
+		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,0,0,0));
 		driver->getOverrideMaterial().Material.ColorMask = ECP_NONE;
 		driver->getOverrideMaterial().EnableFlags  = EMF_COLOR_MASK;
         driver->getOverrideMaterial().EnablePasses = ESNRP_SKY_BOX +
@@ -1940,7 +1913,7 @@ void CQuake3EventHandler::Render()
                                                      ESNRP_TRANSPARENT_EFFECT +
                                                      ESNRP_SHADOW;
 		Game->Device->getSceneManager()->drawAll();
-		driver->clearZBuffer();
+		driver->clearBuffers(video::ECBF_DEPTH, video::SColor(255,0,0,0));
 
 		const vector3df oldPosition = cameraOld->getPosition();
 		const vector3df oldTarget   = cameraOld->getTarget();
@@ -1968,7 +1941,7 @@ void CQuake3EventHandler::Render()
 		camera->setTarget(focusPoint);
 
 		Game->Device->getSceneManager()->drawAll();
-		driver->clearZBuffer();
+		driver->clearBuffers(video::ECBF_DEPTH, video::SColor(255, 0, 0, 0));
 
 		//Right eye...
 		move.setTranslation( vector3df(1.5f,0.0f,0.0f) );
@@ -2002,7 +1975,7 @@ void CQuake3EventHandler::Render()
 	}
 	else
 	{
-		driver->beginScene(true, true, SColor(0,0,0,0));
+		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,0,0,0));
 		Game->Device->getSceneManager()->drawAll();
 	}
 	Game->Device->getGUIEnvironment()->drawAll();
@@ -2023,13 +1996,12 @@ void CQuake3EventHandler::Animate()
 	// Query Scene Manager attributes
 	if ( player->Anim[0].flags & FIRED )
 	{
-		ISceneManager *smgr = Game->Device->getSceneManager ();
 		wchar_t msg[128];
 		IVideoDriver * driver = Game->Device->getVideoDriver();
 
-		IAttributes * attr = smgr->getParameters();
-#ifdef _IRR_SCENEMANAGER_DEBUG					
-		swprintf ( msg, 128,
+#ifdef _IRR_SCENEMANAGER_DEBUG
+		IAttributes * attr = Game->Device->getSceneManager()->getParameters();
+		swprintf_irr ( msg, 128,
 			L"Q3 %s [%ls], FPS:%03d Tri:%.03fm Cull %d/%d nodes (%d,%d,%d)",
 			Game->CurrentMapName.c_str(),
 			driver->getName(),
@@ -2042,17 +2014,17 @@ void CQuake3EventHandler::Animate()
 			attr->getAttributeAsInt ( "drawn_transparent_effect" )
 			);
 #else
-swprintf ( msg, 128,
+swprintf_irr ( msg, 128,
 			L"Q3 %s [%ls], FPS:%03d Tri:%.03fm",
 			Game->CurrentMapName.c_str(),
 			driver->getName(),
 			driver->getFPS (),
 			(f32) driver->getPrimitiveCountDrawn( 0 ) * ( 1.f / 1000000.f )
-			);		
-#endif		
+			);
+#endif
 		Game->Device->setWindowCaption( msg );
 
-		swprintf ( msg, 128,
+		swprintf_irr ( msg, 128,
 					L"%03d fps, F1 GUI on/off, F2 respawn, F3-F6 toggle Nodes, F7 Collision on/off"
 					L", F8 Gravity on/off, Right Mouse Toggle GUI",
 					Game->Device->getVideoDriver()->getFPS ()
@@ -2103,7 +2075,7 @@ void runGame ( GameData *game )
 		eventHandler->AddArchive ( game->CurrentArchiveList[i] );
 	}
 
-	// Load a Map or startup to the GUI
+	// Load a map or startup to the GUI
 	if ( game->CurrentMapName.size () )
 	{
 		eventHandler->LoadMap ( game->CurrentMapName, 1 );

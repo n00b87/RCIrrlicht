@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_SOFTWARE2_MATERIAL_RENDERER_H_INCLUDED__
-#define __C_SOFTWARE2_MATERIAL_RENDERER_H_INCLUDED__
+#ifndef IRR_C_SOFTWARE2_MATERIAL_RENDERER_H_INCLUDED
+#define IRR_C_SOFTWARE2_MATERIAL_RENDERER_H_INCLUDED
 
 #include "SoftwareDriver2_compile_config.h"
 
@@ -12,7 +12,7 @@
 
 namespace irr
 {
-namespace video  
+namespace video
 {
 
 //! Base class for all internal Software2 material renderers
@@ -24,6 +24,13 @@ public:
 	CSoftware2MaterialRenderer(video::CBurningVideoDriver* driver)
 		: Driver(driver)
 	{
+	}
+
+	virtual void OnSetMaterial(const SMaterial& material, const SMaterial& lastMaterial,
+		bool resetAllRenderstates, IMaterialRendererServices* services) IRR_OVERRIDE
+	{
+		if (Driver)
+			Driver->setFallback_Material(material.MaterialType, BVT_Fix);
 	}
 
 protected:
@@ -38,14 +45,13 @@ public:
 	CSoftware2MaterialRenderer_SOLID ( video::CBurningVideoDriver* driver )
 		:CSoftware2MaterialRenderer ( driver ) {}
 
-	//! Returns if the material is transparent. 
-	virtual bool isTransparent() const
+	//! Returns if the material is transparent.
+	virtual bool isTransparent() const IRR_OVERRIDE
 	{
-		return false; 
+		return false;
 	}
 
 };
-
 
 
 //! Transparent material renderer
@@ -56,10 +62,10 @@ public:
 		: CSoftware2MaterialRenderer ( driver ) {}
 
 
-	//! Returns if the material is transparent. 
-	virtual bool isTransparent() const
+	//! Returns if the material is transparent.
+	virtual bool isTransparent() const IRR_OVERRIDE
 	{
-		return true; 
+		return true;
 	}
 
 };
@@ -71,41 +77,7 @@ public:
 	CSoftware2MaterialRenderer_UNSUPPORTED ( video::CBurningVideoDriver* driver )
 		: CSoftware2MaterialRenderer ( driver ) {}
 
-	virtual s32 getRenderCapability() const { return 1; }
-
-};
-
-//! unsupported material renderer
-class CBurningShader_REFERENCE : public CSoftware2MaterialRenderer
-{
-public:
-	CBurningShader_REFERENCE ( video::CBurningVideoDriver* driver )
-		: CSoftware2MaterialRenderer ( driver ) {}
-
-	virtual void OnSetMaterial(const SMaterial& material, const SMaterial& lastMaterial,
-		bool resetAllRenderstates, IMaterialRendererServices* services)
-	{
-	}
-
-	virtual void OnUnsetMaterial()
-	{
-	}
-
-	virtual bool isTransparent() const
-	{
-		return false;
-	}
-
-	virtual bool OnRender(IMaterialRendererServices* service, E_VERTEX_TYPE vtxtype)
-	{
-		return true;
-	};
-
-
-	virtual s32 getRenderCapability() const
-	{
-		return 1;
-	}
+	virtual s32 getRenderCapability() const IRR_OVERRIDE { return 1; }
 
 };
 
@@ -115,4 +87,3 @@ public:
 } // end namespace irr
 
 #endif
-

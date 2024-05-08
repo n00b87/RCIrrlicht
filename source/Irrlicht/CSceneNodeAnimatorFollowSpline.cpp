@@ -13,13 +13,15 @@ namespace scene
 //! constructor
 CSceneNodeAnimatorFollowSpline::CSceneNodeAnimatorFollowSpline(u32 time,
 	const core::array<core::vector3df>& points, f32 speed,
-	f32 tightness, bool loop, bool pingpong)
-: ISceneNodeAnimatorFinishing(0), Points(points), Speed(speed), Tightness(tightness), StartTime(time)
-, Loop(loop), PingPong(pingpong)
+	f32 tightness, bool loop, bool pingpong, bool steer)
+: ISceneNodeAnimatorFinishing(0), Points(points), Speed(speed), Tightness(tightness)
+, Loop(loop), PingPong(pingpong), Steer(steer)
 {
 	#ifdef _DEBUG
 	setDebugName("CSceneNodeAnimatorFollowSpline");
 	#endif
+
+	StartTime = time;
 }
 
 
@@ -44,7 +46,7 @@ void CSceneNodeAnimatorFollowSpline::animateNode(ISceneNode* node, u32 timeMs)
 	}
 	if (pSize==1)
 	{
-		if ( timeMs > StartTime )
+		if ( timeMs > (StartTime+PauseTimeSum) )
 		{
 			node->setPosition(Points[0]);
 			if ( !Loop )
@@ -53,7 +55,7 @@ void CSceneNodeAnimatorFollowSpline::animateNode(ISceneNode* node, u32 timeMs)
 		return;
 	}
 
-	const f32 dt = ( (timeMs-StartTime) * Speed * 0.001f );
+	const f32 dt = ( (timeMs-(StartTime+PauseTimeSum)) * Speed * 0.001f );
 	const s32 unwrappedIdx = core::floor32( dt );
 	if ( !Loop && unwrappedIdx >= (s32)pSize-1 )
 	{
@@ -84,17 +86,30 @@ void CSceneNodeAnimatorFollowSpline::animateNode(ISceneNode* node, u32 timeMs)
 	const core::vector3df t2 = ( p3 - p1 ) * Tightness;
 
 	// interpolated point
-	node->setPosition(p1 * h1 + p2 * h2 + t1 * h3 + t2 * h4);
+	const core::vector3df lastPos(node->getPosition());
+	const core::vector3df pos(p1 * h1 + p2 * h2 + t1 * h3 + t2 * h4);
+	node->setPosition(pos);
+
+	// steering (rotate in direction of movement)
+	if (Steer && !pos.equals(lastPos)) // equality check fixes glitches due to very high frame rates
+	{
+		const core::vector3df toTarget(pos - lastPos);
+		const core::vector3df requiredRotation = toTarget.getHorizontalAngle();
+		node->setRotation(requiredRotation);
+	}
 }
 
 
 //! Writes attributes of the scene node animator.
 void CSceneNodeAnimatorFollowSpline::serializeAttributes(io::IAttributes* out, io::SAttributeReadWriteOptions* options) const
 {
+	ISceneNodeAnimatorFinishing::serializeAttributes(out, options);
+
 	out->addFloat("Speed", Speed);
 	out->addFloat("Tightness", Tightness);
 	out->addBool("Loop", Loop);
 	out->addBool("PingPong", PingPong);
+	out->addBool("Steer", Steer);
 
 	u32 count = Points.size();
 
@@ -118,10 +133,13 @@ void CSceneNodeAnimatorFollowSpline::serializeAttributes(io::IAttributes* out, i
 //! Reads attributes of the scene node animator.
 void CSceneNodeAnimatorFollowSpline::deserializeAttributes(io::IAttributes* in, io::SAttributeReadWriteOptions* options)
 {
-	Speed = in->getAttributeAsFloat("Speed");
-	Tightness = in->getAttributeAsFloat("Tightness");
-	Loop = in->getAttributeAsBool("Loop");
-	PingPong = in->getAttributeAsBool("PingPong");
+	ISceneNodeAnimatorFinishing::deserializeAttributes(in, options);
+
+	Speed = in->getAttributeAsFloat("Speed", Speed);
+	Tightness = in->getAttributeAsFloat("Tightness", Tightness);
+	Loop = in->getAttributeAsBool("Loop", Loop);
+	PingPong = in->getAttributeAsBool("PingPong", PingPong);
+	Steer = in->getAttributeAsBool("Steer", Steer);
 	Points.clear();
 
 	for(u32 i=1; true; ++i)
@@ -151,6 +169,7 @@ ISceneNodeAnimator* CSceneNodeAnimatorFollowSpline::createClone(ISceneNode* node
 {
 	CSceneNodeAnimatorFollowSpline * newAnimator =
 		new CSceneNodeAnimatorFollowSpline(StartTime, Points, Speed, Tightness);
+	newAnimator->cloneMembers(this);
 
 	return newAnimator;
 }

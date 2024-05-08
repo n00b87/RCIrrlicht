@@ -1,29 +1,30 @@
 /** Example 014 Win32 Window
 
-This example only runs under MS Windows and demonstrates that Irrlicht can
+This example runs only under MS Windows and demonstrates how Irrlicht can
 render inside a win32 window. MFC and .NET Windows.Forms windows are possible,
-too.
+too.*/
 
-In the beginning, we create a windows window using the windows API. I'm not
-going to explain this code, because it is windows specific. See the MSDN or a
-windows book for details.
-*/
 
 #include <irrlicht.h>
 #ifndef _IRR_WINDOWS_
 #error Windows only example
 #else
-#include <windows.h> // this example only runs with windows
+#include <windows.h> // this example only runs with Windows
 #include <iostream>
 #include "driverChoice.h"
+#include "exampleHelper.h"
 
 using namespace irr;
 
+#ifdef _MSC_VER
 #pragma comment(lib, "irrlicht.lib")
+#endif
 
-HWND hOKButton;
-HWND hWnd;
+HWND hOKButton = 0;
 
+/*
+	Windows message handler
+*/
 static LRESULT CALLBACK CustomWndProc(HWND hWnd, UINT message,
 		WPARAM wParam, LPARAM lParam)
 {
@@ -51,13 +52,11 @@ static LRESULT CALLBACK CustomWndProc(HWND hWnd, UINT message,
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-
-/*
-   Now ask for the driver and create the Windows specific window.
-*/
 int main()
 {
-	// ask user for driver
+	/*
+		Ask user for driver
+	*/
 	video::E_DRIVER_TYPE driverType=driverChoiceConsole();
 	if (driverType==video::EDT_COUNT)
 		return 1;
@@ -73,10 +72,14 @@ int main()
 	if (key != 'a' && key != 'b' && key != 'c')
 		return 1;
 
-	HINSTANCE hInstance = 0;
-	// create dialog
+	/*
+	   Create the Windows specific window using the Windows API. 
+	   Not further explained here, please see the MSDN or a Windows book
+	   for details about doing that.
+	*/
 
-	const char* Win32ClassName = "CIrrlichtWindowsTestDialog";
+	HINSTANCE hInstance = 0;
+	const fschar_t* Win32ClassName = __TEXT("CIrrlichtWindowsTestDialog");
 
 	WNDCLASSEX wcex;
 	wcex.cbSize			= sizeof(WNDCLASSEX);
@@ -100,7 +103,7 @@ int main()
 	int windowWidth = 440;
 	int windowHeight = 380;
 
-	hWnd = CreateWindow( Win32ClassName, "Irrlicht Win32 window example",
+	HWND hWnd = CreateWindow( Win32ClassName, __TEXT("Irrlicht Win32 window example"),
 		style, 100, 100, windowWidth, windowHeight,
 		NULL, NULL, hInstance, NULL);
 
@@ -109,47 +112,54 @@ int main()
 	windowWidth = clientRect.right;
 	windowHeight = clientRect.bottom;
 
-	// create ok button
-
-	hOKButton = CreateWindow("BUTTON", "OK - Close", WS_CHILD | WS_VISIBLE | BS_TEXT,
+	// Create OK button
+	hOKButton = CreateWindow(__TEXT("BUTTON"), __TEXT("OK - Close"), WS_CHILD | WS_VISIBLE | BS_TEXT,
 		windowWidth - 160, windowHeight - 40, 150, 30, hWnd, NULL, hInstance, NULL);
 
-	// create some text
-
-	CreateWindow("STATIC", "This is Irrlicht running inside a standard Win32 window.\n"\
-		"Also mixing with MFC and .NET Windows.Forms is possible.",
+	// Create some text
+	CreateWindow(__TEXT("STATIC"), __TEXT("This is Irrlicht running inside a standard Win32 window.\n")\
+		__TEXT("Also mixing with MFC and .NET Windows.Forms is possible."),
 		WS_CHILD | WS_VISIBLE, 20, 20, 400, 40, hWnd, NULL, hInstance, NULL);
 
-	// create window to put irrlicht in
-
-	HWND hIrrlichtWindow = CreateWindow("BUTTON", "",
+	// Create a window to put Irrlicht in
+	HWND hIrrlichtWindow = CreateWindow(__TEXT("BUTTON"), __TEXT(""),
 			WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
 			50, 80, 320, 220, hWnd, NULL, hInstance, NULL);
-	video::SExposedVideoData videodata((key=='b')?hIrrlichtWindow:0);
 
 	/*
-	So now that we have some window, we can create an Irrlicht device
-	inside of it. We use Irrlicht createEx() function for this. We only
-	need the handle (HWND) to that window, set it as windowsID parameter
-	and start up the engine as usual. That's it.
+	So now that we have some Windows window, we can use it with Irrlicht.
+	There's several options.
 	*/
-	// create irrlicht device in the button window
-
+	
 	irr::SIrrlichtCreationParameters param;
 	param.DriverType = driverType;
+
+	/* First option: We create an Irrlicht device inside of the Windows window. 
+	We use Irrlicht createEx() function for this. We do need the 
+	handle (HWND) for that window, set it as windowsID parameter
+	and start up the engine as usual. That's it.
+	*/
+
 	if (key=='a')
 		param.WindowId = reinterpret_cast<void*>(hIrrlichtWindow);
 
 	irr::IrrlichtDevice* device = irr::createDeviceEx(param);
-	if (!device)
-		return 1;
-
-	// setup a simple 3d scene
-
 	irr::scene::ISceneManager* smgr = device->getSceneManager();
 	video::IVideoDriver* driver = device->getVideoDriver();
 
-	if (driverType==video::EDT_OPENGL)
+	/*
+		Second option: We create a typical Irrlicht device, but render to the Window window.
+		For rendering into another Window than the one used for creating the Irrlicht device
+		we have to pass some changed SExposedVideoData to beginScene which contains the 
+		HWND of the Windows window.
+	*/
+	video::SExposedVideoData videodata((key=='b')?hIrrlichtWindow:0);
+
+	/*
+		OpenGL needs a bit more setup.
+		Also not yet working as well (haven't figured out yet how to render into the Irrlicht window as well)
+	*/
+	if (key == 'b' && driverType==video::EDT_OPENGL)
 	{
 		HDC HDc=GetDC(hIrrlichtWindow);
 		PIXELFORMATDESCRIPTOR pfd={0};
@@ -164,6 +174,10 @@ int main()
 		videodata.OpenGLWin32.HRc=wglCreateContext(HDc);
 		wglShareLists((HGLRC)driver->getExposedVideoData().OpenGLWin32.HRc, (HGLRC)videodata.OpenGLWin32.HRc);
 	}
+
+	/* 
+		Setup a simple 3d scene
+	*/
 	scene::ICameraSceneNode* cam = smgr->addCameraSceneNode();
 	cam->setTarget(core::vector3df(0,0,0));
 
@@ -174,51 +188,67 @@ int main()
 
 	scene::ISceneNode* cube = smgr->addCubeSceneNode(20);
 
-	cube->setMaterialTexture(0, driver->getTexture("../../media/wall.bmp"));
-	cube->setMaterialTexture(1, driver->getTexture("../../media/water.jpg"));
+	const io::path mediaPath = getExampleMediaPath();
+
+	cube->setMaterialTexture(0, driver->getTexture(mediaPath + "wall.bmp"));
+	cube->setMaterialTexture(1, driver->getTexture(mediaPath + "water.jpg"));
 	cube->setMaterialFlag( video::EMF_LIGHTING, false );
 	cube->setMaterialType( video::EMT_REFLECTION_2_LAYER );
 
 	smgr->addSkyBoxSceneNode(
-	driver->getTexture("../../media/irrlicht2_up.jpg"),
-	driver->getTexture("../../media/irrlicht2_dn.jpg"),
-	driver->getTexture("../../media/irrlicht2_lf.jpg"),
-	driver->getTexture("../../media/irrlicht2_rt.jpg"),
-	driver->getTexture("../../media/irrlicht2_ft.jpg"),
-	driver->getTexture("../../media/irrlicht2_bk.jpg"));
+	driver->getTexture(mediaPath + "irrlicht2_up.jpg"),
+	driver->getTexture(mediaPath + "irrlicht2_dn.jpg"),
+	driver->getTexture(mediaPath + "irrlicht2_lf.jpg"),
+	driver->getTexture(mediaPath + "irrlicht2_rt.jpg"),
+	driver->getTexture(mediaPath + "irrlicht2_ft.jpg"),
+	driver->getTexture(mediaPath + "irrlicht2_bk.jpg"));
 
-	// show and execute dialog
+	// This shows that we can render to multiple windows within one application
+	// TODO: Currently not working with OpenGL
+	device->getGUIEnvironment()->addStaticText(core::stringw("Second screen render").c_str(),core::recti(0,0,200,200));
 
+	// show and execute the Windows dialog
 	ShowWindow(hWnd , SW_SHOW);
 	UpdateWindow(hWnd);
 
 	// do message queue
 
+#if 1	// Irrlicht does the message handling with device->run()
+
 	/*
 	Now the only thing missing is the drawing loop using
 	IrrlichtDevice::run(). We do this as usual. But instead of this, there
-	is another possibility: You can also simply use your own message loop
+	is another possibility: You can also  use your own message loop
 	using GetMessage, DispatchMessage and whatever. Calling
-	Device->run() will cause Irrlicht to dispatch messages internally too.
-	You need not call Device->run() if you want to do your own message
+	device->run() will cause Irrlicht to dispatch messages internally too.
+	You need not call device->run() if you want to do your own message
 	dispatching loop, but Irrlicht will not be able to fetch user input
 	then and you have to do it on your own using the window messages,
 	DirectInput, or whatever.
 	*/
-
 	while (device->run())
 	{
-		driver->beginScene(true, true, 0, videodata);
+		// draw 3d scene
+		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, video::SColor(0), 1.f, 0, videodata);
 		smgr->drawAll();
 		driver->endScene();
+
+		// draw gui into second window
+		if (key=='b')
+		{
+			driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, video::SColor(0xbbbbbbbb));
+			device->getGUIEnvironment()->drawAll();
+			driver->endScene();
+		}
 	}
 
+#else	// Windows API does the message handling
 	/*
 	The alternative, own message dispatching loop without Device->run()
 	would look like this:
 	*/
 
-	/*MSG msg;
+	MSG msg;
 	while (true)
 	{
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -233,11 +263,20 @@ int main()
 		// advance virtual time
 		device->getTimer()->tick();
 
-		// draw engine picture
-		driver->beginScene(true, true, 0, (key=='c')?hIrrlichtWindow:0);
+		// draw 3d scene
+		driver->beginScene(true, true, 0, videodata);
 		smgr->drawAll();
 		driver->endScene();
-	}*/
+
+		// draw gui into second window
+		if (key=='b')
+		{
+			driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, video::SColor(0xbbbbbbbb));
+			device->getGUIEnvironment()->drawAll();
+			driver->endScene();
+		}
+	}
+#endif
 
 	device->closeDevice();
 	device->drop();
@@ -247,5 +286,5 @@ int main()
 #endif // if windows
 
 /*
-That's it, Irrlicht now runs in your own windows window.
+That's it, Irrlicht now uses a Windows window.
 **/

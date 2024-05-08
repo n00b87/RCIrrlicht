@@ -1,14 +1,16 @@
 // Copyright (C) 2002-2012 Nikolaus Gebhardt
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
-// orginally written by Christian Stehno, modified by Nikolaus Gebhardt
+// Originally written by Christian Stehno, modified by Nikolaus Gebhardt
 
 #include "IrrCompileConfig.h"
 #ifdef _IRR_COMPILE_WITH_OGRE_LOADER_
 
 #include "COgreMeshFileLoader.h"
+#include "CMeshTextureLoader.h"
 #include "os.h"
-#include "SMeshBuffer.h"
+#include "CMeshBuffer.h"
+#include "SMesh.h"
 #include "SAnimatedMesh.h"
 #include "IReadFile.h"
 #include "fast_atof.h"
@@ -76,6 +78,8 @@ COgreMeshFileLoader::COgreMeshFileLoader(io::IFileSystem* fs, video::IVideoDrive
 
 	if (Driver)
 		Driver->grab();
+
+	TextureLoader = new CMeshTextureLoader( FileSystem, Driver );
 }
 
 
@@ -109,6 +113,12 @@ bool COgreMeshFileLoader::isALoadableFileExtension(const io::path& filename) con
 //! See IReferenceCounted::drop() for more information.
 IAnimatedMesh* COgreMeshFileLoader::createMesh(io::IReadFile* file)
 {
+	if ( !file )
+		return 0;
+
+	if ( getMeshTextureLoader() )
+		getMeshTextureLoader()->setMeshFile(file);
+
 	s16 id;
 
 	file->read(&id, 2);
@@ -122,7 +132,10 @@ IAnimatedMesh* COgreMeshFileLoader::createMesh(io::IReadFile* file)
 	ChunkData data;
 	readString(file, data, Version);
 	if ((Version != "[MeshSerializer_v1.30]") && (Version != "[MeshSerializer_v1.40]") && (Version != "[MeshSerializer_v1.41]"))
+	{
+		os::Printer::log("Unsupported ogre mesh version", Version.c_str(), ELL_INFORMATION);
 		return 0;
+	}
 
 	clearMeshes();
 	if (Mesh)
@@ -469,10 +482,13 @@ void COgreMeshFileLoader::composeMeshBufferMaterial(scene::IMeshBuffer* mb, cons
 			material=Materials[k].Techniques[0].Passes[0].Material;
 			for (u32 i=0; i<Materials[k].Techniques[0].Passes[0].Texture.Filename.size(); ++i)
 			{
-				if (FileSystem->existFile(Materials[k].Techniques[0].Passes[0].Texture.Filename[i]))
-					material.setTexture(i, Driver->getTexture(Materials[k].Techniques[0].Passes[0].Texture.Filename[i]));
-				else
-					material.setTexture(i, Driver->getTexture((CurrentlyLoadingFromPath+"/"+FileSystem->getFileBasename(Materials[k].Techniques[0].Passes[0].Texture.Filename[i]))));
+				video::ITexture * texture = NULL;
+				if ( getMeshTextureLoader() )
+				{
+					texture = getMeshTextureLoader()->getTexture(Materials[k].Techniques[0].Passes[0].Texture.Filename[i]);
+					if ( texture )
+						material.setTexture(i, texture);
+				}
 			}
 			break;
 		}
@@ -773,7 +789,7 @@ void COgreMeshFileLoader::composeObject(void)
 			ISkinnedMesh::SJoint* joint = m->addJoint();
 			joint->Name=Skeleton.Bones[i].Name;
 
-			// IRR_TEST_BROKEN_QUATERNION_USE: TODO - switched to getMatrix_transposed instead of getMatrix for downward compatibility. 
+			// IRR_TEST_BROKEN_QUATERNION_USE: TODO - switched to getMatrix_transposed instead of getMatrix for downward compatibility.
 			//								   Not tested so far if this was correct or wrong before quaternion fix!
 			Skeleton.Bones[i].Orientation.getMatrix_transposed(joint->LocalMatrix);
 
@@ -827,8 +843,8 @@ void COgreMeshFileLoader::composeObject(void)
 				ISkinnedMesh::SRotationKey* rotkey = m->addRotationKey(keyjoint);
 				rotkey->frame=frame.Time*25;
 
-				// IRR_TEST_BROKEN_QUATERNION_USE: TODO - switched from keyjoint->LocalMatrix to keyjoint->LocalMatrix.getTransposed() for downward compatibility. 
-				//								   Not tested so far if this was correct or wrong before quaternion fix!
+				// IRR_TEST_BROKEN_QUATERNION_USE: TODO - switched from keyjoint->LocalMatrix to keyjoint->LocalMatrix.getTransposed() for downward compatibility.
+				// Not tested so far if this was correct or wrong before quaternion fix!
 				rotkey->rotation=core::quaternion(keyjoint->LocalMatrix.getTransposed())*frame.Orientation;
 
 				ISkinnedMesh::SScaleKey* scalekey = m->addScaleKey(keyjoint);
@@ -993,12 +1009,12 @@ void COgreMeshFileLoader::readPass(io::IReadFile* file, OgreTechnique& technique
 		{
 			getMaterialToken(file, token);
 			if (token!="on")
-				pass.Material.ZBuffer=video::ECFN_NEVER;
+				pass.Material.ZBuffer=video::ECFN_DISABLED;
 		}
 		else if (token=="depth_write")
 		{
 			getMaterialToken(file, token);
-			pass.Material.ZWriteEnable=(token=="on");
+			pass.Material.ZWriteEnable=(token=="on") ? video::EZW_ON : video::EZW_OFF;
 		}
 		else if (token=="depth_func")
 		{

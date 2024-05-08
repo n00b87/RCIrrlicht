@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __C_ANIMATED_MESH_HALFLIFE_H_INCLUDED__
-#define __C_ANIMATED_MESH_HALFLIFE_H_INCLUDED__
+#ifndef IRR_C_ANIMATED_MESH_HALFLIFE_H_INCLUDED
+#define IRR_C_ANIMATED_MESH_HALFLIFE_H_INCLUDED
 
 #include "IAnimatedMesh.h"
 #include "ISceneManager.h"
@@ -139,9 +139,9 @@ namespace scene
 	} PACK_STRUCT;
 
 #ifndef ZONE_H
-	// NOTE: this was a void*, but that crashes on 64bit. 
-	// I have found no mdl format desc, so not sure what it's meant to be, but s32 at least works. 
-	typedef s32 cache_user_t;	
+	// NOTE: this was a void*, but that crashes on 64bit.
+	// I have found no mdl format desc, so not sure what it's meant to be, but s32 at least works.
+	typedef s32 cache_user_t;
 #endif
 
 	// demand loaded sequence groups
@@ -391,9 +391,9 @@ namespace scene
 		EAMT_STILL,
 		//! From Start to End, then Stop ( Limited Line )
 		EAMT_WAYPOINT,
-		//! Linear Cycling Animation	 ( Sawtooth )
+		//! Linear Cycling Animation ( Sawtooth )
 		EAMT_LOOPING,
-		//! Linear bobbing				 ( Triangle )
+		//! Linear bobbing ( Triangle )
 		EAMT_PINGPONG
 	};
 
@@ -485,36 +485,36 @@ namespace scene
 		virtual ~CAnimatedMeshHalfLife();
 
 		//! loads a Halflife mdl file
-		virtual bool loadModelFile( io::IReadFile* file, ISceneManager * smgr );
+		bool loadModelFile( io::IReadFile* file, ISceneManager * smgr );
 
 		//IAnimatedMesh
-		virtual u32 getFrameCount() const;
-		virtual IMesh* getMesh(s32 frame, s32 detailLevel, s32 startFrameLoop, s32 endFrameLoop);
-		virtual const core::aabbox3d<f32>& getBoundingBox() const;
-		virtual E_ANIMATED_MESH_TYPE getMeshType() const;
-		virtual void renderModel ( u32 param, video::IVideoDriver * driver, const core::matrix4 &absoluteTransformation);
+		virtual u32 getFrameCount() const IRR_OVERRIDE;
+		virtual IMesh* getMesh(s32 frame, s32 detailLevel, s32 startFrameLoop, s32 endFrameLoop) IRR_OVERRIDE;
+		virtual const core::aabbox3d<f32>& getBoundingBox() const IRR_OVERRIDE;
+		virtual E_ANIMATED_MESH_TYPE getMeshType() const IRR_OVERRIDE;
+		void renderModel ( u32 param, video::IVideoDriver * driver, const core::matrix4 &absoluteTransformation);
 
 		//! returns amount of mesh buffers.
-		virtual u32 getMeshBufferCount() const;
+		virtual u32 getMeshBufferCount() const IRR_OVERRIDE;
 		//! returns pointer to a mesh buffer
-		virtual IMeshBuffer* getMeshBuffer(u32 nr) const;
+		virtual IMeshBuffer* getMeshBuffer(u32 nr) const IRR_OVERRIDE;
 		//! Returns pointer to a mesh buffer which fits a material
-		virtual IMeshBuffer* getMeshBuffer( const video::SMaterial &material) const;
+		virtual IMeshBuffer* getMeshBuffer( const video::SMaterial &material) const IRR_OVERRIDE;
 
-		virtual void setMaterialFlag(video::E_MATERIAL_FLAG flag, bool newvalue);
+		virtual void setMaterialFlag(video::E_MATERIAL_FLAG flag, bool newvalue) IRR_OVERRIDE;
 
 		//! set the hardware mapping hint, for driver
-		virtual void setHardwareMappingHint(E_HARDWARE_MAPPING newMappingHint, E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX);
+		virtual void setHardwareMappingHint(E_HARDWARE_MAPPING newMappingHint, E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX) IRR_OVERRIDE;
 
 		//! flags the meshbuffer as changed, reloads hardware buffers
-		virtual void setDirty(E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX);
+		virtual void setDirty(E_BUFFER_TYPE buffer=EBT_VERTEX_AND_INDEX) IRR_OVERRIDE;
 
 		//! set user axis aligned bounding box
-		virtual void setBoundingBox(const core::aabbox3df& box);
+		virtual void setBoundingBox(const core::aabbox3df& box) IRR_OVERRIDE;
 
 		//! Gets the default animation speed of the animated mesh.
 		/** \return Amount of frames per second. If the amount is 0, it is a static, non animated mesh. */
-		virtual f32 getAnimationSpeed() const
+		virtual f32 getAnimationSpeed() const IRR_OVERRIDE
 		{
 			return FramesPerSecond;
 		}
@@ -522,16 +522,16 @@ namespace scene
 		//! Gets the frame count of the animated mesh.
 		/** \param fps Frames per second to play the animation with. If the amount is 0, it is not animated.
 		The actual speed is set in the scene node the mesh is instantiated in.*/
-		virtual void setAnimationSpeed(f32 fps)
+		virtual void setAnimationSpeed(f32 fps) IRR_OVERRIDE
 		{
 			FramesPerSecond=fps;
 		}
 
 		//! Get the Animation List
-		virtual IAnimationList* getAnimList () { return &AnimList; }
+		IAnimationList* getAnimList () { return &AnimList; }
 
 		//! Return the named Body List of this Animated Mesh
-		virtual IBodyList *getBodyList() { return &BodyList; }
+		IBodyList *getBodyList() { return &BodyList; }
 
 	private:
 
@@ -593,7 +593,7 @@ namespace scene
 
 #ifdef HL_TEXTURE_ATLAS
 		STextureAtlas TextureAtlas;
-		video::ITexture *TextureMaster;
+//		video::ITexture *TextureMaster;
 #endif
 
 	};
@@ -609,14 +609,14 @@ namespace scene
 
 		//! returns true if the file maybe is able to be loaded by this class
 		/** based on the file extension (e.g. ".bsp") */
-		virtual bool isALoadableFileExtension(const io::path& filename) const;
+		virtual bool isALoadableFileExtension(const io::path& filename) const IRR_OVERRIDE;
 
 		//! creates/loads an animated mesh from the file.
 		/** \return Pointer to the created mesh. Returns 0 if loading failed.
 		If you no longer need the mesh, you should call IAnimatedMesh::drop().
 		See IReferenceCounted::drop() for more information.
 		*/
-		virtual IAnimatedMesh* createMesh(io::IReadFile* file);
+		virtual IAnimatedMesh* createMesh(io::IReadFile* file) IRR_OVERRIDE;
 
 	private:
 		scene::ISceneManager* SceneManager;
@@ -627,4 +627,3 @@ namespace scene
 } // end namespace irr
 
 #endif
-

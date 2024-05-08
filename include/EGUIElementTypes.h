@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __E_GUI_ELEMENT_TYPES_H_INCLUDED__
-#define __E_GUI_ELEMENT_TYPES_H_INCLUDED__
+#ifndef IRR_E_GUI_ELEMENT_TYPES_H_INCLUDED
+#define IRR_E_GUI_ELEMENT_TYPES_H_INCLUDED
 
 #include "irrTypes.h"
 
@@ -91,6 +91,9 @@ enum EGUI_ELEMENT_TYPE
 	//! The root of the GUI
 	EGUIET_ROOT,
 
+	//! IGUIProfiler
+	EGUIET_PROFILER,
+
 	//! Not an element, amount of elements in there
 	EGUIET_COUNT,
 
@@ -127,6 +130,7 @@ const c8* const GUIElementTypeNames[] =
 	"window",
 	"element",
 	"root",
+	"profiler",
 	0
 };
 
@@ -134,7 +138,3 @@ const c8* const GUIElementTypeNames[] =
 } // end namespace irr
 
 #endif
-
-
-
-

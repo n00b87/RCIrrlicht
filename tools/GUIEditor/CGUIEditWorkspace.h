@@ -46,6 +46,9 @@ namespace gui
 		//! Removes a child.
 		virtual void removeChild(IGUIElement* child);
 
+		//! Remove all gui elements from parent except this one
+		virtual void clearParentElements();
+
 		//! draws the element and its children
 		virtual void draw();
 
@@ -158,6 +161,9 @@ namespace gui
 		core::rect<s32> RRect;
 		core::rect<s32> BRRect;
 		core::rect<s32> BRect;
+
+		//! Some gui-elements can't be created in this editor
+		core::array<EGUI_ELEMENT_TYPE> UnusableElementTypeFilter;
 	};
 
 

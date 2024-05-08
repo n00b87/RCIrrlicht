@@ -301,7 +301,7 @@ const SItemElement * getItemElement ( const stringc& key )
 }
 
 /*!
-	Quake3 Model Factory.
+	Quake3 model factory.
 	Takes the mesh buffers and creates scenenodes for their associated shaders
 */
 void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
@@ -331,7 +331,7 @@ void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
 		loadParam.startTime = device->getTimer()->getRealTime();
 		if ( loadParam.verbose > 1 )
 		{
-			snprintf(buf, 128, "q3shaderfactory start" );
+			snprintf_irr(buf, 128, "q3shaderfactory start" );
 			device->getLogger()->log( buf, ELL_INFORMATION);
 		}
 	}
@@ -399,10 +399,10 @@ void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
 			sceneNodeID += 1;
 		}
 
-		// show Debug Shader Name
+		// show debug shader name
 		if ( showShaderName && node )
 		{
-			swprintf ( (wchar_t*) buf, 64, L"%hs:%d", node->getName(),node->getID() );
+			swprintf_irr ( (wchar_t*) buf, 64, L"%hs:%d", node->getName(),node->getID() );
 			smgr->addBillboardTextSceneNode(
 					font,
 					(wchar_t*) buf,
@@ -413,7 +413,7 @@ void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
 			sceneNodeID += 1;
 		}
 
-		// create Portal Rendertargets
+		// create portal rendertargets
 		if ( shader )
 		{
 			const SVarGroup *group = shader->getGroup(1);
@@ -485,7 +485,7 @@ void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
 	if ( loadParam.verbose > 0 )
 	{
 		loadParam.endTime = device->getTimer()->getRealTime ();
-		snprintf(buf, 128, "q3shaderfactory needed %04d ms to create %d shader nodes",
+		snprintf_irr(buf, 128, "q3shaderfactory needed %04d ms to create %d shader nodes",
 			loadParam.endTime - loadParam.startTime,
 			sceneNodeID
 			);
@@ -496,7 +496,7 @@ void Q3ShaderFactory (	Q3LevelLoadParameter &loadParam,
 
 
 /*!
-	create Items from Entity
+	create items from entity
 */
 void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 						IrrlichtDevice *device,
@@ -513,7 +513,7 @@ void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 
 
 	char buf[128];
-	const SVarGroup *group;
+	const SVarGroup *group = 0;
 	IEntity search;
 	s32 index;
 	s32 lastIndex;
@@ -531,12 +531,12 @@ void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 	}
 	fclose ( f );
 */
-	IAnimatedMeshMD3* model;
-	SMD3Mesh * mesh;
-	const SMD3MeshBuffer *meshBuffer;
-	IMeshSceneNode* node;
-	ISceneNodeAnimator* anim;
-	const IShader *shader;
+	IAnimatedMeshMD3* model = 0;
+	SMD3Mesh * mesh = 0;
+	const SMD3MeshBuffer *meshBuffer = 0;
+	IMeshSceneNode* node = 0;
+	ISceneNodeAnimator* anim = 0;
+	const IShader *shader = 0;
 	u32 pos;
 	vector3df p;
 	u32 nodeCount = 0;
@@ -546,7 +546,7 @@ void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 	if ( showShaderName )
 		font = device->getGUIEnvironment()->getFont("fontlucida.png");
 
-	const SItemElement *itemElement;
+	const SItemElement *itemElement = 0;
 
 	// walk list
 	for ( index = 0; (u32) index < entity.size(); ++index )
@@ -594,7 +594,7 @@ void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 
 				if ( 0 == node )
 				{
-					snprintf ( buf, 128, "q3ModelFactory shader %s failed", meshBuffer->Shader.c_str() );
+					snprintf_irr ( buf, 128, "q3ModelFactory shader %s failed", meshBuffer->Shader.c_str() );
 					device->getLogger()->log ( buf );
 					continue;
 				}
@@ -635,7 +635,7 @@ void Q3ModelFactory (	Q3LevelLoadParameter &loadParam,
 		// show name
 		if ( showShaderName )
 		{
-			swprintf ( (wchar_t*) buf, sizeof(buf) / 2, L"%hs", itemElement->key );
+			swprintf_irr ( (wchar_t*) buf, sizeof(buf) / 2, L"%hs", itemElement->key );
 			smgr->addBillboardTextSceneNode(
 					font,
 					(wchar_t*) buf,
@@ -706,7 +706,7 @@ s32 Q3StartPosition (	IQ3LevelMesh* mesh,
 
 	u32 parsepos;
 
-	const SVarGroup *group;
+	const SVarGroup *group = 0;
 	group = entityList[ index ].getGroup(1);
 
 	parsepos = 0;
@@ -735,10 +735,10 @@ s32 Q3StartPosition (	IQ3LevelMesh* mesh,
 */
 vector3df getGravity ( const c8 * surface )
 {
-	if ( 0 == strcmp ( surface, "earth" ) ) return vector3df ( 0.f, -90.f, 0.f );
-	if ( 0 == strcmp ( surface, "moon" ) ) return vector3df ( 0.f, -6.f / 100.f, 0.f );
-	if ( 0 == strcmp ( surface, "water" ) ) return vector3df ( 0.1f / 100.f, -2.f / 100.f, 0.f );
-	if ( 0 == strcmp ( surface, "ice" ) ) return vector3df ( 0.2f / 100.f, -9.f / 100.f, 0.3f / 100.f );
+	if ( 0 == strcmp ( surface, "earth" ) ) return vector3df ( 0.f, -900.f, 0.f );
+	if ( 0 == strcmp ( surface, "moon" ) ) return vector3df ( 0.f, -6.f , 0.f );
+	if ( 0 == strcmp ( surface, "water" ) ) return vector3df ( 0.1f, -2.f, 0.f );
+	if ( 0 == strcmp ( surface, "ice" ) ) return vector3df ( 0.2f, -9.f, 0.3f );
 
 	return vector3df ( 0.f, 0.f, 0.f );
 }
@@ -769,6 +769,7 @@ funcptr_createDeviceEx load_createDeviceEx ( const c8 * filename)
 #else
 
 // TODO: Dynamic Loading for other os
+
 funcptr_createDevice load_createDevice ( const c8 * filename)
 {
 	return createDevice;
@@ -801,7 +802,7 @@ ISceneNodeAnimatorCollisionResponse* camCollisionResponse( IrrlichtDevice * devi
 }
 
 
-//! internal Animation
+//! internal animation
 void setTimeFire ( TimeFire *t, u32 delta, u32 flags )
 {
 	t->flags = flags;

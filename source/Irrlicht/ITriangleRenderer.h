@@ -2,8 +2,8 @@
 // This file is part of the "Irrlicht Engine".
 // For conditions of distribution and use, see copyright notice in irrlicht.h
 
-#ifndef __I_TRIANGLE_RENDERER_H_INCLUDED__
-#define __I_TRIANGLE_RENDERER_H_INCLUDED__
+#ifndef IRR_I_TRIANGLE_RENDERER_H_INCLUDED
+#define IRR_I_TRIANGLE_RENDERER_H_INCLUDED
 
 #include "IReferenceCounted.h"
 #include "S2DVertex.h"
@@ -34,7 +34,7 @@ namespace video
 	class ITriangleRenderer : public virtual IReferenceCounted
 	{
 	public:
-	
+
 		//! sets a render target
 		virtual void setRenderTarget(video::IImage* surface, const core::rect<s32>& viewPort) = 0;
 
@@ -65,4 +65,3 @@ namespace video
 } // end namespace irr
 
 #endif
-

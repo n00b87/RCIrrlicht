@@ -13,11 +13,13 @@
 #ifdef _IRR_COMPILE_WITH_OCT_LOADER_
 
 #include "COCTLoader.h"
+#include "CMeshTextureLoader.h"
 #include "IVideoDriver.h"
 #include "IFileSystem.h"
 #include "os.h"
+#include "SMesh.h"
 #include "SAnimatedMesh.h"
-#include "SMeshBufferLightMap.h"
+#include "CMeshBuffer.h"
 #include "irrString.h"
 #include "ISceneManager.h"
 
@@ -35,6 +37,8 @@ COCTLoader::COCTLoader(ISceneManager* smgr, io::IFileSystem* fs)
 	#endif
 	if (FileSystem)
 		FileSystem->grab();
+
+	TextureLoader = new CMeshTextureLoader( FileSystem, SceneManager->getVideoDriver() );
 }
 
 
@@ -85,6 +89,9 @@ IAnimatedMesh* COCTLoader::createMesh(io::IReadFile* file)
 	if (!file)
 		return 0;
 
+	if ( getMeshTextureLoader() )
+		getMeshTextureLoader()->setMeshFile(file);
+
 	octHeader header;
 	file->read(&header, sizeof(octHeader));
 
@@ -96,18 +103,29 @@ IAnimatedMesh* COCTLoader::createMesh(io::IReadFile* file)
 
 	file->read(verts, sizeof(octVert) * header.numVerts);
 	file->read(faces, sizeof(octFace) * header.numFaces);
-	//TODO: Make sure id is in the legal range for Textures and Lightmaps
 
 	u32 i;
-	for (i = 0; i < header.numTextures; i++) {
-		octTexture t;
-		file->read(&t, sizeof(octTexture));
-		textures[t.id] = t;
+	for (i = 0; i < header.numTextures; i++) 
+	{
+		u32 id;
+		file->read(&id, sizeof(id));
+		if ( id >= header.numTextures )
+		{
+			os::Printer::log("COCTLoader: Invalid texture id", irr::ELL_WARNING);
+			id = i;
+		}
+		file->read(&textures[id], sizeof(octTexture));
 	}
-	for (i = 0; i < header.numLightmaps; i++) {
-		octLightmap t;
-		file->read(&t, sizeof(octLightmap));
-		lightmaps[t.id] = t;
+	for (i = 0; i < header.numLightmaps; i++) 
+	{
+		u32 id;
+		file->read(&id, sizeof(id));
+		if ( id >= header.numLightmaps )
+		{
+			os::Printer::log("COCTLoader: Invalid lightmap id", irr::ELL_WARNING);
+			id = i;
+		}
+		file->read(&lightmaps[id], sizeof(octLightmap));
 	}
 	file->read(lights, sizeof(octLight) * header.numLights);
 
@@ -199,16 +217,9 @@ IAnimatedMesh* COCTLoader::createMesh(io::IReadFile* file)
 	tex.reallocate(header.numTextures + 1);
 	tex.push_back(0);
 
-	const core::stringc relpath = FileSystem->getFileDir(file->getFileName())+"/";
 	for (i = 1; i < (header.numTextures + 1); i++)
 	{
-		core::stringc path(textures[i-1].fileName);
-		path.replace('\\','/');
-		if (FileSystem->existFile(path))
-			tex.push_back(SceneManager->getVideoDriver()->getTexture(path));
-		else
-			// try to read in the relative path of the OCT file
-			tex.push_back(SceneManager->getVideoDriver()->getTexture( (relpath + path) ));
+		tex.push_back( getMeshTextureLoader() ? getMeshTextureLoader()->getTexture(textures[i-1].fileName) : NULL );
 	}
 
 	// prepare lightmaps

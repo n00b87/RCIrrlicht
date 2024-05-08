@@ -11,26 +11,31 @@
 	#include <SDL2/SDL_endian.h>
 	#define bswap_16(X) SDL_Swap16(X)
 	#define bswap_32(X) SDL_Swap32(X)
+	#define bswap_64(X) SDL_Swap64(X)
 #elif defined(_IRR_WINDOWS_API_) && defined(_MSC_VER) && (_MSC_VER > 1298)
 	#include <stdlib.h>
 	#define bswap_16(X) _byteswap_ushort(X)
 	#define bswap_32(X) _byteswap_ulong(X)
+	#define bswap_64(X) _byteswap_uint64(X)
 #if (_MSC_VER >= 1400)
 	#define localtime _localtime_s
 #endif
-#elif defined(_IRR_OSX_PLATFORM_)
+#elif defined(_IRR_OSX_PLATFORM_) || defined(_IRR_IOS_PLATFORM_)
 	#include <libkern/OSByteOrder.h>
 	#define bswap_16(X) OSReadSwapInt16(&X,0)
 	#define bswap_32(X) OSReadSwapInt32(&X,0)
+	#define bswap_64(X) OSReadSwapInt64(&X,0)
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
 	#include <sys/endian.h>
 	#define bswap_16(X) bswap16(X)
 	#define bswap_32(X) bswap32(X)
+	#define bswap_64(X) bswap64(X)
 #elif !defined(_IRR_SOLARIS_PLATFORM_) && !defined(__PPC__) && !defined(_IRR_WINDOWS_API_)
 	#include <byteswap.h>
 #else
 	#define bswap_16(X) ((((X)&0xFF) << 8) | (((X)&0xFF00) >> 8))
-	#define bswap_32(X) ( (((X)&0x000000FF)<<24) | (((X)&0xFF000000) >> 24) | (((X)&0x0000FF00) << 8) | (((X) &0x00FF0000) >> 8))
+	#define bswap_32(X) ((((X)&0x000000FF) << 24) | (((X)&0xFF000000) >> 24) | (((X)&0x0000FF00) << 8) | (((X) &0x00FF0000) >> 8))
+	#define bswap_64(X) ((((X)&0x00000000000000FF) << 56) | (((X)&0xFF00000000000000) >> 56) | (((X)&0x000000000000FF00) << 40) | (((X)&0x00FF000000000000) >> 40) | (((X)&0x0000000000FF0000) << 24) | (((X)&0x0000FF0000000000) >> 24) | (((X)&0x00000000FF000000) << 8) | (((X) &0x000000FF00000000) >> 8))
 #endif
 
 namespace irr
@@ -41,6 +46,8 @@ namespace os
 	s16 Byteswap::byteswap(s16 num) {return bswap_16(num);}
 	u32 Byteswap::byteswap(u32 num) {return bswap_32(num);}
 	s32 Byteswap::byteswap(s32 num) {return bswap_32(num);}
+	u64 Byteswap::byteswap(u64 num) {return bswap_64(num);}
+	s64 Byteswap::byteswap(s64 num) {return bswap_64(num);}
 	f32 Byteswap::byteswap(f32 num) {u32 tmp=IR(num); tmp=bswap_32(tmp); return (FR(tmp));}
 	// prevent accidental byte swapping of chars
 	u8  Byteswap::byteswap(u8 num)  {return num;}
@@ -66,7 +73,7 @@ namespace irr
 namespace os
 {
 	//! prints a debuginfo string
-	void Printer::print(const c8* message)
+	void Printer::print(const c8* message, ELOG_LEVEL ll)
 	{
 #if defined (_WIN32_WCE )
 		core::stringw tmp(message);
@@ -129,6 +136,121 @@ namespace os
 } // end namespace os
 
 
+#elif defined( _IRR_ANDROID_PLATFORM_ )
+
+// ----------------------------------------------------------------
+// Android version
+// ----------------------------------------------------------------
+
+#include <android/log.h>
+
+namespace irr
+{
+namespace os
+{
+
+	//! prints a debuginfo string
+	void Printer::print(const c8* message, ELOG_LEVEL ll)
+	{
+		android_LogPriority LogLevel = ANDROID_LOG_UNKNOWN;
+
+		switch (ll)
+		{
+		case ELL_DEBUG:
+			LogLevel = ANDROID_LOG_DEBUG;
+			break;
+		case ELL_INFORMATION:
+			LogLevel = ANDROID_LOG_INFO;
+			break;
+		case ELL_WARNING:
+			LogLevel = ANDROID_LOG_WARN;
+			break;
+		case ELL_ERROR:
+			LogLevel = ANDROID_LOG_ERROR;
+			break;
+		default: // ELL_NONE
+			LogLevel = ANDROID_LOG_VERBOSE;
+			break;
+		}
+
+		// Android logcat restricts log-output and cuts the rest of the message away. But we want it all.
+		// On my device max-len is 1023 (+ 0 byte). Some websites claim a limit of 4096 so maybe different numbers on different devices.
+		const size_t maxLogLen = 1023;
+		size_t msgLen = strlen(message);
+		size_t start = 0;
+		while ( msgLen-start > maxLogLen )
+		{
+			__android_log_print(LogLevel, "Irrlicht", "%.*s\n", maxLogLen, &message[start]);
+			start += maxLogLen;
+		}
+		__android_log_print(LogLevel, "Irrlicht", "%s\n", &message[start]);
+	}
+
+	void Timer::initTimer(bool usePerformanceTimer)
+	{
+		initVirtualTimer();
+	}
+
+	u32 Timer::getRealTime()
+	{
+		timeval tv;
+		gettimeofday(&tv, 0);
+		return (u32)(tv.tv_sec * 1000) + (tv.tv_usec / 1000);
+	}
+} // end namespace os
+
+#elif defined(_IRR_EMSCRIPTEN_PLATFORM_)
+
+// ----------------------------------------------------------------
+// emscripten version
+// ----------------------------------------------------------------
+
+#include <emscripten.h>
+#include <time.h>
+#include <sys/time.h>
+
+namespace irr
+{
+namespace os
+{
+
+	//! prints a debuginfo string
+	void Printer::print(const c8* message, ELOG_LEVEL ll)
+	{
+        int log_level;
+		switch (ll)
+		{
+		case ELL_DEBUG:
+            log_level=0;
+		break;
+		case ELL_INFORMATION:
+           log_level=0;
+		break;
+		case ELL_WARNING:
+            log_level=EM_LOG_WARN;
+			break;
+		case ELL_ERROR:
+            log_level=EM_LOG_ERROR;
+		break;
+		default: // ELL_NONE
+            log_level=0;
+			break;
+		}
+        emscripten_log(log_level, "%s", message);	// Note: not adding \n as emscripten_log seems to do that already.
+	}
+
+	void Timer::initTimer(bool usePerformanceTimer)
+	{
+		initVirtualTimer();
+	}
+
+	u32 Timer::getRealTime()
+	{
+        double time = emscripten_get_now();
+        return (u32)(time);
+	}
+} // end namespace os
+
 #else
 
 // ----------------------------------------------------------------
@@ -145,7 +267,7 @@ namespace os
 {
 
 	//! prints a debuginfo string
-	void Printer::print(const c8* message)
+	void Printer::print(const c8* message, ELOG_LEVEL ll)
 	{
 		printf("%s\n", message);
 	}
@@ -163,7 +285,7 @@ namespace os
 	}
 } // end namespace os
 
-#endif // end linux / windows
+#endif // end linux / emscripten / android / windows
 
 namespace os
 {
@@ -196,7 +318,7 @@ namespace os
 
 	// our Randomizer is not really os specific, so we
 	// code one for all, which should work on every platform the same,
-	// which is desireable.
+	// which is desirable.
 
 	s32 Randomizer::seed = 0x0f0f0f0f;
 
@@ -205,10 +327,10 @@ namespace os
 	{
 		// (a*seed)%m with Schrage's method
 		seed = a * (seed%q) - r* (seed/q);
-		if (seed<0)
+		if (seed<1)
 			seed += m;
 
-		return seed;
+		return seed-1;	// -1 because we want it to start at 0
 	}
 
 	//! generates a pseudo random number
@@ -225,7 +347,12 @@ namespace os
 	//! resets the randomizer
 	void Randomizer::reset(s32 value)
 	{
-		seed = value;
+		if (value<0)
+			seed = value+m;
+		else if ( value == 0 || value == m)
+			seed = 1;
+		else
+			seed = value;
 	}
 
 
@@ -248,7 +375,8 @@ namespace os
 		timeinfo = localtime(&rawtime);
 
 		// init with all 0 to indicate error
-		ITimer::RealTimeDate date={0};
+		ITimer::RealTimeDate date;
+		memset(&date, 0, sizeof(date));
 		// at least Windows returns NULL on some illegal dates
 		if (timeinfo)
 		{
