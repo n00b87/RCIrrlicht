@@ -84,7 +84,7 @@ namespace irr
 		//! Pause execution and let other processes to run for a specified amount of time.
 		/** It may not wait the full given time, as sleep may be interrupted and also may wait longer on some OS.
 		\param timeMs: Time to sleep for in milliseconds. Note that the OS can round up this number.
-                       On Windows you usually get at least 15ms sleep time minium for any value > 0. 
+                       On Windows you usually get at least 15ms sleep time minium for any value > 0.
 					   So if you call this in your main loop you can't get more than 65 FPS anymore in your game.
 					   On most Linux systems it's relatively exact, but also no guarantee.
 		\param pauseTimer: If true, pauses the device timer while sleeping
@@ -331,6 +331,12 @@ namespace irr
 		The function is still somewhat experimental, as the kind of messages we clear is based on just a few use-cases.
 		If you think further messages should be cleared, or some messages should not be cleared here, then please tell us. */
 		virtual void clearSystemMessages() = 0;
+
+		//! Compares to the last call of this function to return double and triple clicks.
+		/** Needed for win32 device event handling
+		\return Returns only 1,2 or 3. A 4th click will start with 1 again.
+		*/
+		virtual u32 checkSuccessiveClicks(s32 mouseX, s32 mouseY, EMOUSE_INPUT_EVENT inputEvent) = 0;
 
 		//! Get the type of the device.
 		/** This allows the user to check which windowing system is currently being

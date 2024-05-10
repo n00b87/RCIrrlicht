@@ -178,18 +178,18 @@ namespace irr
 		//! Resize the render window.
 		virtual void setWindowSize(const irr::core::dimension2d<u32>& size) IRR_OVERRIDE {}
 
+		//! Compares to the last call of this function to return double and triple clicks.
+		/** Needed for win32 device event handling
+		\return Returns only 1,2 or 3. A 4th click will start with 1 again.
+		*/
+		virtual u32 checkSuccessiveClicks(s32 mouseX, s32 mouseY, EMOUSE_INPUT_EVENT inputEvent);
+
 	protected:
 
 		void createGUIAndScene();
 
 		//! checks version of SDK and prints warning if there might be a problem
 		bool checkVersion(const char* version);
-
-		//! Compares to the last call of this function to return double and triple clicks.
-		/** Needed for win32 device event handling
-		\return Returns only 1,2 or 3. A 4th click will start with 1 again.
-		*/
-		virtual u32 checkSuccessiveClicks(s32 mouseX, s32 mouseY, EMOUSE_INPUT_EVENT inputEvent);
 
 		void calculateGammaRamp ( u16 *ramp, f32 gamma, f32 relativebrightness, f32 relativecontrast );
 		void calculateGammaFromRamp ( f32 &gamma, const u16 *ramp );

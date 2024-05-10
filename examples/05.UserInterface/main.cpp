@@ -17,6 +17,8 @@ and a pointer to a listbox.
 #include "driverChoice.h"
 #include "exampleHelper.h"
 
+#include "rc_gfx.h"
+
 using namespace irr;
 
 using namespace core;
@@ -181,35 +183,34 @@ example.
 */
 int main()
 {
-	// ask user for driver
-	if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
-    {
-        //os::Printer::log("SDL_Init Error: ", SDL_GetError());
-        std::cout << "No DICE" << std::endl;
-        return 0;
-    }
 
-    SDL_Window* window = SDL_CreateWindow("OGLES2 gui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+    createKeyMap();
 
-	SIrrlichtCreationParameters p;
-		p.DriverType = EDT_OPENGL;
-		p.WindowSize = dimension2d<u32>(640, 480);
-		p.Bits = 32;
-		p.Fullscreen = false;
-		p.Stencilbuffer = false;
-		p.Vsync = false;
-		p.EventReceiver = 0;
-		p.DeviceType = EIDT_SDL;
-		p.WindowId = window;
-	IrrlichtDevice *device = createDeviceEx(p);
+    rc_windowOpenEx("hell no", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, false, false, false);
+
+//    SDL_Window* window = SDL_CreateWindow("OGLES2 gui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+//
+//	SIrrlichtCreationParameters p;
+//		p.DriverType = EDT_OPENGL;
+//		p.WindowSize = dimension2d<u32>(640, 480);
+//		p.Bits = 32;
+//		p.Fullscreen = false;
+//		p.Stencilbuffer = false;
+//		p.Vsync = false;
+//		p.EventReceiver = 0;
+//		p.DeviceType = EIDT_SDL;
+//		p.WindowId = window;
+//	IrrlichtDevice *device = createDeviceEx(p);
 
 	if (device == 0)
 		return 1; // could not create selected driver.
 
+    std::cout << "device start" << std::endl;
+
 	/* The creation was successful, now we set the event receiver and
 		store pointers to the driver and to the gui environment. */
 
-	device->setWindowCaption(L"Irrlicht Engine - User Interface Demo");
+	//device->setWindowCaption(L"Irrlicht Engine - User Interface Demo");
 	device->setResizable(true);
 
 	video::IVideoDriver* driver = device->getVideoDriver();
@@ -294,38 +295,18 @@ int main()
 	SDL_Event event;
 	bool quit = false;
 
-	while(device->run() && driver && (!quit))
-	if (device->isWindowActive())
+	std::cout << "test start" << std::endl;
+
+	while(rc_update())
 	{
-	    while(SDL_PollEvent(&event))
-        {
-            switch(event.type)
-            {
-                case SDL_WINDOWEVENT:
-                    if(event.window.event == SDL_WINDOWEVENT_RESIZED)
-                    {
-
-                    }
-                    else if(event.window.event == SDL_WINDOWEVENT_CLOSE)
-                    {
-                        if(SDL_QuitRequested() != 0)
-                        {
-                            //SDL_PumpEvents();
-                            SDL_FlushEvent(SDL_QUIT);
-                            quit = true;
-                        }
-                        std::cout << "SDL QUIT" << std::endl;
-                    }
-                    break;
-            }
-        }
-
 		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
 
 		env->drawAll();
 
 		driver->endScene();
 	}
+
+	std::cout << "test end" << std::endl;
 
 	SDL_DestroyWindow(window);
 	SDL_Quit();
