@@ -266,7 +266,9 @@ int main()
 
 	env->addStaticText(L"Logging ListBox:", rect<s32>(50,110,250,130), true);
 	IGUIListBox * listbox = env->addListBox(rect<s32>(50, 140, 250, 210));
-	env->addEditBox(L"Editable Text", rect<s32>(350, 80, 550, 100));
+	IGUIEditBox* editbox = env->addEditBox(L"Editable Text", rect<s32>(350, 80, 550, 300));
+	editbox->setMultiLine(true);
+	editbox->setTextAlignment(EGUIA_UPPERLEFT,EGUIA_UPPERLEFT);
 
 	// Store the appropriate data in a context structure.
 	SAppContext context;

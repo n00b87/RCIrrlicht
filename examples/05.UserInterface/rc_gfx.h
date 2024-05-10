@@ -178,6 +178,7 @@ IrrlichtDevice* device;
 irr::video::IVideoDriver * VideoDriver;
 SDL_Window* window;
 
+
 bool rc_windowOpenEx(std::string title, int x, int y, int w, int h, bool stencil_buffer, bool fullscreen, bool vsync)
 {
     if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now

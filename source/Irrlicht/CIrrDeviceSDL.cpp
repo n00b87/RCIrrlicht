@@ -146,12 +146,14 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters& param)
 CIrrDeviceSDL::~CIrrDeviceSDL()
 {
 #if defined(_IRR_COMPILE_WITH_JOYSTICK_EVENTS_)
-	const u32 numJoysticks = Joysticks.size();
-	for (u32 i=0; i<numJoysticks; ++i)
-		SDL_JoystickClose(Joysticks[i]);
+	//Joysticks are closed when rcbasic shuts down
+
+	//const u32 numJoysticks = Joysticks.size();
+	//for (u32 i=0; i<numJoysticks; ++i)
+	//	SDL_JoystickClose(Joysticks[i]);
 #endif
 	SDL_GL_DeleteContext(context);
-	SDL_Quit();
+	//SDL_Quit(); //This will be called when program ends
 }
 
 
