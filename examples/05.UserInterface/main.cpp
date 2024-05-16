@@ -184,9 +184,17 @@ example.
 int main()
 {
 
+    if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
+    {
+        //os::Printer::log("SDL_Init Error: ", SDL_GetError());
+        std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return false;
+    }
+
     createKeyMap();
 
-    rc_windowOpenEx("hell no", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, false, false, false);
+    //rc_windowOpenEx("hell no", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, false, false, false);
+    rc_windowOpen("testing", 640, 480, false, true);
 
 //    SDL_Window* window = SDL_CreateWindow("OGLES2 gui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 //
@@ -299,18 +307,27 @@ int main()
 
 	std::cout << "test start" << std::endl;
 
+	uint32_t canvas = rc_canvasOpen(1000, 1000, 50, 50, 320, 200, 0);
+
+	std::cout << "color stuff" << std::endl;
+	rc_setClearColor( rc_rgb(100, 100, 100));
+	rc_setColor( rc_rgb(255,0,0) );
+
+	std::cout << "set canvas" << std::endl;
+	rc_setActiveCanvas(canvas);
+
+	std::cout << "checkpoint start" << std::endl;
+
 	while(rc_update())
 	{
-		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
+	    rc_clearCanvas();
+	    rc_drawRect(50, 50, 90, 50);
 
-		env->drawAll();
-
-		driver->endScene();
 	}
 
 	std::cout << "test end" << std::endl;
 
-	SDL_DestroyWindow(window);
+	SDL_DestroyWindow(rc_window);
 	SDL_Quit();
 	device->drop();
 
