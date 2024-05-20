@@ -4,12 +4,63 @@
 #include <SDL2/SDL.h>
 #include <irrlicht.h>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <locale>
+#include <codecvt>
+#include <cmath>
+#include <set>
+#include "gui_freetype_font.h"
+#include "rc_utf8.h"
 
 using namespace irr;
 
 using namespace core;
 using namespace video;
 using namespace scene;
+
+
+#define MAX_JOYSTICKS 8
+
+#define MAX_FINGERS 10
+
+#define MAX_ACCELS 20
+#define MAX_GYROS 20
+
+SDL_Joystick * rc_joystick[MAX_JOYSTICKS];
+int rc_joy_axis[MAX_JOYSTICKS][100];
+int rc_numJoysticks = 0;
+int rc_joybutton[MAX_JOYSTICKS][100];
+SDL_JoystickID rc_joyID[MAX_JOYSTICKS];
+
+SDL_Joystick * tmp_joy;
+SDL_JoystickID tmp_joy_id;
+int tmp_joy_flag = 0;
+
+SDL_Haptic * rc_haptic[MAX_JOYSTICKS]; //1 for each joystick
+
+double rc_pressure = 0;
+int rc_touchX = 0;
+int rc_touchY = 0;
+int rc_motionX = 0;
+int rc_motionY = 0;
+int rc_touch = 0;
+int rc_mt_status = 0;
+int rc_mt_x = 0;
+int rc_mt_y = 0;
+int rc_mt_numFingers = 0;
+double rc_mt_theta = 0;
+double rc_mt_dist = 0;
+SDL_TouchID rc_touchDevice;
+SDL_Finger rc_finger[MAX_FINGERS];
+set<int> rc_fingers_pressed;
+
+SDL_Sensor * rc_accel[MAX_ACCELS];
+int num_accels = 0;
+
+SDL_Sensor * rc_gyro[MAX_GYROS];
+int num_gyros = 0;
+
 
 struct SDLKeyMap
 {
@@ -226,6 +277,143 @@ irr::s32 MouseX, MouseY, MouseXRel, MouseYRel;
 irr::u32 MouseButtonStates;
 
 
+int rc_win_event = -1;
+#define RC_WIN_EVENT_CLOSE 1
+#define RC_WIN_EVENT_MINIMIZE 2
+#define RC_WIN_EVENT_MAXIMIZE 3
+#define RC_WIN_EVENT_RESIZE 4
+
+bool rc_win_exitOnClose = true;
+
+std::string rc_textinput_string = "";
+std::string rc_textinput_char = "";
+int rc_textinput_timer = 0;
+int rc_textinput_delay = 100;
+bool rc_textinput_flag = true;
+bool rc_textinput_isActive = false;
+int rc_textinput_waitHold = 800;
+bool rc_textinput_hold = false;
+bool rc_toggleBackspace = true;
+
+
+static Uint32 baseticks = 0;
+
+int rc_inkey_val = 0;
+
+const Uint8 * keyState = NULL;
+
+
+
+std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+
+struct rc_font_obj
+{
+    CGUITTFace* face;
+    CGUIFreetypeFont* font;
+    int font_size;
+};
+
+irr::core::array<rc_font_obj*> rc_font;
+
+int rc_active_font = -1;
+
+
+bool mobile_active_window_flag = true;
+
+void rc_setTouchFingerEvent(SDL_FingerID fingerID, double x, double y, double pressure)
+{
+    for(int i = 0; i < MAX_FINGERS; i++)
+    {
+        if(rc_finger[i].id == -1 || rc_finger[i].id == fingerID)
+        {
+            rc_finger[i].id = fingerID;
+            rc_finger[i].x = x;
+            rc_finger[i].y = y;
+            rc_finger[i].pressure = pressure;
+            if(rc_finger[i].pressure > 0)
+            {
+                rc_fingers_pressed.insert(i);
+            }
+            return;
+        }
+    }
+}
+
+int mobile_event_filter(void* userdata, SDL_Event* evt)
+{
+    SDL_Event event = evt[0];
+
+    int rc_win_width = 0;
+    int rc_win_height = 0;
+
+    if(rc_window)
+        SDL_GetWindowSize(rc_window, &rc_win_width, &rc_win_height);
+
+    switch(evt->type)
+    {
+        case SDL_APP_WILLENTERBACKGROUND:
+            mobile_active_window_flag = false;
+            break;
+        case SDL_APP_DIDENTERFOREGROUND:
+            if(!mobile_active_window_flag)
+            {
+                //rc_win_renderer[0] = SDL_GetRenderer(rc_win[0]);
+            }
+            mobile_active_window_flag = true;
+            break;
+
+        case SDL_FINGERDOWN:
+            rc_touch = 1;
+            rc_touchX = event.tfinger.x * rc_win_width;
+            rc_touchY = event.tfinger.y * rc_win_height;
+#ifdef RC_IOS
+            rc_pressure = 1; //FIXME: On IOS pressure is always getting reported as 0 on finger down so I am just setting it to 1 until I figure this out
+#else
+            rc_pressure = event.tfinger.pressure;
+#endif
+            rc_setTouchFingerEvent(event.tfinger.fingerId, rc_touchX, rc_touchY, rc_pressure);
+            break;
+        case SDL_FINGERUP:
+            rc_touch = 0;
+            rc_mt_status = 0;
+            rc_touchX = event.tfinger.x * rc_win_width;
+            rc_touchY = event.tfinger.y * rc_win_height;
+            rc_pressure = event.tfinger.pressure;
+            rc_setTouchFingerEvent(event.tfinger.fingerId, -1, -1, 0);
+            break;
+        case SDL_FINGERMOTION:
+            rc_touch = 1;
+            rc_touchX = event.tfinger.x * rc_win_width;
+            rc_touchY = event.tfinger.y * rc_win_height;
+            rc_motionX = event.tfinger.dx * rc_win_width;
+            rc_motionY = event.tfinger.dy * rc_win_height;
+#ifdef RC_IOS
+            rc_pressure = 1;
+#else
+            rc_pressure = event.tfinger.pressure;
+#endif
+            rc_setTouchFingerEvent(event.tfinger.fingerId, rc_touchX, rc_touchY, rc_pressure);
+            break;
+        case SDL_MULTIGESTURE:
+            rc_touch = 2;
+            rc_mt_status = 1;
+            rc_mt_x = event.mgesture.x;
+            rc_mt_y = event.mgesture.y;
+            rc_mt_numFingers = event.mgesture.numFingers;
+            rc_mt_dist = event.mgesture.dDist;
+            rc_mt_theta = event.mgesture.dTheta;
+#ifdef RC_IOS
+            rc_pressure = 1;
+#else
+            rc_pressure = event.tfinger.pressure;
+#endif
+            break;
+
+    }
+    return 0;
+}
+
+
 bool rcbasic_init()
 {
     if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
@@ -248,9 +436,70 @@ bool rcbasic_init()
         rc_init_audio = false;
     }
 
+    #ifdef RC_MOBILE
+        SDL_SetEventFilter(mobile_event_filter, NULL);
+    #endif // RC_MOBILE
+
     device = NULL;
     VideoDriver = NULL;
     rc_window = NULL;
+
+    keyState = SDL_GetKeyboardState(NULL);
+    createKeyMap();
+
+
+    for(int i = 0; i < MAX_FINGERS; i++)
+    {
+        rc_finger[i].id = -1;
+        rc_finger[i].x = -1;
+        rc_finger[i].y = -1;
+        rc_finger[i].pressure = 0;
+    }
+
+    for(int i = 0; i < SDL_NumSensors(); i++)
+    {
+        rc_accel[num_accels] =  NULL;
+        rc_gyro[num_gyros] =    NULL;
+        switch(SDL_SensorGetDeviceType(i))
+        {
+            case SDL_SENSOR_ACCEL:
+                rc_accel[num_accels] = SDL_SensorOpen(i);
+                num_accels++;
+                break;
+            case SDL_SENSOR_GYRO:
+                rc_gyro[num_gyros] = SDL_SensorOpen(i);
+                num_gyros++;
+                break;
+        }
+    }
+
+    for(int i = 0; i < MAX_JOYSTICKS; i++)
+    {
+        if(i < SDL_NumJoysticks())
+        {
+            rc_joystick[i] = SDL_JoystickOpen(i);
+            if(rc_joystick[i]==NULL)
+            {
+                cout << "Joystick " << i << " could not be opened: " << SDL_GetError() << endl;
+            }
+            rc_joyID[i] = SDL_JoystickInstanceID(rc_joystick[i]);
+            #ifdef RC_WEB
+            rc_haptic[i] = NULL;
+            #else
+            rc_haptic[i] = SDL_HapticOpenFromJoystick(rc_joystick[i]);
+            SDL_HapticRumbleInit(rc_haptic[i]);
+            #endif
+            //if(rc_haptic[i] == NULL){ cout << "HAP NULL: " << SDL_GetError() << endl; }
+            rc_numJoysticks++;
+        }
+        else
+        {
+            rc_joystick[i] = NULL;
+            rc_haptic[i] =  NULL;
+            rc_joyID[i] = -1;
+        }
+    }
+    SDL_SetHint("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1");
 
     return true;
 
@@ -291,7 +540,7 @@ bool rc_windowOpenEx(std::string title, int x, int y, int w, int h, uint32_t win
     irr_creation_params.DriverType = video::EDT_OPENGL;
     irr_creation_params.WindowId = rc_window;
     irr_creation_params.WindowSize = dimension2d<u32>((u32)w, (u32)h);
-    irr_creation_params.Bits = 32;
+    irr_creation_params.Bits = 16;
     irr_creation_params.Fullscreen = fullscreen;
     irr_creation_params.Stencilbuffer = stencil_buffer;
     irr_creation_params.Vsync = vsync;
@@ -310,13 +559,22 @@ bool rc_windowOpenEx(std::string title, int x, int y, int w, int h, uint32_t win
 
     VideoDriver = device->getVideoDriver();
 
+    rc_canvas.clear();
+    rc_canvas_zOrder.clear();
+    rc_font.clear();
+
+    rc_canvas_obj back_buffer;
+    back_buffer.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d((irr::u32)w, (irr::u32)h), "rt", ECF_A8R8G8B8);
+    VideoDriver->setRenderTarget(back_buffer.texture, true, true);
+    rc_canvas.push_back(back_buffer);
+
     return true;
 }
 
 bool rc_windowOpen(std::string title, int w, int h, bool fullscreen, bool vsync)
 {
     uint32_t flags = SDL_WINDOW_SHOWN | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    if(!rc_windowOpenEx(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, flags, 0, true, vsync))
+    if(!rc_windowOpenEx(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, w, h, flags, 0, false, vsync))
     {
         return false;
     }
@@ -329,6 +587,12 @@ void rc_closeWindow_hw()
     if(rc_window!=NULL)
         SDL_DestroyWindow(rc_window);
     rc_window = NULL;
+
+    rc_canvas.clear();
+    rc_canvas_zOrder.clear();
+    rc_font.clear();
+
+    device->drop();
 }
 
 Uint32 rc_windowMode(int visible_flag, int fullscreen_flag, int resizable_flag, int borderless_flag, int highDPI_flag)
@@ -777,7 +1041,9 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
         return -1;
 
     rc_canvas_obj canvas;
-    canvas.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(w,h), "rt");
+    canvas.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(w,h), "rt", ECF_A8R8G8B8);
+
+    //std::cout << "texture format = " << canvas.texture->getColorFormat() << std::endl;
 
     canvas.dimension.Width = w;
     canvas.dimension.Height = h;
@@ -867,7 +1133,7 @@ void rc_setActiveCanvas(int canvas_id)
     if(rc_active_canvas >= 0 && rc_active_canvas < rc_canvas.size())
     {
         if(rc_canvas[rc_active_canvas].texture)
-            VideoDriver->setRenderTarget(rc_canvas[rc_active_canvas].texture);
+            VideoDriver->setRenderTarget(rc_canvas[rc_active_canvas].texture, false, false);
     }
 }
 
@@ -916,8 +1182,790 @@ void rc_drawRect(int x, int y, int w, int h)
     irr::core::dimension2d<s32> r_dim(w,h);
     irr::core::rect<s32> r(r_pos, r_dim);
     //std::cout << "drawRect: color=" << rc_active_color.color << " ( " << x << ", " << y << ", " << w << ", " << h << " ) " << std::endl;
+    VideoDriver->draw2DRectangleOutline(r, rc_active_color);
+}
+
+void rc_drawRectFill(int x, int y, int w, int h)
+{
+    irr::core::vector2d<s32> r_pos(x,y);
+    irr::core::dimension2d<s32> r_dim(w,h);
+    irr::core::rect<s32> r(r_pos, r_dim);
+    //std::cout << "drawRect: color=" << rc_active_color.color << " ( " << x << ", " << y << ", " << w << ", " << h << " ) " << std::endl;
     VideoDriver->draw2DRectangle(rc_active_color, r);
 }
+
+void rc_drawCircle(int x, int y, double r)
+{
+    irr::core::vector2d<s32> r_pos(x,y);
+
+    VideoDriver->draw2DPolygon(r_pos, r, rc_active_color, 30);
+}
+
+
+
+//Filled Circle Code from CuteAlien on Irrlicht forum
+struct CircleSettings
+{
+    vector2di center;       // in screen coordinates
+    f32 radius;             // in pixels
+    f32 radius2;
+    video::SColor color;
+    u32 numVertices = 21;   // including center
+};
+
+void makeCircle(irr::core::array<irr::video::S3DVertex>& vertices, irr::core::array<irr::u16>& indices, const CircleSettings& settings)
+{
+    const f64 stepSize = 360.0 / (f64)(settings.numVertices-1); // degree angles between vertex points on circle
+    indices.set_used(settings.numVertices+1);   // one more as first and last vertex in circle is identical
+    for ( u32 i=0; i<settings.numVertices; ++i)
+        indices[i] = i;
+    indices[settings.numVertices] = 1;
+
+    const vector2df centerf((f32)settings.center.X, (f32)settings.center.Y);
+    vertices.set_used(settings.numVertices);
+    vertices[0] = video::S3DVertex(centerf.X, centerf.Y, 0.f, 0.f, 1.f, 0.f, settings.color, 0.5f, 0.5f);
+    for ( u32 i=0; i < settings.numVertices-1; ++i )
+    {
+        vector2df offset(0.f, settings.radius);
+        offset.rotateBy(i*stepSize);
+        vertices[i+1] = video::S3DVertex(centerf.X+offset.X, centerf.Y+offset.Y, 0.f, 0.f, 1.f, 0.f, settings.color, 0.5f, 0.5f);
+    }
+}
+
+void rc_drawCircleFill(int x, int y, double r)
+{
+    irr::core::vector2d<s32> r_pos(x,y);
+
+    // create the circle
+    irr::core::array<irr::video::S3DVertex> verticesCircle;
+    irr::core::array<irr::u16> indicesCircle;
+    CircleSettings circle;
+    circle.center = r_pos;
+    circle.radius = r;
+    circle.color = rc_active_color;
+    makeCircle(verticesCircle, indicesCircle, circle);
+
+    VideoDriver->draw2DVertexPrimitiveList(verticesCircle.pointer(), verticesCircle.size(),
+        indicesCircle.pointer(), indicesCircle.size()-2, video::EVT_STANDARD, scene::EPT_TRIANGLE_FAN,
+        video::EIT_16BIT);
+}
+
+void rc_drawLine(int x1, int y1, int x2, int y2)
+{
+    irr::core::vector2d<s32> r_pos_start(x1,y1);
+    irr::core::vector2d<s32> r_pos_end(x2,y2);
+
+    VideoDriver->draw2DLine(r_pos_start, r_pos_end, rc_active_color);
+}
+
+void rc_poly(Uint32 n, double* vx_d, double* vy_d)
+{
+    if(n <= 0)
+        return;
+
+    for(int i = 1; i < n; i++)
+    {
+        rc_drawLine((int)vx_d[i-1], (int)vy_d[i-1], (int)vx_d[i], (int)vy_d[i]);
+    }
+
+    rc_drawLine((int)vx_d[n-1], (int)vy_d[n-1], (int)vx_d[0], (int)vy_d[0]);
+}
+
+void rc_drawPixel(int x, int y)
+{
+    VideoDriver->drawPixel(x, y, rc_active_color);
+}
+
+
+double radians(double degree)
+{
+    double pi = 3.14159265359;
+    return (degree * (pi / 180));
+}
+
+void makeEllipse(irr::core::array<irr::video::S3DVertex>& vertices, irr::core::array<irr::u16>& indices, const CircleSettings& settings)
+{
+    const f64 stepSize = 360.0 / (f64)(settings.numVertices-1); // degree angles between vertex points on circle
+    indices.set_used(settings.numVertices+1);   // one more as first and last vertex in circle is identical
+    for ( u32 i=0; i<settings.numVertices; ++i)
+        indices[i] = i;
+    indices[settings.numVertices] = 1;
+
+    const vector2df centerf((f32)settings.center.X, (f32)settings.center.Y);
+    vertices.set_used(settings.numVertices);
+    vertices[0] = video::S3DVertex(centerf.X, centerf.Y, 0.f, 0.f, 1.f, 0.f, settings.color, 0.5f, 0.5f);
+    int rx = settings.radius2;
+    int ry = settings.radius;
+    for ( u32 i=1; i < settings.numVertices; i++ )
+    {
+        irr::f32 x = rx * std::cos( radians(i*stepSize) ) + centerf.Y ;
+        irr::f32 y = ry * std::sin( radians(i*stepSize) ) + centerf.X ;
+
+        vertices[i] = video::S3DVertex(x, y, 0.f, 0.f, 1.f, 0.f, settings.color, 0.5f, 0.5f);
+    }
+}
+
+void rc_drawEllipse(int x, int y, int rx, int ry)
+{
+    irr::core::vector2d<s32> r_pos(x,y);
+
+    // create the circle
+    irr::core::array<irr::video::S3DVertex> verticesCircle;
+    irr::core::array<irr::u16> indicesCircle;
+    CircleSettings circle;
+    circle.center = r_pos;
+    circle.radius = ry;
+    circle.radius2 = rx;
+    circle.color = rc_active_color;
+    circle.numVertices = 21;
+    makeEllipse(verticesCircle, indicesCircle, circle);
+
+    for(int i = 2; i < verticesCircle.size(); i++)
+    {
+        rc_drawLine(verticesCircle[i-1].Pos.X, verticesCircle[i-1].Pos.Y, verticesCircle[i].Pos.X, verticesCircle[i].Pos.Y);
+    }
+
+    int n = verticesCircle.size()-1;
+    rc_drawLine(verticesCircle[n].Pos.X, verticesCircle[n].Pos.Y, verticesCircle[1].Pos.X, verticesCircle[1].Pos.Y);
+}
+
+void rc_drawEllipseFill(int x, int y, int rx, int ry)
+{
+    irr::core::vector2d<s32> r_pos(x,y);
+
+    // create the circle
+    irr::core::array<irr::video::S3DVertex> verticesCircle;
+    irr::core::array<irr::u16> indicesCircle;
+    CircleSettings circle;
+    circle.center = r_pos;
+    circle.radius = ry;
+    circle.radius2 = rx;
+    circle.color = rc_active_color;
+    circle.numVertices = 21;
+    makeEllipse(verticesCircle, indicesCircle, circle);
+
+    VideoDriver->draw2DVertexPrimitiveList(verticesCircle.pointer(), verticesCircle.size(),
+        indicesCircle.pointer(), indicesCircle.size()-2, video::EVT_STANDARD, scene::EPT_TRIANGLE_FAN,
+        video::EIT_16BIT);
+}
+
+
+void rc_floodFill(int x, int y)
+{
+//    ITexture* texture = rc_canvas[rc_active_canvas];
+//
+//    video::ECOLOR_FORMAT format = texture->getColorFormat();
+//
+//    if(video::ECF_A8R8G8B8 == format)
+//    {
+//        u8 * texels = (u8 *)texture->lock();
+//
+//        u32 pitch = texture->getPitch();
+//
+//        // Let's get the texel at X = 81, Y = 35, which should be
+//        // A = 255, R = 69, G = 95, B = 108
+//        const u32 column = 81;
+//        const u32 row = 35;
+//
+//        SColor * texel = (SColor *)(texels + ((row * pitch) + (column * sizeof(SColor))));
+//
+//        (void)printf("A %d, R %d, G %d, B %d\n",
+//            texel->getAlpha(), texel->getRed(),
+//            texel->getGreen(), texel->getBlue());
+//    }
+//
+//    texture->unlock();
+}
+
+
+
+int rc_loadFont(irr::io::path file_path, int font_size)
+{
+    int font_id = -1;
+    for(int i = 0; i < rc_font.size(); i++)
+    {
+        if(rc_font[i]!=NULL)
+        {
+            font_id = i;
+            break;
+        }
+    }
+
+    CGUITTFace* Face;
+    CGUIFreetypeFont* dfont;
+
+    Face = new CGUITTFace();
+    Face->load(file_path);
+
+    dfont = new CGUIFreetypeFont(VideoDriver);
+    dfont->attach(Face, font_size);
+
+
+    if(font_id < 0)
+    {
+        font_id = rc_font.size();
+
+        rc_font_obj* f = new rc_font_obj();
+
+        f->face = Face;
+        f->font = dfont;
+        f->font_size = font_size;
+
+        rc_font.push_back(f);
+
+        rc_active_font = font_id;
+    }
+    else
+    {
+        rc_font[font_id]->face = Face;
+        rc_font[font_id]->font = dfont;
+        rc_font[font_id]->font_size = font_size;
+    }
+
+    return font_id;
+}
+
+bool rc_fontExists(int font_id)
+{
+    if(font_id >= 0 && font_id < rc_font.size())
+    {
+        if(rc_font[font_id]->font != NULL)
+            return true;
+    }
+    return false;
+}
+
+void rc_deleteFont(int font_id)
+{
+    if(rc_fontExists(font_id))
+    {
+        delete rc_font[font_id]->font;
+        delete rc_font[font_id]->face;
+        rc_font[font_id]->font = NULL;
+        rc_font[font_id]->face = NULL;
+        rc_font[font_id]->font_size = 0;
+    }
+}
+
+void rc_setFont(int font_id)
+{
+    if(rc_fontExists(font_id))
+        rc_active_font = font_id;
+}
+
+void rc_drawText(std::string txt, int x, int y)
+{
+    if(rc_fontExists(rc_active_font))
+    {
+        std::wstring text = utf8_to_wstring(txt);
+        irr::core::dimension2d<irr::u32> text_dim = rc_font[rc_active_font]->font->getDimension(text.c_str());
+        irr::core::rect<s32> tpos(x, y, text_dim.Width, rc_font[rc_active_font]->font_size);
+
+        //std::cout << "Start drawing text: " << tpos.getWidth() << ", " << tpos.getHeight() << std::endl;
+        rc_font[rc_active_font]->font->draw(text.c_str(), tpos, rc_active_color);
+        //std::cout << "------------------" << std::endl;
+    }
+}
+
+Uint32 rc_getTextWidth(const std::string txt)
+{
+    if(rc_fontExists(rc_active_font))
+    {
+        std::wstring text = utf8_to_wstring(txt);
+        irr::core::dimension2d<irr::u32> text_dim = rc_font[rc_active_font]->font->getDimension(text.c_str());
+        return text_dim.Width;
+    }
+    return 0;
+}
+
+Uint32 rc_getTextHeight(const std::string txt)
+{
+    if(rc_fontExists(rc_active_font))
+    {
+        std::wstring text = utf8_to_wstring(txt);
+        //std::wstring wide = converter.from_bytes(txt);
+        //irr::core::dimension2d<irr::u32> text_dim = rc_font[rc_active_font]->getDimension(wide.c_str());
+        return rc_font[rc_active_font]->font_size;
+    }
+    return 0;
+}
+
+void rc_getTextSize(const std::string txt, double* w, double* h)
+{
+    if(rc_fontExists(rc_active_font))
+    {
+        std::wstring text = utf8_to_wstring(txt);
+        irr::core::dimension2d<irr::u32> text_dim = rc_font[rc_active_font]->font->getDimension(text.c_str());
+        *w = text_dim.Width;
+        *h = rc_font[rc_active_font]->font_size;
+    }
+    else
+    {
+        *w = 0;
+        *h = 0;
+    }
+}
+
+
+#define RC_MOUSE_BUTTON_LEFT 0
+#define RC_MOUSE_BUTTON_MIDDLE 1
+#define RC_MOUSE_BUTTON_RIGHT 2
+
+int rc_mwheelx = -1;
+int rc_mwheely = -1;
+
+bool rc_cursor_visible = true;
+
+
+bool rc_mouseButton(int b)
+{
+    bool button_state = false;
+    switch(b)
+    {
+        case 0:
+            button_state = ((MouseButtonStates & irr::EMBSM_LEFT)!=0);
+            break;
+        case 1:
+            button_state = ((MouseButtonStates & irr::EMBSM_MIDDLE)!=0);
+            break;
+        case 2:
+            button_state = ((MouseButtonStates & irr::EMBSM_RIGHT)!=0);
+            break;
+    }
+    return button_state;
+}
+
+int rc_mouseX()
+{
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+    return x;
+}
+
+int rc_mouseY()
+{
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+    return y;
+}
+
+void rc_getMouse(double* x, double* y)
+{
+    int ix, iy;
+    SDL_GetMouseState(&ix, &iy);
+    *x = ix;
+    *y = iy;
+}
+
+int rc_mouseWheelX()
+{
+    return rc_mwheelx;
+}
+
+int rc_mouseWheelY()
+{
+    return rc_mwheely;
+}
+
+int rc_globalMouseX()
+{
+    int x, y;
+    SDL_GetGlobalMouseState(&x,&y);
+    return x;
+}
+
+int rc_globalMouseY()
+{
+    int x, y;
+    SDL_GetGlobalMouseState(&x,&y);
+    return y;
+}
+
+void rc_globalMouse(double * x, double* y)
+{
+    int ix, iy;
+    SDL_GetGlobalMouseState(&ix,&iy);
+    *x = ix;
+    *y = iy;
+}
+
+void rc_getMouseWheel(double* x, double* y)
+{
+    *x = rc_mwheelx;
+    *y = rc_mwheely;
+}
+
+void rc_hideMouse()
+{
+    SDL_ShowCursor(0);
+    rc_cursor_visible = false;
+}
+
+void rc_showMouse()
+{
+    SDL_ShowCursor(1);
+    rc_cursor_visible = true;
+}
+
+bool rc_mouseIsVisible()
+{
+    return rc_cursor_visible;
+}
+
+
+int rc_inkey()
+{
+    return rc_inkey_val;
+}
+
+int rc_key(int check_Key)
+{
+    return keyState[SDL_GetScancodeFromKey(check_Key)];
+}
+
+int rc_waitKey()
+{
+    bool wk_loop = true;
+    SDL_Event e;
+    while(wk_loop)
+    {
+        while(SDL_WaitEvent(&e))
+        {
+            if(e.type == SDL_KEYDOWN)
+                return (int)e.key.keysym.sym;
+        }
+    }
+    return 0;
+}
+
+void rc_wait(Uint32 ms)
+{
+    SDL_Delay(ms);
+}
+
+
+
+void rc_grabInput(bool flag)
+{
+    SDL_SetWindowGrab(rc_window, flag ? SDL_TRUE : SDL_FALSE);
+}
+
+int rc_windowIsGrabbed()
+{
+    return SDL_GetWindowGrab(rc_window);
+}
+
+void rc_warpMouse(int x, int y)
+{
+    SDL_WarpMouseInWindow(rc_window, x, y);
+}
+
+void rc_warpMouseGlobal(int x, int y)
+{
+    SDL_WarpMouseGlobal(x, y);
+}
+
+void rc_setMouseZone(int x, int y, int w, int h)
+{
+    SDL_Rect r;
+    r.x = x;
+    r.y = y;
+    r.w = w;
+    r.h = h;
+    SDL_SetWindowMouseRect(rc_window, &r);
+}
+
+void rc_clearMouseZone()
+{
+    SDL_SetWindowMouseRect(rc_window, NULL);
+}
+
+void rc_setWindowAlwaysOnTop(bool flag)
+{
+    SDL_SetWindowAlwaysOnTop(rc_window, flag ? SDL_TRUE : SDL_FALSE);
+}
+
+void rc_setMouseRelative(bool flag)
+{
+    SDL_SetRelativeMouseMode(flag ? SDL_TRUE : SDL_FALSE);
+}
+
+void rc_setWindowVSync(bool flag)
+{
+    //TODO
+}
+
+int rc_openURL(std::string url)
+{
+    return SDL_OpenURL(url.c_str());
+}
+
+std::string rc_SDLVersion()
+{
+    SDL_version version;
+    SDL_GetVersion(&version);
+
+    std::stringstream ss;
+    ss << (uint32_t)version.major << "." << (uint32_t)version.minor << "." << (uint32_t)version.patch;
+    return ss.str();
+
+}
+
+int rc_flashWindow(int flag)
+{
+    switch(flag)
+    {
+        case 0:
+            return SDL_FlashWindow(rc_window, SDL_FLASH_CANCEL);
+        case 1:
+            return SDL_FlashWindow(rc_window, SDL_FLASH_BRIEFLY);
+        case 2:
+            return SDL_FlashWindow(rc_window, SDL_FLASH_UNTIL_FOCUSED);
+    }
+
+    return -1;
+}
+
+int rc_messageBox(std::string title, std::string msg)
+{
+    return SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, title.c_str(), msg.c_str(), NULL);
+}
+
+int rc_FPS()
+{
+    return VideoDriver->getFPS();
+}
+
+
+
+
+int rc_getNumJoysticks()
+{
+    return SDL_NumJoysticks();
+}
+
+int rc_joyAxis(int joy_num, int axis)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickGetAxis(rc_joystick[joy_num], axis);
+    return 0;
+}
+
+int rc_joyButton(int joy_num, int jbutton)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickGetButton(rc_joystick[joy_num], jbutton);
+    return 0;
+}
+
+std::string rc_joystickName(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return (std::string)SDL_JoystickName(rc_joystick[joy_num]);
+    return "";
+}
+
+int rc_numJoyButtons(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickNumButtons(rc_joystick[joy_num]);
+    return 0;
+}
+
+int rc_numJoyAxes(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickNumAxes(rc_joystick[joy_num]);
+    return 0;
+}
+
+int rc_numJoyHats(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickNumHats(rc_joystick[joy_num]);
+    return 0;
+}
+
+int rc_joyHat(int joy_num, int hat)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickGetHat(rc_joystick[joy_num], hat);
+    return 0;
+}
+
+int rc_numJoyTrackBalls(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        return SDL_JoystickNumBalls(rc_joystick[joy_num]);
+    return 0;
+}
+
+void rc_getJoyTrackBall(int joy_num, int ball, double * dx, double * dy)
+{
+    int x = 0;
+    int y = 0;
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        SDL_JoystickGetBall(rc_joystick[joy_num], ball, &x, &y);
+    *dx = x;
+    *dy = y;
+}
+
+bool rc_joystickIsConnected( int joy_num )
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+    {
+        if(rc_joystick[joy_num])
+            return true;
+        return false;
+    }
+    return false;
+}
+
+void rc_joyRumblePlay(int joy_num, double strength, double duration)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+    {
+        SDL_HapticRumblePlay(rc_haptic[joy_num], strength, (Uint32)duration);
+    }
+}
+
+void rc_joyRumbleStop(int joy_num)
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+        SDL_HapticRumbleStop(rc_haptic[joy_num]);
+}
+
+int rc_joystickIsHaptic( int joy_num )
+{
+    if(joy_num >= 0 && joy_num < MAX_JOYSTICKS)
+    {
+        if(rc_haptic[joy_num])
+            return 1;
+    }
+    return 0;
+}
+
+
+
+
+
+void rc_getTouchFinger(int finger, double * x, double * y, double * pressure)
+{
+    if(finger < MAX_FINGERS)
+    {
+        *x = rc_finger[finger].x;
+        *y = rc_finger[finger].y;
+        *pressure = rc_finger[finger].pressure;
+    }
+}
+
+int rc_numFingers()
+{
+    return rc_fingers_pressed.size();
+}
+
+double rc_touchPressure()
+{
+    return rc_pressure;
+}
+
+void rc_getTouch(double * status, double * x, double * y, double * distX, double * distY)
+{
+    *status = (double)rc_touch;
+    *x = (double)rc_touchX;
+    *y = (double)rc_touchY;
+    *distX = (double)rc_motionX;
+    *distY = (double)rc_motionY;
+    return;
+}
+
+void rc_getMultiTouch(double * status, double * x, double * y, double * numFingers, double * dist, double * theta)
+{
+    *status = (double)rc_mt_status;
+    *x = (double)rc_mt_x;
+    *y = (double)rc_mt_y;
+    *numFingers = (double)rc_mt_numFingers;
+    *dist = rc_mt_dist;
+    *theta = rc_mt_theta;
+    return;
+}
+
+void rc_getAccel(uint32_t accel_num, double * x, double * y, double * z)
+{
+    float sensor_data[4];
+    if(accel_num < num_accels)
+        SDL_SensorGetData(rc_accel[accel_num], &sensor_data[0], 3);
+    *x = sensor_data[0];
+    *y = sensor_data[1];
+    *z = sensor_data[2];
+}
+
+std::string rc_accelName(uint32_t accel_num)
+{
+    if(accel_num < num_accels)
+        return (std::string)SDL_SensorGetName(rc_accel[accel_num]);
+    return "";
+}
+
+int rc_numAccels()
+{
+    return num_accels;
+}
+
+void rc_getGyro(uint32_t gyro_num, double * x, double * y, double * z)
+{
+    float sensor_data[4];
+    if(gyro_num < num_gyros)
+        SDL_SensorGetData(rc_gyro[gyro_num], &sensor_data[0], 3);
+    *x = sensor_data[0];
+    *y = sensor_data[1];
+    *z = sensor_data[2];
+}
+
+std::string rc_gyroName(uint32_t gyro_num)
+{
+    if(gyro_num < num_gyros)
+        return (std::string)SDL_SensorGetName(rc_gyro[gyro_num]);
+    return "";
+}
+
+int rc_numGyros()
+{
+    return num_gyros;
+}
+
+void rc_readInput_Start()
+{
+    SDL_StartTextInput();
+    rc_textinput_isActive = true;
+    rc_textinput_string = "";
+    rc_textinput_timer = clock() / (double)(CLOCKS_PER_SEC / 1000);
+}
+
+void rc_readInput_Stop()
+{
+    rc_textinput_isActive = false;
+    rc_textinput_timer = 0;
+    rc_textinput_string = "";
+    SDL_StopTextInput();
+}
+
+std::string rc_readInput_Text()
+{
+    return rc_textinput_string;
+}
+
+void rc_readInput_SetText(std::string txt)
+{
+    rc_textinput_string = txt;
+}
+
+void rc_readInput_ToggleBackspace(bool flag)
+{
+    rc_toggleBackspace = flag;
+}
+
+
 
 
 
@@ -946,6 +1994,10 @@ bool rc_update()
 
 		switch ( SDL_event.type )
 		{
+        case SDL_QUIT:
+            SDL_PumpEvents();
+            Close = true;
+            break;
 		case SDL_MOUSEMOTION:
 			irrevent.EventType = irr::EET_MOUSE_INPUT_EVENT;
 			irrevent.MouseInput.Event = irr::EMIE_MOUSE_MOVED;
@@ -996,6 +2048,8 @@ bool rc_update()
 					irrevent.MouseInput.Event = irr::EMIE_RMOUSE_LEFT_UP;
 					MouseButtonStates &= !irr::EMBSM_RIGHT;
 				}
+
+				//rc_setWindowFullscreen(1);
 				//rc_canvas[0].offset.X--;
 				break;
 
@@ -1040,10 +2094,19 @@ bool rc_update()
         case SDL_MOUSEWHEEL:
             irrevent.MouseInput.Event = irr::EMIE_MOUSE_WHEEL;
             irrevent.MouseInput.Wheel = SDL_event.wheel.y;
+            rc_mwheelx = SDL_event.wheel.x;
+            rc_mwheely = SDL_event.wheel.y;
             break;
 
-		case SDL_KEYDOWN:
+        case SDL_TEXTINPUT:
+            if(rc_textinput_flag == true)
+            {
+                rc_textinput_string += SDL_event.text.text;
+            }
+            break;
+
 		case SDL_KEYUP:
+		case SDL_KEYDOWN:
 			{
 				SDLKeyMap mp;
 				mp.SDLKey = SDL_event.key.keysym.sym;
@@ -1063,12 +2126,19 @@ bool rc_update()
 				irrevent.KeyInput.Control = (SDL_event.key.keysym.mod & KMOD_CTRL ) != 0;
 				device->postEventFromUser(irrevent);
 			}
+
+			if(SDL_event.type == SDL_KEYDOWN)
+			{
+			    if(rc_textinput_flag && SDL_event.key.keysym.sym == SDLK_BACKSPACE && rc_textinput_string.length() > 0
+                   && rc_toggleBackspace)
+                {
+                    rc_textinput_string = rc_utf8_substr(rc_textinput_string, 0, rc_utf8_length(rc_textinput_string)-1);
+                }
+
+                rc_inkey_val = SDL_event.key.keysym.sym;
+			}
 			break;
 
-		case SDL_QUIT:
-			//std::cout << "CLOSE WIN" << std::endl;
-			Close = true;
-			break;
 
 		case SDL_WINDOWEVENT:
 			if (SDL_event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
@@ -1077,12 +2147,147 @@ bool rc_update()
 				// FIXME: Check if the window is game window
 				s32 Width = SDL_event.window.data1;
                 s32 Height = SDL_event.window.data2;
+
+                rc_win_event = RC_WIN_EVENT_RESIZE;
+
                 //resizeWindow(Width, Height);
                 if (VideoDriver)
                     VideoDriver->OnResize(core::dimension2d<u32>(Width, Height));
 
 			}
+			else if(SDL_event.window.event == SDL_WINDOWEVENT_CLOSE)
+            {
+                if(rc_window)
+                {
+                    rc_win_event = RC_WIN_EVENT_CLOSE;
+
+                    if(SDL_QuitRequested() != 0)
+                    {
+                        SDL_FlushEvent(SDL_QUIT);
+                    }
+                    if(rc_win_exitOnClose)
+                    {
+                        rc_closeWindow_hw();
+                        Close = true;
+                    }
+
+                }
+            }
+            else if(SDL_event.window.event == SDL_WINDOWEVENT_MINIMIZED)
+            {
+                if(rc_window)
+                {
+                    rc_win_event = RC_WIN_EVENT_MINIMIZE;
+                }
+            }
+            else if(SDL_event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
+            {
+                if(rc_window)
+                {
+                    rc_win_event = RC_WIN_EVENT_MAXIMIZE;
+                }
+            }
+
 			break;
+
+        case SDL_JOYDEVICEREMOVED:
+            //cout << "Joystick Removed: Instance " << event.jdevice.which << endl;
+            for(int i = 0; i < 8; i++)
+            {
+                if(SDL_event.jdevice.which == rc_joyID[i] && rc_joystick[i])
+                {
+                    //cout << "Joystick [" << i << "] was removed" << endl;
+                    SDL_HapticClose(rc_haptic[i]);
+                    SDL_JoystickClose(rc_joystick[i]);
+                    rc_joystick[i] = NULL;
+                    rc_haptic[i] = NULL;
+                    rc_joyID[i] = -1;
+                    rc_numJoysticks--;
+                    break;
+                }
+            }
+            break;
+        case SDL_JOYDEVICEADDED:
+            //cout << "Joystick Added: " << event.jdevice.which << endl;
+            tmp_joy = SDL_JoystickOpen(SDL_event.jdevice.which);
+            tmp_joy_id = SDL_JoystickInstanceID(tmp_joy);
+            tmp_joy_flag = 0;
+
+            for(int i = 0; i < 8; i++)
+            {
+                if(tmp_joy_id == rc_joyID[i])
+                {
+                    tmp_joy_flag = 1;
+                    break;
+                }
+            }
+
+            if(SDL_event.jdevice.which >= 0 && tmp_joy_flag == 0)
+            {
+                for(int i = 0; i < 8; i++)
+                {
+                    if(rc_joystick[i] == NULL)
+                    {
+                        //cout << "Assigned " << i << endl;
+                        rc_joystick[i] = tmp_joy;
+                        rc_haptic[i] = SDL_HapticOpenFromJoystick(rc_joystick[i]);
+                        SDL_HapticRumbleInit(rc_haptic[i]);
+                        rc_joyID[i] = tmp_joy_id;
+                        rc_numJoysticks++;
+                        break;
+                    }
+                }
+            }
+            break;
+
+#ifndef RC_MOBILE //This block handles touch events for non-mobile devices, Just in case it has a touch screen that SDL2 can get events for
+        case SDL_FINGERDOWN:
+            rc_touch = 1;
+            rc_touchX = SDL_event.tfinger.x * win_w;
+            rc_touchY = SDL_event.tfinger.y * win_h;
+#ifdef RC_IOS
+            rc_pressure = 1; //FIXME: On IOS pressure is always getting reported as 0 on finger down so I am just setting it to 1 until I figure this out
+#else
+            rc_pressure = SDL_event.tfinger.pressure;
+#endif
+            rc_setTouchFingerEvent(SDL_event.tfinger.fingerId, rc_touchX, rc_touchY, rc_pressure);
+            break;
+        case SDL_FINGERUP:
+            rc_touch = 0;
+            rc_mt_status = 0;
+            rc_touchX = SDL_event.tfinger.x * win_w;
+            rc_touchY = SDL_event.tfinger.y * win_h;
+            rc_pressure = SDL_event.tfinger.pressure;
+            rc_setTouchFingerEvent(SDL_event.tfinger.fingerId, -1, -1, 0);
+            break;
+        case SDL_FINGERMOTION:
+            rc_touch = 1;
+            rc_touchX = SDL_event.tfinger.x * win_w;
+            rc_touchY = SDL_event.tfinger.y * win_h;
+            rc_motionX = SDL_event.tfinger.dx * win_w;
+            rc_motionY = SDL_event.tfinger.dy * win_h;
+#ifdef RC_IOS
+            rc_pressure = 1;
+#else
+            rc_pressure = SDL_event.tfinger.pressure;
+#endif
+            rc_setTouchFingerEvent(SDL_event.tfinger.fingerId, rc_touchX, rc_touchY, rc_pressure);
+            break;
+        case SDL_MULTIGESTURE:
+            rc_touch = 2;
+            rc_mt_status = 1;
+            rc_mt_x = SDL_event.mgesture.x;
+            rc_mt_y = SDL_event.mgesture.y;
+            rc_mt_numFingers = SDL_event.mgesture.numFingers;
+            rc_mt_dist = SDL_event.mgesture.dDist;
+            rc_mt_theta = SDL_event.mgesture.dTheta;
+#ifdef RC_IOS
+            rc_pressure = 1;
+#else
+            rc_pressure = SDL_event.tfinger.pressure;
+#endif
+            break;
+#endif
 
 		case SDL_USEREVENT:
 			irrevent.EventType = irr::EET_USER_EVENT;
@@ -1100,8 +2305,7 @@ bool rc_update()
 
 	if(!Close)
     {
-        VideoDriver->setRenderTarget(0);
-        VideoDriver->beginScene(true, true);
+        VideoDriver->setRenderTarget(rc_canvas[0].texture);
 
 		for(int cz = 0; cz < rc_canvas_zOrder.size(); cz++)
         {
@@ -1120,6 +2324,10 @@ bool rc_update()
 
 		//env->drawAll();
 
+		VideoDriver->setRenderTarget(0);
+		VideoDriver->beginScene(true, true);
+		VideoDriver->draw2DImage(rc_canvas[0].texture, irr::core::vector2d(0,0));
+		//device->getGUIEnvironment()->drawAll();
 		VideoDriver->endScene();
 
 		rc_setActiveCanvas(rc_active_canvas);

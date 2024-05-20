@@ -14,9 +14,13 @@ and a pointer to a listbox.
 
 #include <SDL2/SDL.h>
 
+#include <codecvt>
+
 #include "driverChoice.h"
 #include "exampleHelper.h"
 
+#include "gui_freetype_font.h"
+#include "rc_stdlib.h"
 #include "rc_gfx.h"
 
 using namespace irr;
@@ -181,34 +185,23 @@ OK, now for the more interesting part. First, create the Irrlicht device. As in
 some examples before, we ask the user which driver he wants to use for this
 example.
 */
+
+//CGUITTFace Face;
+//CGUIFreetypeFont* dfont;
+
+void tst(irr::video::IVideoDriver* driver)
+{
+    //Face.load("FreeMono.ttf");
+    //dfont = new CGUIFreetypeFont(driver);
+    //dfont->attach(&Face, 12);
+}
+
 int main()
 {
 
-    if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
-    {
-        //os::Printer::log("SDL_Init Error: ", SDL_GetError());
-        std::cout << "SDL_Init Error: " << SDL_GetError() << std::endl;
-        return false;
-    }
+    rcbasic_init();
 
-    createKeyMap();
-
-    //rc_windowOpenEx("hell no", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, false, false, false);
     rc_windowOpen("testing", 640, 480, false, true);
-
-//    SDL_Window* window = SDL_CreateWindow("OGLES2 gui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-//
-//	SIrrlichtCreationParameters p;
-//		p.DriverType = EDT_OPENGL;
-//		p.WindowSize = dimension2d<u32>(640, 480);
-//		p.Bits = 32;
-//		p.Fullscreen = false;
-//		p.Stencilbuffer = false;
-//		p.Vsync = false;
-//		p.EventReceiver = 0;
-//		p.DeviceType = EIDT_SDL;
-//		p.WindowId = window;
-//	IrrlichtDevice *device = createDeviceEx(p);
 
 	if (device == 0)
 		return 1; // could not create selected driver.
@@ -310,19 +303,45 @@ int main()
 	uint32_t canvas = rc_canvasOpen(1000, 1000, 50, 50, 320, 200, 0);
 
 	std::cout << "color stuff" << std::endl;
-	rc_setClearColor( rc_rgb(100, 100, 100));
-	rc_setColor( rc_rgb(255,0,0) );
+	rc_setClearColor( rc_rgb(0, 100, 10));
+	rc_setColor( rc_rgb(255,255,255) );
 
 	std::cout << "set canvas" << std::endl;
 	rc_setActiveCanvas(canvas);
 
 	std::cout << "checkpoint start" << std::endl;
 
+	rc_clearCanvas();
+    rc_drawRect(50, 50, 90, 50);
+
+    //tst(driver);
+
+    rc_loadFont("NotoSansJP-VariableFont_wght.ttf", 12);
+
 	while(rc_update())
 	{
-	    rc_clearCanvas();
-	    rc_drawRect(50, 50, 90, 50);
+	    //rc_clearCanvas();
+        //rc_drawRect(50, 50, 90, 50);
 
+        if(rc_mouseButton(0))
+            std::cout << "LEFT: " << rc_mouseX() << ", " << rc_mouseY() << std::endl;
+        else if(rc_mouseButton(1))
+            std::cout << "MIDDLE" << std::endl;
+        else if(rc_mouseButton(2))
+        {
+            while(rc_mouseButton(2)) rc_update();
+            //irr::core::rect<s32> pos(20, 20, 300, 300);
+            //dfont->draw("RIGHT-おはよう", pos, irr::video::SColor(255, 255, 255, 255));
+            std::string t = "++RIGHT-おはよう";
+            rc_drawText(t, 20, 20);
+            //std::cout << "RIGHT-おはよう" << std::endl;
+
+            //rc_drawRectFill(50, 50, 90, 25);
+            rc_drawEllipseFill(60, 60, 50, 30);
+        }
+
+        if(rc_key(SDLK_ESCAPE))
+            break;
 	}
 
 	std::cout << "test end" << std::endl;

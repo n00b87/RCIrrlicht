@@ -1443,7 +1443,7 @@ bool CNullDriver::checkImage(const core::array<IImage*>& image) const
 			if ( !checkImage(format, size) )
 				return false;
 		}
-	
+
 		return true;
 	}
 	return false;

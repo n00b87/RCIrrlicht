@@ -2540,6 +2540,12 @@ COGLES2Driver::~COGLES2Driver()
 
 		if (target)
 		{
+		    //set manual depth texture
+
+		    //ITexture* depthTexture = addRenderTargetTexture(texture->getSize(), "IRR_DEPTH_STENCIL", video::ECF_D24S8);
+
+		    //-----------------------------
+
 			COGLES2RenderTarget* renderTarget = static_cast<COGLES2RenderTarget*>(target);
 
 			CacheHandler->setFBO(renderTarget->getBufferID());
