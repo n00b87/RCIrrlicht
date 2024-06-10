@@ -10,6 +10,7 @@
 #include <codecvt>
 #include <cmath>
 #include <set>
+#include "rc_gfx_core.h"
 #include "gui_freetype_font.h"
 #include "rc_utf8.h"
 
@@ -19,306 +20,6 @@ using namespace core;
 using namespace video;
 using namespace scene;
 
-
-#define MAX_JOYSTICKS 8
-
-#define MAX_FINGERS 10
-
-#define MAX_ACCELS 20
-#define MAX_GYROS 20
-
-SDL_Joystick * rc_joystick[MAX_JOYSTICKS];
-int rc_joy_axis[MAX_JOYSTICKS][100];
-int rc_numJoysticks = 0;
-int rc_joybutton[MAX_JOYSTICKS][100];
-SDL_JoystickID rc_joyID[MAX_JOYSTICKS];
-
-SDL_Joystick * tmp_joy;
-SDL_JoystickID tmp_joy_id;
-int tmp_joy_flag = 0;
-
-SDL_Haptic * rc_haptic[MAX_JOYSTICKS]; //1 for each joystick
-
-double rc_pressure = 0;
-int rc_touchX = 0;
-int rc_touchY = 0;
-int rc_motionX = 0;
-int rc_motionY = 0;
-int rc_touch = 0;
-int rc_mt_status = 0;
-int rc_mt_x = 0;
-int rc_mt_y = 0;
-int rc_mt_numFingers = 0;
-double rc_mt_theta = 0;
-double rc_mt_dist = 0;
-SDL_TouchID rc_touchDevice;
-SDL_Finger rc_finger[MAX_FINGERS];
-set<int> rc_fingers_pressed;
-
-SDL_Sensor * rc_accel[MAX_ACCELS];
-int num_accels = 0;
-
-SDL_Sensor * rc_gyro[MAX_GYROS];
-int num_gyros = 0;
-
-
-struct SDLKeyMap
-{
-    SDLKeyMap() {}
-    SDLKeyMap(s32 x11, s32 win32)
-        : SDLKey(x11), Win32Key(win32)
-    {
-    }
-
-    s32 SDLKey;
-    s32 Win32Key;
-
-    bool operator<(const SDLKeyMap& o) const
-    {
-        return SDLKey<o.SDLKey;
-    }
-};
-
-core::array<SDLKeyMap> KeyMap;
-
-void createKeyMap()
-{
-	// I don't know if this is the best method  to create
-	// the lookuptable, but I'll leave it like that until
-	// I find a better version.
-
-	KeyMap.reallocate(105);
-
-	// buttons missing
-
-	KeyMap.push_back(SDLKeyMap(SDLK_BACKSPACE, irr::EKEY_CODE::KEY_BACK));
-	KeyMap.push_back(SDLKeyMap(SDLK_TAB, irr::EKEY_CODE::KEY_TAB));
-	KeyMap.push_back(SDLKeyMap(SDLK_CLEAR, irr::EKEY_CODE::KEY_CLEAR));
-	KeyMap.push_back(SDLKeyMap(SDLK_RETURN, irr::EKEY_CODE::KEY_RETURN));
-
-	// combined modifiers missing
-
-	KeyMap.push_back(SDLKeyMap(SDLK_PAUSE, irr::EKEY_CODE::KEY_PAUSE));
-	KeyMap.push_back(SDLKeyMap(SDLK_CAPSLOCK, irr::EKEY_CODE::KEY_CAPITAL));
-
-	// asian letter keys missing
-
-	KeyMap.push_back(SDLKeyMap(SDLK_ESCAPE, irr::EKEY_CODE::KEY_ESCAPE));
-
-	// asian letter keys missing
-
-	KeyMap.push_back(SDLKeyMap(SDLK_SPACE, irr::EKEY_CODE::KEY_SPACE));
-	KeyMap.push_back(SDLKeyMap(SDLK_PAGEUP, irr::EKEY_CODE::KEY_PRIOR));
-	KeyMap.push_back(SDLKeyMap(SDLK_PAGEDOWN, irr::EKEY_CODE::KEY_NEXT));
-	KeyMap.push_back(SDLKeyMap(SDLK_END, irr::EKEY_CODE::KEY_END));
-	KeyMap.push_back(SDLKeyMap(SDLK_HOME, irr::EKEY_CODE::KEY_HOME));
-	KeyMap.push_back(SDLKeyMap(SDLK_LEFT, irr::EKEY_CODE::KEY_LEFT));
-	KeyMap.push_back(SDLKeyMap(SDLK_UP, irr::EKEY_CODE::KEY_UP));
-	KeyMap.push_back(SDLKeyMap(SDLK_RIGHT, irr::EKEY_CODE::KEY_RIGHT));
-	KeyMap.push_back(SDLKeyMap(SDLK_DOWN, irr::EKEY_CODE::KEY_DOWN));
-
-	// select missing
-	KeyMap.push_back(SDLKeyMap(SDLK_PRINTSCREEN, irr::EKEY_CODE::KEY_PRINT));
-	// execute missing
-	KeyMap.push_back(SDLKeyMap(SDLK_PRINTSCREEN, irr::EKEY_CODE::KEY_SNAPSHOT));
-
-	KeyMap.push_back(SDLKeyMap(SDLK_INSERT, irr::EKEY_CODE::KEY_INSERT));
-	KeyMap.push_back(SDLKeyMap(SDLK_DELETE, irr::EKEY_CODE::KEY_DELETE));
-	KeyMap.push_back(SDLKeyMap(SDLK_HELP, irr::EKEY_CODE::KEY_HELP));
-
-	KeyMap.push_back(SDLKeyMap(SDLK_0, irr::EKEY_CODE::KEY_KEY_0));
-	KeyMap.push_back(SDLKeyMap(SDLK_1, irr::EKEY_CODE::KEY_KEY_1));
-	KeyMap.push_back(SDLKeyMap(SDLK_2, irr::EKEY_CODE::KEY_KEY_2));
-	KeyMap.push_back(SDLKeyMap(SDLK_3, irr::EKEY_CODE::KEY_KEY_3));
-	KeyMap.push_back(SDLKeyMap(SDLK_4, irr::EKEY_CODE::KEY_KEY_4));
-	KeyMap.push_back(SDLKeyMap(SDLK_5, irr::EKEY_CODE::KEY_KEY_5));
-	KeyMap.push_back(SDLKeyMap(SDLK_6, irr::EKEY_CODE::KEY_KEY_6));
-	KeyMap.push_back(SDLKeyMap(SDLK_7, irr::EKEY_CODE::KEY_KEY_7));
-	KeyMap.push_back(SDLKeyMap(SDLK_8, irr::EKEY_CODE::KEY_KEY_8));
-	KeyMap.push_back(SDLKeyMap(SDLK_9, irr::EKEY_CODE::KEY_KEY_9));
-
-	KeyMap.push_back(SDLKeyMap(SDLK_a, irr::EKEY_CODE::KEY_KEY_A));
-	KeyMap.push_back(SDLKeyMap(SDLK_b, irr::EKEY_CODE::KEY_KEY_B));
-	KeyMap.push_back(SDLKeyMap(SDLK_c, irr::EKEY_CODE::KEY_KEY_C));
-	KeyMap.push_back(SDLKeyMap(SDLK_d, irr::EKEY_CODE::KEY_KEY_D));
-	KeyMap.push_back(SDLKeyMap(SDLK_e, irr::EKEY_CODE::KEY_KEY_E));
-	KeyMap.push_back(SDLKeyMap(SDLK_f, irr::EKEY_CODE::KEY_KEY_F));
-	KeyMap.push_back(SDLKeyMap(SDLK_g, irr::EKEY_CODE::KEY_KEY_G));
-	KeyMap.push_back(SDLKeyMap(SDLK_h, irr::EKEY_CODE::KEY_KEY_H));
-	KeyMap.push_back(SDLKeyMap(SDLK_i, irr::EKEY_CODE::KEY_KEY_I));
-	KeyMap.push_back(SDLKeyMap(SDLK_j, irr::EKEY_CODE::KEY_KEY_J));
-	KeyMap.push_back(SDLKeyMap(SDLK_k, irr::EKEY_CODE::KEY_KEY_K));
-	KeyMap.push_back(SDLKeyMap(SDLK_l, irr::EKEY_CODE::KEY_KEY_L));
-	KeyMap.push_back(SDLKeyMap(SDLK_m, irr::EKEY_CODE::KEY_KEY_M));
-	KeyMap.push_back(SDLKeyMap(SDLK_n, irr::EKEY_CODE::KEY_KEY_N));
-	KeyMap.push_back(SDLKeyMap(SDLK_o, irr::EKEY_CODE::KEY_KEY_O));
-	KeyMap.push_back(SDLKeyMap(SDLK_p, irr::EKEY_CODE::KEY_KEY_P));
-	KeyMap.push_back(SDLKeyMap(SDLK_q, irr::EKEY_CODE::KEY_KEY_Q));
-	KeyMap.push_back(SDLKeyMap(SDLK_r, irr::EKEY_CODE::KEY_KEY_R));
-	KeyMap.push_back(SDLKeyMap(SDLK_s, irr::EKEY_CODE::KEY_KEY_S));
-	KeyMap.push_back(SDLKeyMap(SDLK_t, irr::EKEY_CODE::KEY_KEY_T));
-	KeyMap.push_back(SDLKeyMap(SDLK_u, irr::EKEY_CODE::KEY_KEY_U));
-	KeyMap.push_back(SDLKeyMap(SDLK_v, irr::EKEY_CODE::KEY_KEY_V));
-	KeyMap.push_back(SDLKeyMap(SDLK_w, irr::EKEY_CODE::KEY_KEY_W));
-	KeyMap.push_back(SDLKeyMap(SDLK_x, irr::EKEY_CODE::KEY_KEY_X));
-	KeyMap.push_back(SDLKeyMap(SDLK_y, irr::EKEY_CODE::KEY_KEY_Y));
-	KeyMap.push_back(SDLKeyMap(SDLK_z, irr::EKEY_CODE::KEY_KEY_Z));
-
-        // TODO:
-	//KeyMap.push_back(SDLKeyMap(SDLK_LSUPER, KEY_LWIN));
-        // TODO:
-	//KeyMap.push_back(SDLKeyMap(SDLK_RSUPER, KEY_RWIN));
-	// apps missing
-	KeyMap.push_back(SDLKeyMap(SDLK_POWER, irr::EKEY_CODE::KEY_SLEEP)); //??
-
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_0, irr::EKEY_CODE::KEY_NUMPAD0));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_1, irr::EKEY_CODE::KEY_NUMPAD1));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_2, irr::EKEY_CODE::KEY_NUMPAD2));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_3, irr::EKEY_CODE::KEY_NUMPAD3));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_4, irr::EKEY_CODE::KEY_NUMPAD4));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_5, irr::EKEY_CODE::KEY_NUMPAD5));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_6, irr::EKEY_CODE::KEY_NUMPAD6));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_7, irr::EKEY_CODE::KEY_NUMPAD7));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_8, irr::EKEY_CODE::KEY_NUMPAD8));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_9, irr::EKEY_CODE::KEY_NUMPAD9));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_MULTIPLY, irr::EKEY_CODE::KEY_MULTIPLY));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_PLUS, irr::EKEY_CODE::KEY_ADD));
-//	KeyMap.push_back(SDLKeyMap(SDLK_KP_, KEY_SEPARATOR));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_MINUS, irr::EKEY_CODE::KEY_SUBTRACT));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_PERIOD, irr::EKEY_CODE::KEY_DECIMAL));
-	KeyMap.push_back(SDLKeyMap(SDLK_KP_DIVIDE, irr::EKEY_CODE::KEY_DIVIDE));
-
-	KeyMap.push_back(SDLKeyMap(SDLK_F1,  irr::EKEY_CODE::KEY_F1));
-	KeyMap.push_back(SDLKeyMap(SDLK_F2,  irr::EKEY_CODE::KEY_F2));
-	KeyMap.push_back(SDLKeyMap(SDLK_F3,  irr::EKEY_CODE::KEY_F3));
-	KeyMap.push_back(SDLKeyMap(SDLK_F4,  irr::EKEY_CODE::KEY_F4));
-	KeyMap.push_back(SDLKeyMap(SDLK_F5,  irr::EKEY_CODE::KEY_F5));
-	KeyMap.push_back(SDLKeyMap(SDLK_F6,  irr::EKEY_CODE::KEY_F6));
-	KeyMap.push_back(SDLKeyMap(SDLK_F7,  irr::EKEY_CODE::KEY_F7));
-	KeyMap.push_back(SDLKeyMap(SDLK_F8,  irr::EKEY_CODE::KEY_F8));
-	KeyMap.push_back(SDLKeyMap(SDLK_F9,  irr::EKEY_CODE::KEY_F9));
-	KeyMap.push_back(SDLKeyMap(SDLK_F10, irr::EKEY_CODE::KEY_F10));
-	KeyMap.push_back(SDLKeyMap(SDLK_F11, irr::EKEY_CODE::KEY_F11));
-	KeyMap.push_back(SDLKeyMap(SDLK_F12, irr::EKEY_CODE::KEY_F12));
-	KeyMap.push_back(SDLKeyMap(SDLK_F13, irr::EKEY_CODE::KEY_F13));
-	KeyMap.push_back(SDLKeyMap(SDLK_F14, irr::EKEY_CODE::KEY_F14));
-	KeyMap.push_back(SDLKeyMap(SDLK_F15, irr::EKEY_CODE::KEY_F15));
-	// no higher F-keys
-
-        // TODO:
-	//KeyMap.push_back(SDLKeyMap(SDLK_NUMLOCK, KEY_NUMLOCK));
-	KeyMap.push_back(SDLKeyMap(SDLK_SCROLLLOCK, irr::EKEY_CODE::KEY_SCROLL));
-	KeyMap.push_back(SDLKeyMap(SDLK_LSHIFT, irr::EKEY_CODE::KEY_LSHIFT));
-	KeyMap.push_back(SDLKeyMap(SDLK_RSHIFT, irr::EKEY_CODE::KEY_RSHIFT));
-	KeyMap.push_back(SDLKeyMap(SDLK_LCTRL,  irr::EKEY_CODE::KEY_LCONTROL));
-	KeyMap.push_back(SDLKeyMap(SDLK_RCTRL,  irr::EKEY_CODE::KEY_RCONTROL));
-	KeyMap.push_back(SDLKeyMap(SDLK_LALT,  irr::EKEY_CODE::KEY_LMENU));
-	KeyMap.push_back(SDLKeyMap(SDLK_RALT,  irr::EKEY_CODE::KEY_RMENU));
-
-	KeyMap.push_back(SDLKeyMap(SDLK_PLUS,   irr::EKEY_CODE::KEY_PLUS));
-	KeyMap.push_back(SDLKeyMap(SDLK_COMMA,  irr::EKEY_CODE::KEY_COMMA));
-	KeyMap.push_back(SDLKeyMap(SDLK_MINUS,  irr::EKEY_CODE::KEY_MINUS));
-	KeyMap.push_back(SDLKeyMap(SDLK_PERIOD, irr::EKEY_CODE::KEY_PERIOD));
-
-	// some special keys missing
-
-	KeyMap.sort();
-}
-
-IrrlichtDevice* device;
-irr::video::IVideoDriver * VideoDriver;
-SDL_Window* rc_window;
-irr::core::dimension2d<u32> rc_window_size;
-
-
-//Canvases
-struct rc_canvas_obj
-{
-    irr::video::ITexture* texture;
-
-    irr::core::dimension2d<u32> dimension;
-
-    struct rc_canvas_viewport
-    {
-        irr::core::vector2d<s32> position;
-        irr::core::dimension2d<u32> dimension;
-    } viewport;
-
-    irr::core::vector2d<s32> offset;
-
-    int mode;
-
-    bool visible = true;
-    int z = 0;
-
-    irr::u8 alpha;
-
-    irr::u32 color_mod;
-};
-
-irr::core::array<rc_canvas_obj> rc_canvas;
-irr::core::array<u32> rc_canvas_zOrder;
-int rc_active_canvas = -1;
-
-irr::video::SColor rc_active_color(0,0,0,0);
-irr::video::SColor rc_clear_color(0,0,0,0);
-
-bool rc_init_events = false;
-bool rc_init_timer = false;
-bool rc_init_video = false;
-bool rc_init_joystick = false;
-bool rc_init_haptic = false;
-bool rc_init_sensor = false;
-bool rc_init_noparachute = false;
-bool rc_init_audio = false;
-
-
-irr::s32 MouseX, MouseY, MouseXRel, MouseYRel;
-irr::u32 MouseButtonStates;
-
-
-int rc_win_event = -1;
-#define RC_WIN_EVENT_CLOSE 1
-#define RC_WIN_EVENT_MINIMIZE 2
-#define RC_WIN_EVENT_MAXIMIZE 3
-#define RC_WIN_EVENT_RESIZE 4
-
-bool rc_win_exitOnClose = true;
-
-std::string rc_textinput_string = "";
-std::string rc_textinput_char = "";
-int rc_textinput_timer = 0;
-int rc_textinput_delay = 100;
-bool rc_textinput_flag = true;
-bool rc_textinput_isActive = false;
-int rc_textinput_waitHold = 800;
-bool rc_textinput_hold = false;
-bool rc_toggleBackspace = true;
-
-
-static Uint32 baseticks = 0;
-
-int rc_inkey_val = 0;
-
-const Uint8 * keyState = NULL;
-
-
-
-std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-
-struct rc_font_obj
-{
-    CGUITTFace* face;
-    CGUIFreetypeFont* font;
-    int font_size;
-};
-
-irr::core::array<rc_font_obj*> rc_font;
-
-int rc_active_font = -1;
-
-
-bool mobile_active_window_flag = true;
 
 void rc_setTouchFingerEvent(SDL_FingerID fingerID, double x, double y, double pressure)
 {
@@ -558,6 +259,7 @@ bool rc_windowOpenEx(std::string title, int x, int y, int w, int h, uint32_t win
     }
 
     VideoDriver = device->getVideoDriver();
+    SceneManager = device->getSceneManager();
 
     rc_canvas.clear();
     rc_canvas_zOrder.clear();
@@ -565,6 +267,10 @@ bool rc_windowOpenEx(std::string title, int x, int y, int w, int h, uint32_t win
 
     rc_canvas_obj back_buffer;
     back_buffer.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d((irr::u32)w, (irr::u32)h), "rt", ECF_A8R8G8B8);
+    back_buffer.dimension.Width = w;
+    back_buffer.dimension.Height = h;
+    back_buffer.viewport.position.set(0,0);
+    back_buffer.viewport.dimension.set(w,h);
     VideoDriver->setRenderTarget(back_buffer.texture, true, true);
     rc_canvas.push_back(back_buffer);
 
@@ -593,6 +299,22 @@ void rc_closeWindow_hw()
     rc_font.clear();
 
     device->drop();
+}
+
+void rc_cls()
+{
+    if(rc_canvas.size()>0)
+    {
+        if(rc_canvas[0].texture)
+        {
+            VideoDriver->setRenderTarget(rc_canvas[0].texture);
+            VideoDriver->clearBuffers(true, true, true, rc_clear_color);
+
+            if(rc_active_canvas >= 0 && rc_active_canvas < rc_canvas.size())
+                if(rc_canvas[rc_active_canvas].texture)
+                    VideoDriver->setRenderTarget(rc_canvas[rc_active_canvas].texture, false, false);
+        }
+    }
 }
 
 Uint32 rc_windowMode(int visible_flag, int fullscreen_flag, int resizable_flag, int borderless_flag, int highDPI_flag)
@@ -960,7 +682,7 @@ void rc_setWindowResizable(bool b)
     }
 }
 
-bool rc_media_windowExists()
+bool rc_windowExists()
 {
     return (rc_window!=NULL);
 }
@@ -1033,7 +755,29 @@ int rc_hasClipboardText()
 }
 
 
+//The greater Z is, the further back the canvas is
+void sortCanvasZ()
+{
+    for(int i = 0; i < rc_canvas_zOrder.size(); i++)
+    {
+        for(int j = i+1; j < rc_canvas_zOrder.size(); j++)
+        {
+            int ca = rc_canvas_zOrder[i];
+            int cb = rc_canvas_zOrder[j];
+            if(rc_canvas[cb].z >= rc_canvas[ca].z)
+            {
+                rc_canvas_zOrder.erase(j);
+                rc_canvas_zOrder.insert(cb, i);
+            }
+        }
+    }
 
+    //for(int i = 0; i < rc_canvas_zOrder.size(); i++)
+    //{
+    //    std::cout << "Canvas[" << i << "] Z = " << rc_canvas_zOrder[i] << ( (i+1)==rc_canvas_zOrder.size() ? "" : ", " );
+    //}
+    //std::cout << std::endl;
+}
 
 Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
 {
@@ -1042,6 +786,19 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
 
     rc_canvas_obj canvas;
     canvas.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(w,h), "rt", ECF_A8R8G8B8);
+
+    if(!canvas.texture)
+        return -1;
+
+
+    if(SceneManager)
+    {
+        canvas.camera.init(SceneManager, 0, 0, 0);
+        //canvas.camera = SceneManager->addCameraSceneNode(0, vector3df(0,0,0), vector3df(0,0,0));
+        //canvas.camera->setPosition(irr::core::vector3df(0,0,0));
+        //canvas.camera->setTarget(irr::core::vector3df(0,0,100));
+        //canvas.camera->bindTargetAndRotation(true);
+    }
 
     //std::cout << "texture format = " << canvas.texture->getColorFormat() << std::endl;
 
@@ -1057,6 +814,8 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
     canvas.offset.Y = 0;
 
     canvas.mode = mode;
+
+    canvas.color_mod = irr::video::SColor(255,255,255,255).color;
 
     switch(mode)
     {
@@ -1098,6 +857,8 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
 
     rc_canvas_zOrder.push_back(canvas_id);
 
+    sortCanvasZ();
+
 
     return canvas_id;
 }
@@ -1105,7 +866,7 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
 
 void rc_canvasClose(int canvas_id)
 {
-    if(canvas_id < 0 || canvas_id >= rc_canvas.size())
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
         return;
 
     if(rc_canvas[canvas_id].texture != NULL)
@@ -1124,6 +885,12 @@ void rc_canvasClose(int canvas_id)
             break;
         }
     }
+}
+
+void rc_setCanvas3D(int canvas_id, bool flag)
+{
+    if(canvas_id > 0 && canvas_id < rc_canvas.size())
+        rc_canvas[canvas_id].show3D = flag;
 }
 
 void rc_setActiveCanvas(int canvas_id)
@@ -1151,6 +918,161 @@ void rc_clearCanvas()
     }
 }
 
+void rc_setCanvasVisible(int canvas_id, bool flag)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+        rc_canvas[canvas_id].visible = flag;
+}
+
+bool rc_canvasIsVisible(int canvas_id)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return false;
+
+    if(rc_canvas[canvas_id].texture)
+        return rc_canvas[canvas_id].visible;
+
+    return false;
+}
+
+void rc_setCanvasViewport(int canvas_id, int x, int y, int w, int h)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        rc_canvas[canvas_id].viewport.position = irr::core::vector2d<irr::s32>(x, y);
+        rc_canvas[canvas_id].viewport.dimension = irr::core::dimension2d<irr::u32>(w, h);
+    }
+}
+
+void rc_getCanvasViewport(int canvas_id, double* x, double* y, double* w, double* h)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        *x = (double)rc_canvas[canvas_id].viewport.position.X;
+        *y = (double)rc_canvas[canvas_id].viewport.position.Y;
+        *w = rc_canvas[canvas_id].viewport.dimension.Width;
+        *h = rc_canvas[canvas_id].viewport.dimension.Height;
+    }
+}
+
+void rc_setCanvasOffset(int canvas_id, int x, int y)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        rc_canvas[canvas_id].offset = irr::core::vector2d<irr::s32>(x, y);
+    }
+}
+
+void rc_getCanvasOffset(int canvas_id, double* x, double* y)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        *x = (double)rc_canvas[canvas_id].offset.X;
+        *y = (double)rc_canvas[canvas_id].offset.Y;
+    }
+}
+
+void rc_getCanvasSize(int canvas_id, double* w, double* h)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        *w = (double)rc_canvas[canvas_id].dimension.Width;
+        *h = (double)rc_canvas[canvas_id].dimension.Height;
+    }
+}
+
+void rc_setCanvasColorMod(int canvas_id, Uint32 color_mod)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        rc_canvas[canvas_id].color_mod = color_mod;
+    }
+}
+
+Uint32 rc_canvasColorMod(int canvas_id)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return 0;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        return rc_canvas[canvas_id].color_mod;
+    }
+
+    return 0;
+}
+
+void rc_setCanvasAlpha(int canvas_id, Uint32 alpha)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        irr::video::SColor color(rc_canvas[canvas_id].color_mod);
+        color.setAlpha(alpha);
+        rc_canvas[canvas_id].color_mod = color.color;
+    }
+}
+
+Uint32 rc_canvasAlpha(int canvas_id)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return 0;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        irr::video::SColor color(rc_canvas[canvas_id].color_mod);
+        Uint32 alpha = color.getAlpha();
+        return alpha;
+    }
+    return 0;
+}
+
+void rc_setCanvasZ(int canvas_id, int z)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return;
+
+    rc_canvas[canvas_id].z = z;
+    sortCanvasZ();
+}
+
+int rc_canvasZ(int canvas_id)
+{
+    if(canvas_id <= 0 || canvas_id >= rc_canvas.size()) //canvas 0 is being excluded because its the back buffer
+        return 0;
+
+    if(rc_canvas[canvas_id].texture)
+    {
+        return rc_canvas[canvas_id].z;
+    }
+
+    return 0;
+}
+
+
 void rc_setClearColor(Uint32 color)
 {
     rc_clear_color.set(color);
@@ -1174,6 +1096,47 @@ Uint32 rc_rgb(Uint32 r, Uint32 g, Uint32 b)
 void rc_setColor(Uint32 color)
 {
     rc_active_color.set(color);
+}
+
+Uint32 rc_getPixel(int x, int y)
+{
+    if(!rc_canvas[0].texture)
+    {
+        return 0;
+    }
+
+    if(x < 0 || x >= rc_window_size.Width)
+        x = 0;
+
+    if(y < 0 || y >= rc_window_size.Height)
+        y = 0;
+
+
+    irr::video::ITexture* texture = rc_canvas[0].texture;
+
+    video::ECOLOR_FORMAT format = texture->getColorFormat(); //std::cout << "format = " << (int) format << std::endl;
+
+    Uint32 color = 0;
+
+    //this if statement is unnessesary since right now ECF_A8R8G8B8 is the only color format supported.
+    //I am leaving it here since I may want to support more color formats in the future
+    if(video::ECF_A8R8G8B8 == format)
+    {
+        u8 * texels = (u8 *)texture->lock(irr::video::ETLM_READ_ONLY);
+
+        u32 pitch = texture->getPitch();
+
+        irr::video::SColor * texel = (SColor *)(texels + ((y * pitch) + (x * sizeof(SColor))));
+
+        irr::video::SColor c = texel[0];
+
+        texture->unlock();
+
+        //std::cout << "color(" << x << ", " << y << ") = " << c.getRed() << ", " << c.getGreen() << ", " << c.getBlue() << std::endl;
+    }
+
+    return color;
+
 }
 
 void rc_drawRect(int x, int y, int w, int h)
@@ -1347,34 +1310,6 @@ void rc_drawEllipseFill(int x, int y, int rx, int ry)
     VideoDriver->draw2DVertexPrimitiveList(verticesCircle.pointer(), verticesCircle.size(),
         indicesCircle.pointer(), indicesCircle.size()-2, video::EVT_STANDARD, scene::EPT_TRIANGLE_FAN,
         video::EIT_16BIT);
-}
-
-
-void rc_floodFill(int x, int y)
-{
-//    ITexture* texture = rc_canvas[rc_active_canvas];
-//
-//    video::ECOLOR_FORMAT format = texture->getColorFormat();
-//
-//    if(video::ECF_A8R8G8B8 == format)
-//    {
-//        u8 * texels = (u8 *)texture->lock();
-//
-//        u32 pitch = texture->getPitch();
-//
-//        // Let's get the texel at X = 81, Y = 35, which should be
-//        // A = 255, R = 69, G = 95, B = 108
-//        const u32 column = 81;
-//        const u32 row = 35;
-//
-//        SColor * texel = (SColor *)(texels + ((row * pitch) + (column * sizeof(SColor))));
-//
-//        (void)printf("A %d, R %d, G %d, B %d\n",
-//            texel->getAlpha(), texel->getRed(),
-//            texel->getGreen(), texel->getBlue());
-//    }
-//
-//    texture->unlock();
 }
 
 
@@ -1966,6 +1901,955 @@ void rc_readInput_ToggleBackspace(bool flag)
 }
 
 
+struct rc_image_obj
+{
+    irr::video::ITexture* image;
+    Uint8 alpha = 255;
+    irr::video::SColor color_mod = irr::video::SColor(255,255,255,255);
+};
+irr::core::array<rc_image_obj> rc_image;
+
+irr::video::E_BLEND_OPERATION rc_blend_mode = irr::video::EBO_ADD;
+bool rc_bilinear_filter = false;
+
+
+int rc_loadImageEx(std::string img_file, Uint32 color_key = 0, bool use_color_key = false)
+{
+    rc_image_obj img;
+    img.image = VideoDriver->getTexture(img_file.c_str());
+
+    if(img.image == NULL)
+        return -1;
+
+    if(use_color_key)
+        VideoDriver->makeColorKeyTexture(img.image, irr::video::SColor(color_key), false);
+
+    int img_id = -1;
+
+    for(int i = 0; i < rc_image.size(); i++)
+    {
+        if(rc_image[i].image == NULL)
+        {
+            img_id = i;
+            break;
+        }
+    }
+
+    if(img_id < 0)
+    {
+        img_id = rc_image.size();
+        rc_image.push_back(img);
+    }
+    else
+    {
+        rc_image[img_id] = img;
+    }
+
+    return img_id;
+}
+
+int rc_loadImage(std::string img_file)
+{
+    return rc_loadImageEx(img_file);
+}
+
+void rc_deleteImage(int img_id)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        rc_image[img_id].image->drop();
+        rc_image[img_id].image = NULL;
+        rc_image[img_id].alpha = 255;
+    }
+}
+
+int rc_createImageEx(int w, int h, double * pdata, Uint32 colorkey, bool use_color_key=false)
+{
+    if(w <= 0 || h <=0)
+        return -1;
+
+    irr::video::IImage* image = VideoDriver->createImage(irr::video::ECF_A8R8G8B8, irr::core::dimension2d((irr::u32)w,(irr::u32)h));
+    if(!image)
+        return -1;
+
+    Uint32 * img_pixels = (Uint32*)image->getData();
+    for(int i = 0; i < (w*h); i++)
+    {
+        img_pixels[i] = (Uint32)pdata[i];
+    }
+
+    irr::video::ITexture* texture = VideoDriver->addTexture("buffer_image", image);
+    image->drop();
+
+    if(!texture)
+        return -1;
+
+    if(use_color_key)
+        VideoDriver->makeColorKeyTexture(texture, irr::video::SColor(colorkey));
+
+    int img_id = -1;
+    rc_image_obj img;
+    img.image = texture;
+    img.alpha = 255;
+
+    for(int i = 0; i < rc_image.size(); i++)
+    {
+        if(rc_image[i].image == NULL)
+        {
+            img_id = i;
+            break;
+        }
+    }
+
+    if(img_id < 0)
+    {
+        img_id = rc_image.size();
+        rc_image.push_back(img);
+    }
+    else
+    {
+        rc_image[img_id] = img;
+    }
+
+    return img_id;
+}
+
+int rc_createImage(int w, int h, double* pdata)
+{
+    return rc_createImageEx(w, h, pdata, 0);
+}
+
+
+void rc_getImageBuffer(int img_id, double * pdata)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(!rc_image[img_id].image)
+        return;
+
+    Uint32* img_pixels = (Uint32*)rc_image[img_id].image->lock();
+
+    int image_size = rc_image[img_id].image->getSize().Width * rc_image[img_id].image->getSize().Height;
+
+    for(int i = 0; i < image_size; i++)
+        pdata[i] = (double)img_pixels[i];
+
+    rc_image[img_id].image->unlock();
+}
+
+void rc_setBilinearFilter(bool flag)
+{
+    rc_bilinear_filter = flag;
+}
+
+bool rc_getBilinearFilter()
+{
+    return rc_bilinear_filter;
+}
+
+void rc_setColorMod(int img_id, Uint32 color)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        rc_image[img_id].color_mod = irr::video::SColor(color);
+    }
+}
+
+Uint32 rc_getColorMod(int img_id)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return 0;
+
+    if(rc_image[img_id].image)
+    {
+        return rc_image[img_id].color_mod.color;
+    }
+
+    return 0;
+}
+
+
+void rc_setBlendMode(int blend_mode)
+{
+    switch(blend_mode)
+    {
+        case 0: rc_blend_mode = EBO_NONE; break;
+        case 1: rc_blend_mode = EBO_ADD; break;
+        case 2: rc_blend_mode = EBO_SUBTRACT; break;
+        case 3: rc_blend_mode = EBO_REVSUBTRACT; break;
+        case 4: rc_blend_mode = EBO_MIN; break;
+        case 5: rc_blend_mode = EBO_MAX; break;
+        case 6: rc_blend_mode = EBO_MIN_FACTOR; break;
+        case 7: rc_blend_mode = EBO_MAX_FACTOR; break;
+        case 8: rc_blend_mode = EBO_MIN_ALPHA; break;
+        case 9: rc_blend_mode = EBO_MAX_ALPHA; break;
+    }
+}
+
+int rc_getBlendMode()
+{
+    return (int)rc_blend_mode;
+}
+
+void draw2DImage(irr::video::IVideoDriver *driver, irr::video::ITexture* texture, irr::core::rect<irr::s32> sourceRect, irr::core::position2d<irr::s32> position, irr::core::position2d<irr::s32> rotationPoint, irr::f32 rotation, irr::core::vector2df scale, bool useAlphaChannel, irr::video::SColor color, irr::core::vector2d<irr::f32> screenSize)
+{
+    if(rc_active_canvas < 0 || rc_active_canvas >= rc_canvas.size())
+        return;
+
+    // Store and clear the projection matrix
+    irr::core::matrix4 oldProjMat = driver->getTransform(irr::video::ETS_PROJECTION);
+    driver->setTransform(irr::video::ETS_PROJECTION,irr::core::matrix4());
+
+    // Store and clear the view matrix
+    irr::core::matrix4 oldViewMat = driver->getTransform(irr::video::ETS_VIEW);
+    driver->setTransform(irr::video::ETS_VIEW,irr::core::matrix4());
+
+    // Store and clear the world matrix
+    irr::core::matrix4 oldWorldMat = driver->getTransform(irr::video::ETS_WORLD);
+    driver->setTransform(irr::video::ETS_WORLD,irr::core::matrix4());
+
+    // Find horizontal and vertical axes after rotation
+    irr::f32 c = cos(-rotation*irr::core::DEGTORAD);
+    irr::f32 s = sin(-rotation*irr::core::DEGTORAD);
+    irr::core::vector2df horizontalAxis(c,s);
+    irr::core::vector2df verticalAxis(s,-c);
+
+    // First, we'll find the offset of the center and then where the center would be after rotation
+    irr::core::vector2df centerOffset(position.X+sourceRect.getWidth()/2.0f*scale.X-rotationPoint.X,position.Y+sourceRect.getHeight()/2.0f*scale.Y-rotationPoint.Y);
+    irr::core::vector2df center = centerOffset.X*horizontalAxis - centerOffset.Y*verticalAxis;
+    center.X += rotationPoint.X;
+    center.Y += rotationPoint.Y;
+
+    // Now find the corners based off the center
+    irr::core::vector2df cornerOffset(sourceRect.getWidth()*scale.X/2.0f,sourceRect.getHeight()*scale.Y/2.0f);
+    verticalAxis *= cornerOffset.Y;
+    horizontalAxis *= cornerOffset.X;
+    irr::core::vector2df corner[4];
+    corner[0] = center + verticalAxis - horizontalAxis;
+    corner[1] = center + verticalAxis + horizontalAxis;
+    corner[2] = center - verticalAxis - horizontalAxis;
+    corner[3] = center - verticalAxis + horizontalAxis;
+
+    // Find the uv coordinates of the sourceRect
+    irr::core::vector2df textureSize(texture->getSize().Width, texture->getSize().Height);
+    irr::core::vector2df uvCorner[4];
+    uvCorner[0] = irr::core::vector2df(sourceRect.UpperLeftCorner.X,sourceRect.UpperLeftCorner.Y);
+    uvCorner[1] = irr::core::vector2df(sourceRect.LowerRightCorner.X,sourceRect.UpperLeftCorner.Y);
+    uvCorner[2] = irr::core::vector2df(sourceRect.UpperLeftCorner.X,sourceRect.LowerRightCorner.Y);
+    uvCorner[3] = irr::core::vector2df(sourceRect.LowerRightCorner.X,sourceRect.LowerRightCorner.Y);
+    for (irr::s32 i = 0; i < 4; i++)
+            uvCorner[i] /= textureSize;
+
+    // Vertices for the image
+    irr::video::S3DVertex vertices[4];
+    irr::u16 indices[6] = { 0, 1, 2, 3 ,2 ,1 };
+
+    // Convert pixels to world coordinates
+    //irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+    for (irr::s32 i = 0; i < 4; i++) {
+            vertices[i].Pos = irr::core::vector3df(((corner[i].X/screenSize.X)-0.5f)*2.0f,((corner[i].Y/screenSize.Y)-0.5f)*-2.0f,1);
+            vertices[i].TCoords = uvCorner[i];
+            vertices[i].Color = color;
+    }
+
+    // Create the material
+    // IMPORTANT: For irrlicht 1.8 and above you MUST ADD THIS LINE:
+    // material.BlendOperation = irr::video::EBO_ADD;
+    irr::video::SMaterial material;
+    material.Lighting = false;
+    material.ZWriteEnable = irr::video::EZW_OFF;
+    material.ZBuffer = false;
+    material.BackfaceCulling = false;
+    material.TextureLayer[0].Texture = texture;
+    material.TextureLayer[0].BilinearFilter = rc_bilinear_filter;
+    material.MaterialTypeParam = irr::video::pack_textureBlendFunc(irr::video::EBF_SRC_ALPHA, irr::video::EBF_ONE_MINUS_SRC_ALPHA, irr::video::EMFN_MODULATE_1X, irr::video::EAS_TEXTURE | irr::video::EAS_VERTEX_COLOR);
+    material.BlendOperation = rc_blend_mode;
+    //material.BlendOperation = irr::video::EBO_ADD;
+
+    if (useAlphaChannel)
+            material.MaterialType = irr::video::EMT_ONETEXTURE_BLEND;
+    else
+            material.MaterialType = irr::video::EMT_SOLID;
+
+    driver->setMaterial(material);
+    driver->drawIndexedTriangleList(&vertices[0],4,&indices[0],2);
+
+    // Restore projection, world, and view matrices
+    driver->setTransform(irr::video::ETS_PROJECTION,oldProjMat);
+    driver->setTransform(irr::video::ETS_VIEW,oldViewMat);
+    driver->setTransform(irr::video::ETS_WORLD,oldWorldMat);
+}
+
+void draw2DImage2(irr::video::IVideoDriver *driver, irr::video::ITexture* texture, irr::core::rect<irr::s32> sourceRect, irr::core::rect<irr::s32> destRect, irr::core::position2d<irr::s32> rotationPoint, irr::f32 rotation, bool useAlphaChannel, irr::video::SColor color, irr::core::vector2d<irr::f32> screenSize )
+{
+    if(rc_active_canvas < 0 || rc_active_canvas >= rc_canvas.size())
+        return;
+
+    // Store and clear the projection matrix
+    irr::core::matrix4 oldProjMat = driver->getTransform(irr::video::ETS_PROJECTION);
+    driver->setTransform(irr::video::ETS_PROJECTION,irr::core::matrix4());
+
+    // Store and clear the view matrix
+    irr::core::matrix4 oldViewMat = driver->getTransform(irr::video::ETS_VIEW);
+    driver->setTransform(irr::video::ETS_VIEW,irr::core::matrix4());
+
+    // Store and clear the world matrix
+    irr::core::matrix4 oldWorldMat = driver->getTransform(irr::video::ETS_WORLD);
+    driver->setTransform(irr::video::ETS_WORLD,irr::core::matrix4());
+
+    // Find horizontal and vertical axes after rotation
+    irr::f32 c = cos(-rotation*irr::core::DEGTORAD);
+    irr::f32 s = sin(-rotation*irr::core::DEGTORAD);
+    irr::core::vector2df horizontalAxis(c,s);
+    irr::core::vector2df verticalAxis(s,-c);
+
+    // First, we'll find the offset of the center and then where the center would be after rotation
+    irr::core::vector2df centerOffset(destRect.UpperLeftCorner.X+destRect.getWidth()/2.0f-rotationPoint.X,destRect.UpperLeftCorner.Y+destRect.getHeight()/2.0f-rotationPoint.Y);
+    irr::core::vector2df center = centerOffset.X*horizontalAxis - centerOffset.Y*verticalAxis;
+    center.X += rotationPoint.X;
+    center.Y += rotationPoint.Y;
+
+    // Now find the corners based off the center
+    irr::core::vector2df cornerOffset(destRect.getWidth()/2.0f,destRect.getHeight()/2.0f);
+    verticalAxis *= cornerOffset.Y;
+    horizontalAxis *= cornerOffset.X;
+    irr::core::vector2df corner[4];
+    corner[0] = center + verticalAxis - horizontalAxis;
+    corner[1] = center + verticalAxis + horizontalAxis;
+    corner[2] = center - verticalAxis - horizontalAxis;
+    corner[3] = center - verticalAxis + horizontalAxis;
+
+    // Find the uv coordinates of the sourceRect
+    irr::core::vector2df textureSize(texture->getSize().Width, texture->getSize().Height);
+    irr::core::vector2df uvCorner[4];
+    uvCorner[0] = irr::core::vector2df(sourceRect.UpperLeftCorner.X,sourceRect.UpperLeftCorner.Y);
+    uvCorner[1] = irr::core::vector2df(sourceRect.LowerRightCorner.X,sourceRect.UpperLeftCorner.Y);
+    uvCorner[2] = irr::core::vector2df(sourceRect.UpperLeftCorner.X,sourceRect.LowerRightCorner.Y);
+    uvCorner[3] = irr::core::vector2df(sourceRect.LowerRightCorner.X,sourceRect.LowerRightCorner.Y);
+    for (irr::s32 i = 0; i < 4; i++)
+            uvCorner[i] /= textureSize;
+
+    // Vertices for the image
+    irr::video::S3DVertex vertices[4];
+    irr::u16 indices[6] = { 0, 1, 2, 3 ,2 ,1 };
+
+    // Convert pixels to world coordinates
+    //irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+    for (irr::s32 i = 0; i < 4; i++) {
+            vertices[i].Pos = irr::core::vector3df(((corner[i].X/screenSize.X)-0.5f)*2.0f,((corner[i].Y/screenSize.Y)-0.5f)*-2.0f,1);
+            vertices[i].TCoords = uvCorner[i];
+            vertices[i].Color = color;
+    }
+
+    // Create the material
+    // IMPORTANT: For irrlicht 1.8 and above you MUST ADD THIS LINE:
+    // material.BlendOperation = irr::video::EBO_ADD;
+    irr::video::SMaterial material;
+    material.Lighting = false;
+    material.ZWriteEnable = irr::video::EZW_OFF;
+    material.ZBuffer = false;
+    material.BackfaceCulling = false;
+    material.TextureLayer[0].Texture = texture;
+    material.TextureLayer[0].BilinearFilter = rc_bilinear_filter; //TODO: Add option to switch this on/off
+    material.BlendOperation = rc_blend_mode;
+    material.MaterialTypeParam = irr::video::pack_textureBlendFunc(irr::video::EBF_SRC_ALPHA, irr::video::EBF_ONE_MINUS_SRC_ALPHA, irr::video::EMFN_MODULATE_1X, irr::video::EAS_TEXTURE | irr::video::EAS_VERTEX_COLOR);
+    //material.AntiAliasing = irr::video::EAAM_OFF;
+
+    if (useAlphaChannel)
+            material.MaterialType = irr::video::EMT_ONETEXTURE_BLEND;
+    else
+            material.MaterialType = irr::video::EMT_SOLID;
+
+    driver->setMaterial(material);
+    driver->drawIndexedTriangleList(&vertices[0],4,&indices[0],2);
+
+    // Restore projection, world, and view matrices
+    driver->setTransform(irr::video::ETS_PROJECTION,oldProjMat);
+    driver->setTransform(irr::video::ETS_VIEW,oldViewMat);
+    driver->setTransform(irr::video::ETS_WORLD,oldWorldMat);
+}
+
+
+void rc_drawImage(int img_id, int x, int y)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(0, 0), src_size);
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(0, 0); //since we are not rotating it doesn't matter
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        //irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(src_w, src_h));;
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+int rc_copyImage(int src_id)
+{
+    if(src_id < 0 || src_id >= rc_image.size())
+        return -1;
+
+    if(!rc_image[src_id].image)
+        return -1;
+
+    irr::video::ITexture* texture = VideoDriver->addRenderTargetTexture(rc_image[src_id].image->getSize(), "img_copy", irr::video::ECF_A8R8G8B8);
+
+    if(!texture)
+        return -1;
+
+    VideoDriver->setRenderTarget(texture, true, false, irr::video::SColor(0));
+
+
+    irr::core::dimension2d<irr::u32> src_size = rc_image[src_id].image->getSize();
+    irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(0, 0), src_size);
+    irr::core::position2d<irr::s32> position(0, 0);
+    irr::core::position2d<irr::s32> rotationPoint(0, 0); //since we are not rotating it doesn't matter
+    irr::f32 rotation = 0;
+    irr::core::vector2df scale(1.0, 1.0);
+    bool useAlphaChannel = true;
+    irr::video::SColor color(rc_image[src_id].alpha,
+                             rc_image[src_id].color_mod.getRed(),
+                             rc_image[src_id].color_mod.getGreen(),
+                             rc_image[src_id].color_mod.getBlue());
+    irr::core::vector2df screenSize(src_size.Width, src_size.Height);
+
+    draw2DImage(VideoDriver, rc_image[src_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+
+    rc_setActiveCanvas(rc_active_canvas);
+
+    int img_id = -1;
+    rc_image_obj img;
+    img.image = texture;
+    img.alpha = 255;
+
+    for(int i = 0; i < rc_image.size(); i++)
+    {
+        if(rc_image[i].image == NULL)
+        {
+            img_id = i;
+            break;
+        }
+    }
+
+    if(img_id < 0)
+    {
+        img_id = rc_image.size();
+        rc_image.push_back(img);
+    }
+    else
+    {
+        rc_image[img_id] = img;
+    }
+
+    return img_id;
+}
+
+
+void rc_drawImage_rotate(int img_id, int x, int y, double angle)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect(0, 0, src_size.Width, src_size.Height);
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_size.Width/2), y + (src_size.Height/2));
+
+        irr::f32 rotation = -1*angle;
+        irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_zoom(int img_id, int x, int y, double zx, double zy)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect(0, 0, src_size.Width, src_size.Height);
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_size.Width/2), y + (src_size.Height/2));
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale((irr::f32)zx, (irr::f32)zy);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_zoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double zx, double zy)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_w/2), y + (src_h/2));
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale((irr::f32)zx, (irr::f32)zy);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_rotozoom(int img_id, int x, int y, double angle, double zx, double zy)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect(0, 0, src_size.Width, src_size.Height);
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_size.Width/2)*zx, y + (src_size.Height/2)*zy);
+
+        irr::f32 rotation = -1*angle;
+        irr::core::vector2df scale((irr::f32)zx, (irr::f32)zy);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_rotozoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double angle, double zx, double zy)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_w/2)*zx, y + (src_h/2)*zy);
+
+        irr::f32 rotation = -1*angle;
+        irr::core::vector2df scale((irr::f32)zx, (irr::f32)zy);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+
+void rc_drawImage_flip(int img_id, int x, int y, bool h, bool v)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect(0, 0, src_size.Width, src_size.Height);
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_size.Width/2), y + (src_size.Height/2));
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale((irr::f32)(h ? -1 : 1), (irr::f32) (v ? -1 : 1));
+
+        irr::core::position2d<irr::s32> position( (h ? x+src_size.Width : x), (v ? y+src_size.Height : y));
+
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_flipEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, bool h, bool v)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::position2d<irr::s32> rotationPoint(x + (src_w/2), y + (src_h/2));
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale((irr::f32)(h ? -1 : 1), (irr::f32) (v ? -1 : 1));
+
+        irr::core::position2d<irr::s32> position( (h ? x+src_w : x), (v ? y+src_h : y));
+
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+
+void rc_drawImage_blit(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(0, 0); //since we are not rotating it doesn't matter
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+
+void rc_drawImage_rotateEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, int angle)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        //irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::vector2d<irr::s32> rotationPoint(x + (src_w/2), y + (src_h/2));
+
+        irr::f32 rotation = -1*angle;
+        //irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(src_w, src_h));
+
+        draw2DImage2(VideoDriver, rc_image[img_id].image, sourceRect, dest, rotationPoint, rotation, useAlphaChannel, color, screenSize);
+    }
+}
+
+void rc_drawImage_blitEx(int img_id, int x, int y, int w, int h, int src_x, int src_y, int src_w, int src_h)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        //irr::core::dimension2d<irr::u32> src_size = rc_image[img_id].image->getSize();
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        //irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(0, 0); //since we are not rotating it doesn't matter
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(rc_image[img_id].alpha,
+                                 rc_image[img_id].color_mod.getRed(),
+                                 rc_image[img_id].color_mod.getGreen(),
+                                 rc_image[img_id].color_mod.getBlue());
+
+        irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(w, h));
+
+        irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+        draw2DImage2(VideoDriver, rc_image[img_id].image, sourceRect, dest, rotationPoint, rotation, useAlphaChannel, color, screenSize );
+    }
+}
+
+void rc_setImageAlpha(int img_id, Uint8 alpha)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        rc_image[img_id].alpha = alpha;
+    }
+}
+
+Uint32 rc_getImageAlpha(int img_id)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return 0;
+
+    if(rc_image[img_id].image)
+    {
+        return rc_image[img_id].alpha;
+    }
+
+    return 0;
+}
+
+bool rc_imageExists(int img_id)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return false;
+
+    if(rc_image[img_id].image)
+        return true;
+
+    return false;
+}
+
+void rc_getImageSize(int img_id, double* w, double* h)
+{
+    if(img_id < 0 || img_id >= rc_image.size())
+        return;
+
+    if(rc_image[img_id].image)
+    {
+        *w = (double)rc_image[img_id].image->getSize().Width;
+        *h = (double)rc_image[img_id].image->getSize().Height;
+    }
+}
+
+void rc_setColorKey(int img_id, Uint32 colorkey)
+{
+    if(!rc_imageExists(img_id))
+        return;
+
+    VideoDriver->makeColorKeyTexture(rc_image[img_id].image, irr::video::SColor(colorkey));
+}
+
+
+
+
+void drawCanvasImage(irr::video::ITexture* texture, int x, int y, int src_x, int src_y, int src_w, int src_h, int tgt_width, int tgt_height)
+{
+    if(texture)
+    {
+        irr::core::rect<irr::s32> sourceRect( irr::core::vector2d(src_x, src_y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::position2d<irr::s32> position(x, y);
+
+        irr::core::position2d<irr::s32> rotationPoint(0, 0); //since we are not rotating it doesn't matter
+
+        irr::f32 rotation = 0;
+        irr::core::vector2df scale(1.0, 1.0);
+        bool useAlphaChannel = true;
+        irr::video::SColor color(255,255,255,255);
+
+        irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(src_w, src_h));
+
+        irr::core::vector2df screenSize(tgt_width, tgt_height);
+
+        draw2DImage(VideoDriver, texture, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+    }
+}
+
+
+int rc_windowClip(int x, int y, int w, int h)
+{
+    if(w <= 0 || h <=0)
+        return -1;
+
+    if(rc_canvas.size()>0)
+    {
+        if(!rc_canvas[0].texture)
+            return -1;
+    }
+    else
+        return -1;
+
+    irr::video::ITexture* texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d((irr::u32)w, (irr::u32)h), "win_clip_image", irr::video::ECF_A8R8G8B8);
+
+    if(!texture)
+        return -1;
+
+    VideoDriver->setRenderTarget(texture);
+
+    drawCanvasImage(rc_canvas[0].texture, 0, 0, x, y, w, h, w, h);
+
+    VideoDriver->setRenderTarget(rc_canvas[0].texture);
+
+    if(rc_active_canvas >= 0 && rc_active_canvas < rc_canvas.size())
+        if(rc_canvas[rc_active_canvas].texture)
+            VideoDriver->setRenderTarget(rc_canvas[rc_active_canvas].texture, false, false);
+
+
+    int img_id = -1;
+    rc_image_obj img;
+    img.image = texture;
+    img.alpha = 255;
+
+    for(int i = 0; i < rc_image.size(); i++)
+    {
+        if(rc_image[i].image == NULL)
+        {
+            img_id = i;
+            break;
+        }
+    }
+
+    if(img_id < 0)
+    {
+        img_id = rc_image.size();
+        rc_image.push_back(img);
+    }
+    else
+    {
+        rc_image[img_id] = img;
+    }
+
+    return img_id;
+}
+
+
+int rc_canvasClip(int x, int y, int w, int h)
+{
+    if(w <= 0 || h <=0)
+        return -1;
+
+    if(rc_active_canvas >= 0 && rc_active_canvas < rc_canvas.size())
+    {
+        if(!rc_canvas[rc_active_canvas].texture)
+            return -1;
+    }
+    else
+        return -1;
+
+    irr::video::ITexture* texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d((irr::u32)w, (irr::u32)h), "canvas_clip_image", irr::video::ECF_A8R8G8B8);
+
+    if(!texture)
+        return -1;
+
+    VideoDriver->setRenderTarget(texture);
+
+    drawCanvasImage(rc_canvas[rc_active_canvas].texture, 0, 0, x, y, w, h, w, h);
+
+    VideoDriver->setRenderTarget(rc_canvas[rc_active_canvas].texture, false, false);
+
+    int img_id = -1;
+    rc_image_obj img;
+    img.image = texture;
+    img.alpha = 255;
+
+    for(int i = 0; i < rc_image.size(); i++)
+    {
+        if(rc_image[i].image == NULL)
+        {
+            img_id = i;
+            break;
+        }
+    }
+
+    if(img_id < 0)
+    {
+        img_id = rc_image.size();
+        rc_image.push_back(img);
+    }
+    else
+    {
+        rc_image[img_id] = img;
+    }
+
+    return img_id;
+}
 
 
 
@@ -2154,6 +3038,9 @@ bool rc_update()
                 if (VideoDriver)
                     VideoDriver->OnResize(core::dimension2d<u32>(Width, Height));
 
+                win_w = Width;
+                win_h = Height;
+
 			}
 			else if(SDL_event.window.event == SDL_WINDOWEVENT_CLOSE)
             {
@@ -2306,26 +3193,63 @@ bool rc_update()
 	if(!Close)
     {
         VideoDriver->setRenderTarget(rc_canvas[0].texture);
+        irr::core::vector2d<s32> bb_position(0,0);
+        irr::core::dimension2d<u32> bb_dimension(win_w, win_h);
+        VideoDriver->setViewPort( irr::core::rect(bb_position, bb_dimension) );
+
+        irr::core::vector2d screenSize( (irr::f32) rc_canvas[0].dimension.Width, (irr::f32) rc_canvas[0].dimension.Height );
+
+        VideoDriver->beginScene(true, true);
+        for(int i = 0; i < rc_canvas.size(); i++)
+        {
+            if(rc_canvas[i].show3D)
+            {
+                VideoDriver->setRenderTarget(rc_canvas[i].texture, true, true, irr::video::SColor(255,120,120,120));
+
+                if(rc_canvas[i].camera.camera)
+                    SceneManager->setActiveCamera(rc_canvas[i].camera.camera);
+
+                rc_canvas[i].camera.update();
+
+                VideoDriver->setViewPort(irr::core::rect<irr::s32>(0,0,rc_canvas[i].viewport.dimension.Width,rc_canvas[i].viewport.dimension.Height));
+
+                //irr::core::rect viewport(irr::core::position, rc_canvas[i].viewport.dimension);
+                //VideoDriver->setViewPort(viewport);
+
+                SceneManager->drawAll();
+
+                VideoDriver->setRenderTarget(rc_canvas[0].texture);
+            }
+        }
+
+
 
 		for(int cz = 0; cz < rc_canvas_zOrder.size(); cz++)
         {
             int canvas_id = rc_canvas_zOrder[cz];
 
-            if(rc_canvas[canvas_id].texture)
+            if(rc_canvas[canvas_id].texture && rc_canvas[canvas_id].visible)
             {
                 irr::core::rect<s32> dest(rc_canvas[canvas_id].viewport.position, rc_canvas[canvas_id].viewport.dimension);
                 irr::core::rect<s32> src(rc_canvas[canvas_id].offset, rc_canvas[canvas_id].viewport.dimension);
 
+                irr::video::SColor color(rc_canvas[canvas_id].color_mod);
+                //color.set(255,255,255,255);
+
                 //std::cout << "draw canvas[" << canvas_id << "]" << std::endl;
 
-                VideoDriver->draw2DImage(rc_canvas[canvas_id].texture, dest, src);
+                draw2DImage2(VideoDriver, rc_canvas[canvas_id].texture, src, dest, irr::core::vector2d<irr::s32>(0, 0), 0, true, color, screenSize);
+                //drawCanvasImage(rc_canvas[canvas_id].texture, dest.UpperLeftCorner.X, dest.UpperLeftCorner.Y,
+                //                src.UpperLeftCorner.X, src.UpperLeftCorner.Y, src.getWidth(), src.getHeight(), dest.getWidth(), dest.getHeight());
+
+                //VideoDriver->draw2DImage(rc_canvas[canvas_id].texture, dest, src, 0, &color, true);
             }
         }
 
 		//env->drawAll();
 
 		VideoDriver->setRenderTarget(0);
-		VideoDriver->beginScene(true, true);
+		//VideoDriver->beginScene(true, true);
 		VideoDriver->draw2DImage(rc_canvas[0].texture, irr::core::vector2d(0,0));
 		//device->getGUIEnvironment()->drawAll();
 		VideoDriver->endScene();

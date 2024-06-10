@@ -3,7 +3,7 @@
 A tutorial by Max Winkel.
 
 In this tutorial we'll learn how to use split screen (e.g. for racing-games)
-with Irrlicht. We'll create a viewport divided into 4 parts, with 3 fixed 
+with Irrlicht. We'll create a viewport divided into 4 parts, with 3 fixed
 cameras and one user-controlled.
 
 OK, let's start with the headers (I think there's
@@ -27,7 +27,7 @@ using namespace gui;
 
 /*
 Now we'll define the resolution in a constant for use in
-initializing the device and setting up the viewport. 
+initializing the device and setting up the viewport.
 */
 
 //Resolution
@@ -47,8 +47,8 @@ ICameraSceneNode *Camera[4]={0,0,0,0};
 
 /*
 In our event-receiver we switch the SplitScreen-variable,
-whenever the user press the S-key. 
-We also allow quitting the application with ESC. 
+whenever the user press the S-key.
+We also allow quitting the application with ESC.
 */
 class MyEventReceiver : public IEventReceiver
 {
@@ -76,8 +76,8 @@ class MyEventReceiver : public IEventReceiver
 
 /*
 The main-function:
-First, we initialize the device, get some useful variables, 
-load an animated mesh from .md2 and a map from .pk3. 
+First, we initialize the device, get some useful variables,
+load an animated mesh from .md2 and a map from .pk3.
 Because that's old stuff, I won't explain every step.
 Just take care of the maps position.
 */

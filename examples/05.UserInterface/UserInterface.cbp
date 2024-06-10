@@ -26,6 +26,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add directory="/usr/include/freetype2" />
 				</Compiler>
 				<Linker>
 					<Add library="Xxf86vm" />
@@ -40,13 +41,24 @@
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-g" />
+			<Add option="-DRC_LINUX" />
 			<Add directory="../../include" />
 		</Compiler>
 		<Linker>
-			<Add option="-lSDL2" />
+			<Add option="-lSDL2 -lfreetype" />
 			<Add library="Irrlicht" />
 		</Linker>
+		<Unit filename="camera.h" />
+		<Unit filename="gui_freetype_font.cpp" />
+		<Unit filename="gui_freetype_font.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="rc_font.h" />
+		<Unit filename="rc_gfx.h" />
+		<Unit filename="rc_gfx3D.h" />
+		<Unit filename="rc_gfx_core.h" />
+		<Unit filename="rc_os_defines.h" />
+		<Unit filename="rc_stdlib.h" />
+		<Unit filename="rc_utf8.h" />
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>

@@ -22,6 +22,7 @@ and a pointer to a listbox.
 #include "gui_freetype_font.h"
 #include "rc_stdlib.h"
 #include "rc_gfx.h"
+#include "rc_gfx3D.h"
 
 using namespace irr;
 
@@ -35,166 +36,7 @@ using namespace gui;
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
-// Declare a structure to hold some context for the event receiver so that it
-// has it available inside its OnEvent() method.
-struct SAppContext
-{
-	IrrlichtDevice *device;
-	s32				counter;
-	IGUIListBox*	listbox;
-};
 
-// Define some values that we'll use to identify individual GUI controls.
-enum
-{
-	GUI_ID_QUIT_BUTTON = 101,
-	GUI_ID_NEW_WINDOW_BUTTON,
-	GUI_ID_FILE_OPEN_BUTTON,
-	GUI_ID_TRANSPARENCY_SCROLL_BAR
-};
-
-/*
-	Set the skin transparency by changing the alpha values of all skin-colors
-*/
-void setSkinTransparency(s32 alpha, irr::gui::IGUISkin * skin)
-{
-	for (s32 i=0; i<irr::gui::EGDC_COUNT ; ++i)
-	{
-		video::SColor col = skin->getColor((EGUI_DEFAULT_COLOR)i);
-		col.setAlpha(alpha);
-		skin->setColor((EGUI_DEFAULT_COLOR)i, col);
-	}
-}
-
-/*
-The Event Receiver is not only capable of getting keyboard and
-mouse input events, but also events of the graphical user interface
-(gui). There are events for almost everything: button click,
-listbox selection change, events that say that a element was hovered
-and so on. To be able to react to some of these events, we create
-an event receiver.
-We only react to gui events, and if it's such an event, we get the
-id of the caller (the gui element which caused the event) and get
-the pointer to the gui environment.
-*/
-class MyEventReceiver : public IEventReceiver
-{
-public:
-	MyEventReceiver(SAppContext & context) : Context(context) { }
-
-	virtual bool OnEvent(const SEvent& event)
-	{
-		if (event.EventType == EET_GUI_EVENT)
-		{
-			s32 id = event.GUIEvent.Caller->getID();
-			IGUIEnvironment* env = Context.device->getGUIEnvironment();
-
-			switch(event.GUIEvent.EventType)
-			{
-
-			/*
-			If a scrollbar changed its scroll position, and it is
-			'our' scrollbar (the one with id GUI_ID_TRANSPARENCY_SCROLL_BAR),
-			then we change the transparency of all gui elements. This is an
-			easy task: There is a skin object, in which all color
-			settings are stored. We simply go through all colors
-			stored in the skin and change their alpha value.
-			*/
-			case EGET_SCROLL_BAR_CHANGED:
-				if (id == GUI_ID_TRANSPARENCY_SCROLL_BAR)
-				{
-					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
-					setSkinTransparency(pos, env->getSkin());
-				}
-				break;
-
-			/*
-			If a button was clicked, it could be one of 'our'
-			three buttons. If it is the first, we shut down the engine.
-			If it is the second, we create a little window with some
-			text on it. We also add a string to the list box to log
-			what happened. And if it is the third button, we create
-			a file open dialog, and add also this as string to the list box.
-			That's all for the event receiver.
-			*/
-			case EGET_BUTTON_CLICKED:
-				switch(id)
-				{
-				case GUI_ID_QUIT_BUTTON:
-					Context.device->closeDevice();
-					return true;
-
-				case GUI_ID_NEW_WINDOW_BUTTON:
-					{
-					Context.listbox->addItem(L"Window created");
-					Context.counter += 30;
-					if (Context.counter > 200)
-						Context.counter = 0;
-
-					IGUIWindow* window = env->addWindow(
-						rect<s32>(100 + Context.counter, 100 + Context.counter, 300 + Context.counter, 200 + Context.counter),
-						false, // modal?
-						L"Test window");
-
-					env->addStaticText(L"Please close me",
-						rect<s32>(35,35,140,50),
-						true, // border?
-						false, // wordwrap?
-						window);
-					}
-					return true;
-
-				case GUI_ID_FILE_OPEN_BUTTON:
-					Context.listbox->addItem(L"File open");
-					// There are some options for the file open dialog
-					// We set the title, make it a modal window, and make sure
-					// that the working directory is restored after the dialog
-					// is finished.
-					env->addFileOpenDialog(L"Please choose a file.", true, 0, -1, true);
-					return true;
-
-				default:
-					return false;
-				}
-				break;
-
-			case EGET_FILE_SELECTED:
-				{
-					// show the model filename, selected in the file dialog
-					IGUIFileOpenDialog* dialog =
-						(IGUIFileOpenDialog*)event.GUIEvent.Caller;
-					Context.listbox->addItem(dialog->getFileName());
-				}
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		return false;
-	}
-
-private:
-	SAppContext & Context;
-};
-
-
-/*
-OK, now for the more interesting part. First, create the Irrlicht device. As in
-some examples before, we ask the user which driver he wants to use for this
-example.
-*/
-
-//CGUITTFace Face;
-//CGUIFreetypeFont* dfont;
-
-void tst(irr::video::IVideoDriver* driver)
-{
-    //Face.load("FreeMono.ttf");
-    //dfont = new CGUIFreetypeFont(driver);
-    //dfont->attach(&Face, 12);
-}
 
 int main()
 {
@@ -203,145 +45,285 @@ int main()
 
     rc_windowOpen("testing", 640, 480, false, true);
 
-	if (device == 0)
-		return 1; // could not create selected driver.
-
-    std::cout << "device start" << std::endl;
-
-	/* The creation was successful, now we set the event receiver and
-		store pointers to the driver and to the gui environment. */
-
-	//device->setWindowCaption(L"Irrlicht Engine - User Interface Demo");
-	device->setResizable(true);
-
-	video::IVideoDriver* driver = device->getVideoDriver();
-	IGUIEnvironment* env = device->getGUIEnvironment();
-
-	const io::path mediaPath = getExampleMediaPath();
-
-	/*
-	To make the font a little bit nicer, we load an external font
-	and set it as the new default font in the skin.
-	To keep the standard font for tool tip text, we set it to
-	the built-in font.
-	*/
-
-	IGUISkin* skin = env->getSkin();
-	IGUIFont* font = env->getFont(mediaPath + "fonthaettenschweiler.bmp");
-	if (font)
-		skin->setFont(font);
-
-	skin->setFont(env->getBuiltInFont(), EGDF_TOOLTIP);
-
-	/*
-	We add three buttons. The first one closes the engine. The second
-	creates a window and the third opens a file open dialog. The third
-	parameter is the id of the button, with which we can easily identify
-	the button in the event receiver.
-	*/
-
-	env->addButton(rect<s32>(10,240,110,240 + 32), 0, GUI_ID_QUIT_BUTTON,
-			L"Quit", L"Exits Program");
-	env->addButton(rect<s32>(10,280,110,280 + 32), 0, GUI_ID_NEW_WINDOW_BUTTON,
-			L"New Window", L"Launches a new Window");
-	env->addButton(rect<s32>(10,320,110,320 + 32), 0, GUI_ID_FILE_OPEN_BUTTON,
-			L"File Open", L"Opens a file");
-
-	/*
-	Now, we add a static text and a scrollbar, which modifies the
-	transparency of all gui elements. We set the maximum value of
-	the scrollbar to 255, because that's the maximal value for
-	a color value.
-	Then we create an other static text and a list box.
-	*/
-
-	env->addStaticText(L"Transparent Control:", rect<s32>(150,20,350,40), true);
-	IGUIScrollBar* scrollbar = env->addScrollBar(true,
-			rect<s32>(150, 45, 350, 60), 0, GUI_ID_TRANSPARENCY_SCROLL_BAR);
-	scrollbar->setMax(255);
-	scrollbar->setPos(255);
-	setSkinTransparency( scrollbar->getPos(), env->getSkin());
-
-	// set scrollbar position to alpha value of an arbitrary element
-	scrollbar->setPos(env->getSkin()->getColor(EGDC_WINDOW).getAlpha());
-
-	env->addStaticText(L"Logging ListBox:", rect<s32>(50,110,250,130), true);
-	IGUIListBox * listbox = env->addListBox(rect<s32>(50, 140, 250, 210));
-	IGUIEditBox* editbox = env->addEditBox(L"Editable Text", rect<s32>(350, 80, 550, 300));
-	editbox->setMultiLine(true);
-	editbox->setTextAlignment(EGUIA_UPPERLEFT,EGUIA_UPPERLEFT);
-
-	// Store the appropriate data in a context structure.
-	SAppContext context;
-	context.device = device;
-	context.counter = 0;
-	context.listbox = listbox;
-
-	// Then create the event receiver, giving it that context structure.
-	MyEventReceiver receiver(context);
-
-	// And tell the device to use our custom event receiver.
-	device->setEventReceiver(&receiver);
-
-
-	/*
-	And at last, we create a nice Irrlicht Engine logo in the top left corner.
-	*/
-	env->addImage(driver->getTexture(mediaPath + "irrlichtlogo3.png"),
-			position2d<int>(10,10));
-
-
-	/*
-	That's all, we only have to draw everything.
-	*/
 
 	SDL_Event event;
 	bool quit = false;
 
 	std::cout << "test start" << std::endl;
 
-	uint32_t canvas = rc_canvasOpen(1000, 1000, 50, 50, 320, 200, 0);
+	uint32_t canvas1 = rc_canvasOpen(1000, 1000, 50, 50, 300, 300, 0);
+	uint32_t canvas2 = rc_canvasOpen(1000, 1000, 100, 100, 300, 300, 0);
+	rc_setCanvasVisible(canvas2, false);
 
-	std::cout << "color stuff" << std::endl;
-	rc_setClearColor( rc_rgb(0, 100, 10));
-	rc_setColor( rc_rgb(255,255,255) );
+	uint32_t canvas3 = rc_canvasOpen(1000, 1000, 150, 150, 300, 200, 0);
 
-	std::cout << "set canvas" << std::endl;
-	rc_setActiveCanvas(canvas);
+	rc_setCanvas3D(canvas3, true);
 
-	std::cout << "checkpoint start" << std::endl;
+	//rc_setClearColor( rc_rgb(100, 100, 100));
 
+	rc_setActiveCanvas(canvas1);
+	rc_setClearColor(0);
 	rc_clearCanvas();
+
+	rc_setActiveCanvas(canvas2);
+	rc_setClearColor( rc_rgb(0, 100, 0));
+	rc_clearCanvas();
+
+	rc_setActiveCanvas(canvas3);
+	rc_setClearColor( rc_rgb(0, 0, 100));
+	rc_setCameraPosition(150,-50,0);
+
+	double rx = 0;
+	double ry = 0;
+	double rz = 0;
+	//rc_setCameraRotation(rx, 0, 0);
+	rc_clearCanvas();
+
+	rc_setActiveCanvas(canvas1);
+
     rc_drawRect(50, 50, 90, 50);
+
 
     //tst(driver);
 
     rc_loadFont("NotoSansJP-VariableFont_wght.ttf", 12);
 
+    int img = rc_loadImage("rcbasic.png");
+
+    int x = 20;
+    int y = 20;
+    int r = 0;
+
+    int alpha = 255;
+
+    double buf[] = { rc_rgb(255,0,0), rc_rgb(255,0,0), rc_rgb(255,0,0),
+                     rc_rgb(0,255,0), rc_rgb(0,255,0), rc_rgb(0,255,0),
+                     rc_rgb(0,0,255), rc_rgb(0,0,255), rc_rgb(0,0,255) };
+
+    int b_img = rc_createImage(3, 3, buf);
+
+    double b_out[9];
+
+    rc_getImageBuffer(b_img, b_out);
+
+    std::cout << "Color Red = " << rc_rgb(255,0,0) << std::endl;
+    std::cout << "Color Green = " << rc_rgb(0,255,0) << std::endl;
+    std::cout << "Color Blue = " << rc_rgb(0,0,255) << std::endl;
+
+    for(int i = 0; i < 9; i++)
+        std::cout << (Uint32)b_out[i] << std::endl;
+
+    rc_setColorKey(b_img, rc_rgb(0,255,0));
+
+    int img2 = rc_copyImage(img);
+
+    //rc_setBilinearFilter(true);
+
+    double w, h;
+
+    rc_getImageSize(img2, &w, &h);
+
+    std::cout << "image_size = " << w << ", " << h << std::endl;
+
+    //rc_setColorMod(img2, rc_rgb(255,255,255));
+    //rc_setBlendMode((int)irr::video::EBO_MIN_FACTOR);
+
+    double zx = 1.0, zy = 1.0;
+
+    bool h_flag = false;
+    bool v_flag = false;
+
+    int wclip = -1;
+
+    int cx = 0, cy = 0;
+
+    //int a = 255;
+
+    int mesh1 = rc_loadMesh("../../media/sydney.md2");
+
+    int actor1 = rc_createMeshActor(mesh1);
+    int actor1_texture = rc_loadImage("../../media/sydney.bmp");
+    rc_setActorTexture(actor1, 0, actor1_texture);
+    rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
+
+    double cam_rot_x = 0;
+    double cam_rot_y = 0;
+    double cam_rot_z = 0;
+
+    //std::cout << "Cam Rot = " << rc_canvas[canvas3].camera->getRotation().X << ", " << rc_canvas[canvas3].camera->getRotation().Y << ", " << rc_canvas[canvas3].camera->getRotation().Z << std::endl;
+
+    device->getFileSystem()->addFileArchive("../../media/map-20kdm2.pk3");
+
+	irr::scene::IAnimatedMesh *map = SceneManager->getMesh("20kdm2.bsp");
+	device->getFileSystem()->removeFileArchive((irr::u32) 0);
+	if (map)
+	{
+		irr::scene::ISceneNode *map_node = SceneManager->addOctreeSceneNode(map->getMesh(0));
+		//Set position
+		map_node->setPosition(vector3df(-850,-220,-850));
+	}
+
+
 	while(rc_update())
 	{
-	    //rc_clearCanvas();
-        //rc_drawRect(50, 50, 90, 50);
+	    rc_setClearColor(0);
+	    rc_clearCanvas();
+        bool get_color = false;
 
-        if(rc_mouseButton(0))
-            std::cout << "LEFT: " << rc_mouseX() << ", " << rc_mouseY() << std::endl;
-        else if(rc_mouseButton(1))
-            std::cout << "MIDDLE" << std::endl;
-        else if(rc_mouseButton(2))
+
+        if(rc_key(SDLK_w))
         {
-            while(rc_mouseButton(2)) rc_update();
-            //irr::core::rect<s32> pos(20, 20, 300, 300);
-            //dfont->draw("RIGHT-おはよう", pos, irr::video::SColor(255, 255, 255, 255));
-            std::string t = "++RIGHT-おはよう";
-            rc_drawText(t, 20, 20);
-            //std::cout << "RIGHT-おはよう" << std::endl;
-
-            //rc_drawRectFill(50, 50, 90, 25);
-            rc_drawEllipseFill(60, 60, 50, 30);
+            //y-= 3;
+            rc_setActiveCanvas(canvas3);
+            rc_translateCamera(0,0,10);
+            rc_setActiveCanvas(canvas1);
         }
+        else if(rc_key(SDLK_s))
+        {
+            //y+=3;
+            rc_setActiveCanvas(canvas3);
+            rc_translateCamera(0,0,-10);
+            rc_setActiveCanvas(canvas1);
+        }
+
+        if(rc_key(SDLK_a))
+        {
+            //x-= 3;
+            rc_setActiveCanvas(canvas3);
+            rc_translateCamera(-10,0,0);
+            rc_setActiveCanvas(canvas1);
+        }
+        else if(rc_key(SDLK_d))
+        {
+            //x+=3;
+            rc_setActiveCanvas(canvas3);
+            rc_translateCamera(10,0,0);
+            rc_setActiveCanvas(canvas1);
+        }
+
+
+
+        if(rc_key(SDLK_1))
+        {
+            alpha--;
+            if(alpha < 0)
+                alpha = 0;
+        }
+        else if(rc_key(SDLK_2))
+        {
+            alpha++;
+            if(alpha > 255)
+                alpha = 255;
+        }
+
+        if(rc_key(SDLK_UP))
+        {
+            rc_setActiveCanvas(canvas3);
+
+            cam_rot_x++;
+
+            rc_rotateCamera(1, 0, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+
+            rc_setActiveCanvas(canvas1);
+        }
+        else if(rc_key(SDLK_DOWN))
+        {
+            rc_setActiveCanvas(canvas3);
+
+            cam_rot_x--;
+
+            rc_rotateCamera(-1, 0, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+
+            rc_setActiveCanvas(canvas1);
+        }
+
+        if(rc_key(SDLK_LEFT))
+        {
+            rc_setActiveCanvas(canvas3);
+
+            cam_rot_y++;
+
+            rc_rotateCamera(0, -1, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+
+            rc_setActiveCanvas(canvas1);
+        }
+        else if(rc_key(SDLK_RIGHT))
+        {
+            rc_setActiveCanvas(canvas3);
+
+            cam_rot_y--;
+
+            rc_rotateCamera(0, 1, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+
+            rc_setActiveCanvas(canvas1);
+        }
+
+
+
+
+        if(rc_key(SDLK_t))
+        {
+            rc_setCanvasZ(canvas1, rc_canvasZ(canvas1)+1);
+        }
+        else if(rc_key(SDLK_y))
+        {
+            rc_setCanvasZ(canvas2, rc_canvasZ(canvas2)+1);
+        }
+        else if(rc_key(SDLK_u))
+        {
+            rc_setCanvasZ(canvas3, rc_canvasZ(canvas3)+1);
+        }
+
+        if(rc_key(SDLK_i))
+            y--;
+        else if(rc_key(SDLK_k))
+            y++;
+
+        if(rc_key(SDLK_l))
+            x++;
+        else if(rc_key(SDLK_j))
+            x--;
+
+        rc_setCanvasAlpha(canvas1, alpha);
+        rc_setCanvasOffset(canvas1, cx, cy);
+        //rc_setImageAlpha(img2, alpha);
+        //rc_drawImage(img2, x, y);
+        //rc_drawImage_flip(img2, x, y, h_flag, v_flag);
+        //rc_drawImage_flipEx(img2, x, y, 47, 47, 48, 48, h_flag, v_flag);
+        //rc_drawImage_zoom(img2, x, y, zx, zy);
+        //rc_drawImage_zoomEx(img2, x, y, 20, 47, 62, 48, zx, zy);
+        rc_drawImage_rotozoomEx(img2, x, y, 20, 47, 62, 48, r, zx, zy);
+        //rc_drawImage_rotateEx(img2, x, y, 30, 47, 62, 48, r);
+        //rc_drawImage_blit(img, x, y, 0, 47, 48, 48);
+        //rc_drawImage_blitEx(img, x, y, 96, 96, 0, 47, 48, 48);
+        //rc_drawRect(x,y,96,96);
+        //rc_drawImage_blitEx(b_img, 0,0, 30, 30, 0, 0, 3, 3);
 
         if(rc_key(SDLK_ESCAPE))
             break;
+
+        if(get_color)
+        {
+            rc_setColor(rc_rgb(0,255,0));
+            //rc_getPixel(rc_mouseX(),rc_mouseY());
+            rc_setColor(rc_rgb(255,255,255));
+        }
 	}
 
 	std::cout << "test end" << std::endl;
