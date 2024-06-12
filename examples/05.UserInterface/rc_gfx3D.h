@@ -324,6 +324,27 @@ int rc_getActorMaterialType(int actor, int material)
     return (int)rc_actor[actor].mesh_node->getMaterial(material).MaterialType;
 }
 
+struct rc_material_obj
+{
+    irr::video::SMaterial mat;
+};
+
+irr::core::array<rc_material_obj> rc_material;
+
+//Set Actor Material Type
+void rc_setActorMaterial(int actor, int material_id)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(!rc_actor[actor].mesh_node)
+        return;
+
+    if(material_id < 0 || material_id >= rc_material.size())
+        return;
+
+    rc_actor[actor].mesh_node-;
+}
 
 //get Actor Texture
 int rc_getActorTexture(int actor, int material, int layer)
