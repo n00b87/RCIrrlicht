@@ -15,6 +15,7 @@ namespace irr
 	class CIrrDeviceLinux;
 	class CIrrDeviceSDL;
 	class CIrrDeviceMacOSX;
+	class CIrrDeviceWx;
 }
 
 #ifdef _IRR_COMPILE_WITH_OPENGL_
@@ -50,7 +51,11 @@ namespace video
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 		COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
-#endif
+#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
+
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+		COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceWx* wx_device);
+#endif // _IRR_COMPILE_WITH_WX_DEVICE_
 
 		bool initDriver();
 
@@ -525,7 +530,11 @@ namespace video
 
 		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 			CIrrDeviceSDL *SDLDevice;
-		#endif
+		#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
+
+		#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+			CIrrDeviceWx* wx_device;
+		#endif // _IRR_COMPILE_WITH_WX_DEVICE_
 
 		IContextManager* ContextManager;
 

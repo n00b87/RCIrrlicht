@@ -46,6 +46,10 @@ static const char* const copyright = "Irrlicht Engine (c) 2002-2017 Nikolaus Geb
 #include "Android/CIrrDeviceAndroid.h"
 #endif
 
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+#include "CIrrDeviceWx.h"
+#endif
+
 namespace irr
 {
 	//! stub for calling createDeviceEx
@@ -87,7 +91,7 @@ namespace irr
 		if (params.DeviceType == EIDT_X11 || (!dev && params.DeviceType == EIDT_BEST))
 			dev = new CIrrDeviceLinux(params);
 #endif
-        
+
 #ifdef _IRR_COMPILE_WITH_IOS_DEVICE_
 		if (params.DeviceType == EIDT_IOS || (!dev && params.DeviceType == EIDT_BEST))
 			dev = new CIrrDeviceiOS(params);
@@ -101,6 +105,11 @@ namespace irr
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 		if (params.DeviceType == EIDT_SDL || (!dev && params.DeviceType == EIDT_BEST))
 			dev = new CIrrDeviceSDL(params);
+#endif
+
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+		if (params.DeviceType == EIDT_WX || (!dev && params.DeviceType == EIDT_BEST))
+			dev = new CIrrDeviceWx(params);
 #endif
 
 #ifdef _IRR_COMPILE_WITH_FB_DEVICE_

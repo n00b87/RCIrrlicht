@@ -327,12 +327,13 @@ int rc_getActorMaterialType(int actor, int material)
 struct rc_material_obj
 {
     irr::video::SMaterial mat;
+    bool isUsed = false;
 };
 
 irr::core::array<rc_material_obj> rc_material;
 
 //Set Actor Material Type
-void rc_setActorMaterial(int actor, int material_id)
+void rc_setActorMaterial(int actor, int material_num, int material_id)
 {
     if(actor < 0 || actor >= rc_actor.size())
         return;
@@ -343,7 +344,43 @@ void rc_setActorMaterial(int actor, int material_id)
     if(material_id < 0 || material_id >= rc_material.size())
         return;
 
-    rc_actor[actor].mesh_node-;
+    if(rc_material[material_id].isUsed)
+        rc_actor[actor].mesh_node->getMaterial(material_num) = rc_material[material_id].mat;
+}
+
+//Set Actor Material Type
+int rc_getActorMaterial(int actor, int material_num)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return -1;
+
+    if(!rc_actor[actor].mesh_node)
+        return -1;
+
+    int material_id = -1;
+
+    for(int i = 0; i < rc_material.size(); i++)
+    {
+        if(!rc_material[i].isUsed)
+        {
+            rc_material[i].isUsed = true;
+            material_id = i;
+            break;
+        }
+    }
+
+    if(material_id < 0)
+    {
+        material_id = rc_material.size();
+        rc_material_obj nmat;
+        nmat.isUsed = true;
+        nmat.mat = rc_actor[actor].mesh_node->getMaterial(material_num);
+        rc_material.push_back(nmat);
+    }
+    else
+        rc_material[material_id].mat = rc_actor[actor].mesh_node->getMaterial(material_num);
+
+    return material_id;
 }
 
 //get Actor Texture

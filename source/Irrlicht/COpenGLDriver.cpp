@@ -25,6 +25,12 @@
 #include "CIrrDeviceSDL.h"
 #endif
 
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+#include <wx/wx.h>
+#include <wx/glcanvas.h>
+#include "CIrrDeviceWx.h"
+#endif // _IRR_COMPILE_WITH_WX_DEVICE_
+
 namespace irr
 {
 namespace video
@@ -69,6 +75,25 @@ COpenGLDriver::COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFil
 }
 
 #endif
+
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+COpenGLDriver::COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceWx* device)
+	: CNullDriver(io, params.WindowSize), COpenGLExtensionHandler(), CacheHandler(0),
+	CurrentRenderMode(ERM_NONE), ResetRenderStates(true), Transformation3DChanged(true),
+	AntiAlias(params.AntiAlias), ColorFormat(ECF_R8G8B8), FixedPipelineState(EOFPS_ENABLE),
+	Params(params), wx_device(device), ContextManager(0), DeviceType(EIDT_WX)
+{
+	wxGLContextAttrs attribs;
+	attribs.PlatformDefaults().OGLVersion(3,2).CoreProfile().EndList();
+	wx_device->context = new wxGLContext(wx_device->window, NULL, &attribs);
+
+	if(!wx_device->context->IsOK())
+		wxMessageBox(_("There was a problem creating context"));
+
+	wx_device->window->SetCurrent(*wx_device->context);
+}
+
+#endif // _IRR_COMPILE_WITH_WX_DEVICE_
 
 bool COpenGLDriver::initDriver()
 {
@@ -4499,6 +4524,21 @@ IVideoDriver* createOpenGLDriver(const SIrrlichtCreationParameters& params,
 #endif //  _IRR_COMPILE_WITH_OPENGL_
 }
 #endif // _IRR_COMPILE_WITH_SDL_DEVICE_
+
+// -----------------------------------
+// WX VERSION
+// -----------------------------------
+#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
+IVideoDriver* createOpenGLDriver(const SIrrlichtCreationParameters& params,
+		io::IFileSystem* io, CIrrDeviceWx* device)
+{
+#ifdef _IRR_COMPILE_WITH_OPENGL_
+	return new COpenGLDriver(params, io, device);
+#else
+	return 0;
+#endif //  _IRR_COMPILE_WITH_OPENGL_
+}
+#endif // _IRR_COMPILE_WITH_WX_DEVICE_
 
 } // end namespace
 } // end namespace
