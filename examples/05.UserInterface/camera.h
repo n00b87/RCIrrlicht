@@ -69,6 +69,8 @@ public:
   // initialize a camera at 0,0,0 or the location passed in
   void init(irr::scene::ISceneManager* smgr, float x=0, float y=0, float z=0);
 
+  void re_init();
+
 
   // locally translate the camera
   void translate(float x, float y, float z);
@@ -106,6 +108,40 @@ public:
     // parent the reference nodes
     camera->addChild(top);
     camera->addChild(front);
+
+    // put the reference nodes in place
+    front->setPosition(vector3df(0,0,1));
+    top->setPosition(vector3df(0,1,0));
+
+    // set lookat
+    camera->setUpVector(top->getAbsolutePosition() - camera->getAbsolutePosition());
+    camera->setTarget(front->getAbsolutePosition() - camera->getAbsolutePosition());
+
+    direction = vector3df(0,0,1);
+
+    //camera = Scene->addCameraSceneNodeFPS();
+
+    rx=ry=rz=0;
+    x=y=z=0;
+  }
+
+
+    // initialize a camera at 0,0,0 or the location passed in
+  void Camera::re_init()
+  {
+
+    //Scene = smgr;
+
+	// create camera scene node
+    //camera = Scene->addCameraSceneNode(NULL, vector3df(x,y,z));
+
+    // empty reference nodes
+    //top   = Scene->addEmptySceneNode();
+    //front = Scene->addEmptySceneNode();
+
+    // parent the reference nodes
+    //camera->addChild(top);
+    //camera->addChild(front);
 
     // put the reference nodes in place
     front->setPosition(vector3df(0,0,1));

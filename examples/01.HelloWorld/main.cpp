@@ -50,6 +50,7 @@ Engine header files so we can include it now in our code.
 #include <irrlicht.h>
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <vector>
 
 /*
 That header just adds the getExampleMediaPath tool-functions to help locating
@@ -84,6 +85,38 @@ using namespace scene;
 using namespace video;
 using namespace io;
 using namespace gui;
+
+
+// Function to calculate a point on a cubic Bezier curve
+vector3df bezierPoint(const vector3df& p0, const vector3df& p1, const vector3df& p2, const vector3df& p3, float t) {
+    float u = 1.0f - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
+
+    vector3df p = uuu * p0; // (1-t)^3 * p0
+    p += 3 * uu * t * p1;   // 3 * (1-t)^2 * t * p1
+    p += 3 * u * tt * p2;   // 3 * (1-t) * t^2 * p2
+    p += ttt * p3;          // t^3 * p3
+
+    return p;
+}
+
+// Function to draw a Bezier curve
+void drawBezierCurve(IVideoDriver* driver, const vector3df& p0, const vector3df& p1, const vector3df& p2, const vector3df& p3, SColor color, int segments) {
+    std::vector<vector3df> points;
+
+    for (int i = 0; i <= segments; ++i) {
+        float t = static_cast<float>(i) / segments;
+        points.push_back(bezierPoint(p0, p1, p2, p3, t));
+    }
+
+    for (size_t i = 0; i < points.size() - 1; ++i) {
+        driver->draw3DLine(points[i], points[i + 1], color);
+    }
+}
+
 
 /*
 This is the main method. We can now use main() on every platform.
@@ -299,6 +332,14 @@ int main()
 		driver->beginScene(ECBF_COLOR | ECBF_DEPTH, SColor(255,100,101,140));
 
 		smgr->drawAll();
+
+		vector3df p0(0, 0, 0);
+		vector3df p1(10, 30, 0);
+		vector3df p2(20, -30, 0);
+		vector3df p3(30, 0, 0);
+
+		drawBezierCurve(driver, p0, p1, p2, p3, SColor(255, 255, 255, 255), 100);
+
 		guienv->drawAll();
 
 		driver->endScene();

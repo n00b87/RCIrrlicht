@@ -11,7 +11,7 @@ a counter variable for changing the creation position of a window,
 and a pointer to a listbox.
 */
 #include <irrlicht.h>
-
+#include <vector>
 #include <SDL2/SDL.h>
 
 #include <codecvt>
@@ -23,6 +23,7 @@ and a pointer to a listbox.
 #include "rc_stdlib.h"
 #include "rc_gfx.h"
 #include "rc_gfx3D.h"
+#include "camera.h"
 
 using namespace irr;
 
@@ -35,7 +36,6 @@ using namespace gui;
 #ifdef _MSC_VER
 #pragma comment(lib, "Irrlicht.lib")
 #endif
-
 
 
 int main()
@@ -163,12 +163,27 @@ int main()
 		map_node->setPosition(vector3df(-850,-220,-850));
 	}
 
+    rc_setActiveCanvas(canvas3);
+
+    Camera tst_cam;
+    tst_cam.init(SceneManager, 0, 0, 0);
+
+    double rot_y = -1;
+
 
 	while(rc_update())
 	{
 	    rc_setClearColor(0);
 	    rc_clearCanvas();
         bool get_color = false;
+
+		rc_setActiveCanvas(canvas3);
+		vector3df p0(0, 0, 0);
+				vector3df p1(10, 30, 0);
+				vector3df p2(20, -30, 0);
+				vector3df p3(30, 0, 0);
+				//drawBezierCurve(VideoDriver, p0, p1, p2, p3, irr::video::SColor(255, 0, 255, 0), 100);
+		rc_setActiveCanvas(canvas1);
 
 
         if(rc_key(SDLK_w))
@@ -245,17 +260,60 @@ int main()
             rc_setActiveCanvas(canvas1);
         }
 
+        if(rc_key(SDLK_7))
+        {
+            rc_setActiveCanvas(canvas3);
+
+            cam_rot_y--;
+
+            //---test----------
+            double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+
+            rc_setCameraRotation(0, 244, 0);
+            //rc_rotateCamera(0, cry, 0);
+            //rc_rotateCamera(0, -1, 0);
+            //rc_rotateCamera(crx, 0, 0);
+
+
+			//rc_rotateCamera(-1*cam_rot_x, 0, 0);
+			//rc_rotateCamera(0, -1, 0);
+			//rc_rotateCamera(cam_rot_x, 0, 0);
+
+            //---end test------
+
+            //rc_rotateCamera(0, -1, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            //double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+            std::cout << "ROTY = " << cry << ", " << crz << std::endl;
+
+            rc_setActiveCanvas(canvas1);
+        }
+
         if(rc_key(SDLK_LEFT))
         {
             rc_setActiveCanvas(canvas3);
 
-            cam_rot_y++;
+            cam_rot_y--;
 
-            rc_rotateCamera(0, -1, 0);
-            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
-
+            //---test----------
             double crx, cry, crz;
             rc_getCameraRotation(&crx, &cry, &crz);
+
+			rc_rotateCamera(-1*cam_rot_x, 0, 0);
+			rc_rotateCamera(0, -1, 0);
+			rc_rotateCamera(cam_rot_x, 0, 0);
+
+            //---end test------
+
+            //rc_rotateCamera(0, -1, 0);
+            //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
+
+            //double crx, cry, crz;
+            rc_getCameraRotation(&crx, &cry, &crz);
+            std::cout << "ROTY = " << cry << ", " << crz << std::endl;
 
             rc_setActiveCanvas(canvas1);
         }
@@ -263,13 +321,14 @@ int main()
         {
             rc_setActiveCanvas(canvas3);
 
-            cam_rot_y--;
+            cam_rot_y++;
 
             rc_rotateCamera(0, 1, 0);
             //rc_setCameraRotation(cam_rot_x, cam_rot_y, cam_rot_z);
 
             double crx, cry, crz;
             rc_getCameraRotation(&crx, &cry, &crz);
+            std::cout << "ROTY = " << cry << ", " << crz << std::endl;
 
             rc_setActiveCanvas(canvas1);
         }
@@ -312,7 +371,18 @@ int main()
         //rc_drawImage_rotateEx(img2, x, y, 30, 47, 62, 48, r);
         //rc_drawImage_blit(img, x, y, 0, 47, 48, 48);
         //rc_drawImage_blitEx(img, x, y, 96, 96, 0, 47, 48, 48);
-        //rc_drawRect(x,y,96,96);
+        rc_setColor(rc_rgb(255,0,0));
+        rc_drawRectFill(10,10,10,10);
+
+        if(rc_key(SDLK_9))
+		{
+			rc_setColor(rc_rgb(0,255,0));
+			rc_floodFill(15,15);
+			rc_update();
+			rc_wait(500);
+			rc_waitKey();
+		}
+
         //rc_drawImage_blitEx(b_img, 0,0, 30, 30, 0, 0, 3, 3);
 
         if(rc_key(SDLK_ESCAPE))

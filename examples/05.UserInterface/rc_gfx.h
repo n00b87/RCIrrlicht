@@ -2718,6 +2718,85 @@ void rc_setColorKey(int img_id, Uint32 colorkey)
 
 
 
+//FloodFill is technically a primitive but it uses the draw2Dimage function since the pixels returned by lock are flipped vertically
+void floodFill(int x, int y, Uint32* img_pixels, Uint32 prev_color)
+{
+	if(x < 0 || x >= rc_canvas[rc_active_canvas].texture->getSize().Width)
+		return;
+
+	if(y < 0 || y >= rc_canvas[rc_active_canvas].texture->getSize().Height)
+		return;
+
+	if(img_pixels[y*rc_canvas[rc_active_canvas].texture->getSize().Width+x] != prev_color)
+		return;
+
+	img_pixels[y*rc_canvas[rc_active_canvas].texture->getSize().Width+x] = rc_active_color.color;
+
+	floodFill(x-1, y, img_pixels, prev_color);
+	floodFill(x, y-1, img_pixels, prev_color);
+	floodFill(x+1, y, img_pixels, prev_color);
+	floodFill(x, y+1, img_pixels, prev_color);
+}
+
+void rc_floodFill(int x, int y)
+{
+    if(!rc_canvas[rc_active_canvas].texture)
+        return;
+
+	if(x < 0 || x >= rc_canvas[rc_active_canvas].dimension.Width)
+		return;
+
+	if(y < 0 || y >= rc_canvas[rc_active_canvas].dimension.Height)
+		return;
+
+    Uint32* img_pixels = (Uint32*)rc_canvas[rc_active_canvas].texture->lock();
+
+    Uint32 flood_size = rc_canvas[rc_active_canvas].texture->getSize().Width*rc_canvas[rc_active_canvas].texture->getSize().Height;
+    Uint32* flood_buffer = new Uint32[flood_size];
+
+    for(int i = 0; i < flood_size; i++)
+	{
+		flood_buffer[i] = img_pixels[i];
+	}
+
+    floodFill(x, y,flood_buffer, flood_buffer[y*rc_canvas[rc_active_canvas].texture->getSize().Width+x]);
+
+    for(int i = 0; i < flood_size; i++)
+	{
+		img_pixels[i] = flood_buffer[i];
+	}
+
+    rc_canvas[rc_active_canvas].texture->unlock();
+
+    Uint32 nw = rc_canvas[rc_active_canvas].dimension.Width;
+	Uint32 nh = rc_canvas[rc_active_canvas].dimension.Height;
+    irr::video::ITexture* new_canvas = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(nw,nh), "rt", ECF_A8R8G8B8);
+    irr::video::ITexture* old_canvas = rc_canvas[rc_active_canvas].texture;
+    rc_canvas[rc_active_canvas].texture = new_canvas;
+
+    irr::core::dimension2d<irr::u32> src_size = new_canvas->getSize();
+	irr::core::rect<irr::s32> sourceRect(0, 0, src_size.Width, src_size.Height);
+
+	irr::core::position2d<irr::s32> rotationPoint((src_size.Width/2), (src_size.Height/2));
+
+	irr::f32 rotation = 0;
+	irr::core::vector2df scale((irr::f32)1, (irr::f32)-1);
+
+	irr::core::position2d<irr::s32> position(0, src_size.Height);
+
+	bool useAlphaChannel = true;
+	irr::video::SColor color(rc_canvas[rc_active_canvas].color_mod);
+
+	irr::core::vector2df screenSize(rc_canvas[rc_active_canvas].dimension.Width, rc_canvas[rc_active_canvas].dimension.Height);
+
+	rc_setActiveCanvas(rc_active_canvas);
+	draw2DImage(VideoDriver, old_canvas, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+
+	VideoDriver->removeTexture(old_canvas);
+}
+
+
+
 
 void drawCanvasImage(irr::video::ITexture* texture, int x, int y, int src_x, int src_y, int src_w, int src_h, int tgt_width, int tgt_height)
 {
@@ -3217,6 +3296,12 @@ bool rc_update()
                 //VideoDriver->setViewPort(viewport);
 
                 SceneManager->drawAll();
+
+                vector3df p0(0, 0, 0);
+				vector3df p1(10, 30, 0);
+				vector3df p2(20, -30, 0);
+				vector3df p3(30, 0, 0);
+				//drawBezierCurve(VideoDriver, p0, p1, p2, p3, irr::video::SColor(255, 0, 255, 0), 100);
 
                 VideoDriver->setRenderTarget(rc_canvas[0].texture);
             }
