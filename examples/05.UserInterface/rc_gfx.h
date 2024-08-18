@@ -13,6 +13,8 @@
 #include "rc_gfx_core.h"
 #include "gui_freetype_font.h"
 #include "rc_utf8.h"
+#include <box2d/box2d.h>
+#include "rc_sprite2D.h"
 
 using namespace irr;
 
@@ -786,6 +788,7 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
 
     rc_canvas_obj canvas;
     canvas.texture = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(w,h), "rt", ECF_A8R8G8B8);
+    canvas.sprite_layer = VideoDriver->addRenderTargetTexture(irr::core::dimension2d<u32>(w,h), "rt", ECF_A8R8G8B8);
 
     if(!canvas.texture)
         return -1;
@@ -816,6 +819,14 @@ Uint32 rc_canvasOpen(int w, int h, int vx, int vy, int vw, int vh, int mode)
     canvas.mode = mode;
 
     canvas.color_mod = irr::video::SColor(255,255,255,255).color;
+
+    //2D Physics World
+    b2Vec2 gravity(0, -9.8);
+    canvas.physics2D.world = new b2World(gravity);
+    canvas.physics2D.timeStep = 1/20.0;      //the length of time passed to simulate (seconds)
+	canvas.physics2D.velocityIterations = 8;   //how strongly to correct velocity
+	canvas.physics2D.positionIterations = 3;   //how strongly to correct position
+
 
     switch(mode)
     {
@@ -2932,6 +2943,194 @@ int rc_canvasClip(int x, int y, int w, int h)
 
 
 
+//------------------------------SPRITES-------------------------------------------------------
+int rc_createSprite(int img_id)
+{
+	if(rc_active_canvas < 0 || rc_active_canvas >= rc_canvas.size())
+		return -1;
+
+	if(rc_canvas[rc_active_canvas].show3D)
+		return -1;
+
+	std::cout << "debug 1" << std::endl;
+
+	int spr_id = -1;
+	for(int i = 0; i < rc_sprite.size(); i++)
+	{
+		if(!rc_sprite[i].active)
+		{
+			spr_id = i;
+			break;
+		}
+	}
+
+	if(spr_id < 0)
+	{
+		spr_id = rc_sprite.size();
+		rc_sprite2D_obj sprite;
+		rc_sprite.push_back(sprite);
+	}
+
+	rc_sprite[spr_id].active = true;
+	rc_sprite[spr_id].image_id = img_id;
+
+	b2BodyDef sprBodyDef;
+	sprBodyDef.type = b2_staticBody;
+	sprBodyDef.position.Set(0, 0);
+	sprBodyDef.angle = 0;
+	rc_sprite[spr_id].physics.body = rc_canvas[rc_active_canvas].physics2D.world->CreateBody(&sprBodyDef);
+	rc_sprite[spr_id].physics_enabled = false;
+	rc_sprite[spr_id].visible = true;
+	rc_sprite[spr_id].scale.set(1.0, 1.0);
+	rc_sprite[spr_id].position.set(0, 0);
+	rc_sprite[spr_id].alpha = 255;
+	rc_sprite[spr_id].rotation = 0;
+	rc_sprite[spr_id].z = 0;
+	rc_sprite[spr_id].color_mod.set(255,255,255,255);
+	rc_sprite[spr_id].parent_canvas = rc_active_canvas;
+
+	rc_canvas[rc_active_canvas].sprite.push_back(&rc_sprite[spr_id]);
+
+	return spr_id;
+}
+
+void rc_deleteSprite(int spr_id)
+{
+	if(spr_id < 0 || spr_id >= rc_sprite.size())
+		return;
+
+	if(rc_sprite[spr_id].physics.body)
+	{
+		if(rc_sprite[spr_id].parent_canvas >= 0 && rc_sprite[spr_id].parent_canvas < rc_canvas.size())
+		{
+			if(rc_canvas[rc_sprite[spr_id].parent_canvas].physics2D.world)
+				rc_canvas[rc_sprite[spr_id].parent_canvas].physics2D.world->DestroyBody(rc_sprite[spr_id].physics.body);
+		}
+		rc_sprite[spr_id].physics.body = NULL;
+	}
+
+	rc_sprite[spr_id].active = false;
+
+	for(int i = 0; i < rc_canvas[rc_active_canvas].sprite.size(); i++)
+	{
+		rc_sprite2D_obj* canvas_sprite = rc_canvas[rc_active_canvas].sprite[i];
+		rc_sprite2D_obj* global_sprite = &rc_sprite[spr_id];
+		if(canvas_sprite == global_sprite)
+		{
+			rc_canvas[rc_active_canvas].sprite.erase(i);
+			break;
+		}
+	}
+}
+
+void rc_setSpriteBodyType(int spr_id, int body_type)
+{
+	if(spr_id < 0 || spr_id >= rc_sprite.size())
+		return;
+
+	if(!rc_sprite[spr_id].active)
+		return;
+
+	rc_sprite[spr_id].physics.body->SetType((b2BodyType) body_type);
+}
+
+void rc_setSpritePosition(int spr_id, double x, double y)
+{
+	if(spr_id < 0 || spr_id >= rc_sprite.size())
+		return;
+
+	if(!rc_sprite[spr_id].active)
+		return;
+
+	float current_angle = rc_sprite[spr_id].physics.body->GetAngle();
+	rc_sprite[spr_id].physics.body->SetTransform(b2Vec2(x, y), current_angle);
+}
+
+//This function is called on each canvas on update
+void drawSprites(int canvas_id)
+{
+	if(rc_canvas[canvas_id].show3D)
+		return;
+
+	float step = rc_canvas[canvas_id].physics2D.timeStep;
+	int32 velocityIterations = rc_canvas[canvas_id].physics2D.velocityIterations;
+	int32 positionIterations = rc_canvas[canvas_id].physics2D.positionIterations;
+
+	rc_canvas[canvas_id].physics2D.world->Step(step, velocityIterations, positionIterations);
+	//Setting the render target to the current canvas.  NOTE: I might change this target to a separate sprite layer later.
+	VideoDriver->setRenderTarget(rc_canvas[canvas_id].texture, false, false);
+
+
+	irr::core::dimension2d<irr::u32> src_size;
+	irr::core::rect<irr::s32> sourceRect;
+
+	irr::core::position2d<irr::s32> position;
+
+	irr::core::position2d<irr::s32> rotationPoint;
+
+	irr::f32 rotation = 0;
+	irr::core::vector2df scale(1.0, 1.0);
+	bool useAlphaChannel = true;
+	irr::video::SColor color;
+
+	//irr::core::rect<irr::s32> dest( irr::core::vector2d(x, y), irr::core::dimension2d(src_w, src_h));;
+
+	irr::core::vector2df screenSize(rc_canvas[canvas_id].dimension.Width, rc_canvas[canvas_id].dimension.Height);
+
+	int x = 0;
+	int y = 0;
+
+	b2Vec2 physics_pos;
+
+	for(int spr_index = 0; spr_index < rc_canvas[canvas_id].sprite.size(); spr_index++)
+	{
+		rc_sprite2D_obj* sprite = rc_canvas[canvas_id].sprite[spr_index];
+		if(!sprite->visible)
+			continue;
+
+		int img_id = sprite->image_id;
+		if(img_id < 0 || img_id >= rc_image.size())
+			continue;
+
+		src_size = rc_image[img_id].image->getSize();
+		sourceRect = irr::core::rect<irr::s32>( irr::core::vector2d(0, 0), src_size);
+
+		physics_pos = sprite->physics.body->GetPosition();
+		x = (int)physics_pos.x;
+		y = (int)physics_pos.y;
+		position.set(x, y);
+
+
+		rotationPoint.set(x + (src_size.Width/2), y + (src_size.Height/2));
+		rotation = -1 * (sprite->physics.body->GetAngle() * (180.0/3.141592653589793238463)); //convert Box2D radians to degrees
+
+		scale.set(sprite->scale.X, sprite->scale.Y);
+
+		color.set(sprite->alpha,
+							 sprite->color_mod.getRed(),
+							 sprite->color_mod.getGreen(),
+							 sprite->color_mod.getBlue());
+
+		draw2DImage(VideoDriver, rc_image[img_id].image, sourceRect, position, rotationPoint, rotation, scale, useAlphaChannel, color, screenSize);
+	}
+	//Must set back to canvas 0 (the backbuffer) before returning
+
+	VideoDriver->setRenderTarget(rc_canvas[0].texture, false, false);
+}
+
+//NOTE TO TBIRD
+// 1. Each sprite has a Box2D body.  You can look in "rc_sprite2D.h" to see how a sprite is structured.
+// 2. A box2D world is setup for each canvas. So a sprite will be attached to the canvas thats active when its created. When that canvas is destroyed, so is the sprite.
+// 3. By default, I have the sprite.physics_enabled attribute set to false. I feel like it makes sense to have a user intentionally enable physics since a user may not want physics for every sprite.
+// 4. The sprite.visible attribute only determines whether to draw the sprite. The physics simulation will still happen each frame unless physics are disabled.
+// 5. Don't change the value of sprite.active. Its used to check whether a sprite exists or not. I have an array of sprites in rc_sprite2D.h and if the active attribute is set to false, I reuse that slot to create a new sprite. If there is no inactive sprites in the array then I add a new sprite index to the array.
+// 6. The time step, velocity Iterations, and position iterations are part of the canvas.physics2D attribute. You will need to make functions to allow the user to change those.
+// 7. If you want to modify how sprites are rendered then you can just change the drawSprites() function above these notes.
+
+//-----------------------------END OF SPRITE STUFF------------------------------------------------------------------------------
+
+
+
 
 bool rc_update()
 {
@@ -3323,7 +3522,11 @@ bool rc_update()
 
                 //std::cout << "draw canvas[" << canvas_id << "]" << std::endl;
 
+                drawSprites(canvas_id);
                 draw2DImage2(VideoDriver, rc_canvas[canvas_id].texture, src, dest, irr::core::vector2d<irr::s32>(0, 0), 0, true, color, screenSize);
+
+                //drawSprites(canvas_id);
+                //draw2DImage2(VideoDriver, rc_canvas[canvas_id].sprite_layer, src, dest, irr::core::vector2d<irr::s32>(0, 0), 0, true, color, screenSize);
                 //drawCanvasImage(rc_canvas[canvas_id].texture, dest.UpperLeftCorner.X, dest.UpperLeftCorner.Y,
                 //                src.UpperLeftCorner.X, src.UpperLeftCorner.Y, src.getWidth(), src.getHeight(), dest.getWidth(), dest.getHeight());
 

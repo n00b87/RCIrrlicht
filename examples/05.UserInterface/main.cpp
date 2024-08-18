@@ -90,6 +90,15 @@ int main()
 
     int img = rc_loadImage("rcbasic.png");
 
+    std::cout << "create sprite" << std::endl;
+    int test_sprite = rc_createSprite(img);
+    std::cout << "sprite has been created" << std::endl;
+
+
+    rc_setSpriteBodyType(test_sprite, (int)b2_dynamicBody);
+    //rc_setSpritePosition(test_sprite, 50, 30);
+
+
     int x = 20;
     int y = 20;
     int r = 0;
@@ -359,15 +368,15 @@ int main()
         else if(rc_key(SDLK_j))
             x--;
 
-        rc_setCanvasAlpha(canvas1, alpha);
-        rc_setCanvasOffset(canvas1, cx, cy);
+        //rc_setCanvasAlpha(canvas1, alpha);
+        rc_setCanvasOffset(canvas1, 0, 0);
         //rc_setImageAlpha(img2, alpha);
         //rc_drawImage(img2, x, y);
         //rc_drawImage_flip(img2, x, y, h_flag, v_flag);
         //rc_drawImage_flipEx(img2, x, y, 47, 47, 48, 48, h_flag, v_flag);
         //rc_drawImage_zoom(img2, x, y, zx, zy);
         //rc_drawImage_zoomEx(img2, x, y, 20, 47, 62, 48, zx, zy);
-        rc_drawImage_rotozoomEx(img2, x, y, 20, 47, 62, 48, r, zx, zy);
+        //rc_drawImage_rotozoomEx(img2, x, y, 20, 47, 62, 48, r, zx, zy);
         //rc_drawImage_rotateEx(img2, x, y, 30, 47, 62, 48, r);
         //rc_drawImage_blit(img, x, y, 0, 47, 48, 48);
         //rc_drawImage_blitEx(img, x, y, 96, 96, 0, 47, 48, 48);

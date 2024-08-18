@@ -13,6 +13,8 @@
 #include "gui_freetype_font.h"
 #include "rc_utf8.h"
 #include "camera.h"
+#include <box2d/box2d.h>
+#include "rc_sprite2D.h"
 
 using namespace irr;
 
@@ -235,9 +237,19 @@ irr::core::dimension2d<u32> rc_window_size;
 
 
 //Canvases
+struct rc_physicsWorld2D_obj
+{
+	b2World* world;
+	float timeStep = 1/20.0;      //the length of time passed to simulate (seconds)
+	int velocityIterations = 8;   //how strongly to correct velocity
+	int positionIterations = 3;   //how strongly to correct position
+};
+
 struct rc_canvas_obj
 {
     irr::video::ITexture* texture;
+
+    irr::video::ITexture* sprite_layer;
 
     irr::core::dimension2d<u32> dimension;
 
@@ -259,6 +271,9 @@ struct rc_canvas_obj
     int z = 0;
 
     irr::u32 color_mod;
+
+    rc_physicsWorld2D_obj physics2D;
+    irr::core::array<rc_sprite2D_obj*> sprite;
 };
 
 irr::core::array<rc_canvas_obj> rc_canvas;
