@@ -37,6 +37,11 @@ using namespace gui;
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
+void printMatrix(irr::core::matrix4 m)
+{
+	for(int i = 0; i < 4; i++)
+		std::cout << "[ " << m[i*4] << ", " << m[i*4+1] << ", " << m[i*4+2] << ", " << m[i*4+3] << " ]" << std::endl;
+}
 
 int main()
 {
@@ -71,7 +76,7 @@ int main()
 
 	rc_setActiveCanvas(canvas3);
 	rc_setClearColor( rc_rgb(0, 0, 100));
-	rc_setCameraPosition(150,-50,0);
+	rc_setCameraPosition(167,132,169);
 
 	double rx = 0;
 	double ry = 0;
@@ -126,6 +131,24 @@ int main()
 
     int img2 = rc_copyImage(img);
 
+    irr::core::matrix4 tmat; tmat.makeIdentity();
+    irr::core::matrix4 tmat_r; tmat_r.makeIdentity();
+    irr::core::matrix4 tmat_s; tmat_s.makeIdentity();
+    tmat.setTranslation(irr::core::vector3d<irr::f32>(3.0, 4.5, 2.2));
+    tmat_r.setRotationDegrees(irr::core::vector3d<irr::f32>(44, 35, 27));
+    tmat_s.setScale(irr::core::vector3d<irr::f32>(1.3, 1.7, 2.4));
+
+    //std::cout << "test mat_t = " << tmat.getTranslation().X << ", " << tmat.getTranslation().Y << ", " << tmat.getTranslation().Z << std::endl;
+    //std::cout << "test mat_r= " << tmat_r.getRotationDegrees().X << ", " << tmat_r.getRotationDegrees().Y << ", " << tmat_r.getRotationDegrees().Z << std::endl;
+    //std::cout << "test mat_s = " << tmat_s.getScale().X << ", " << tmat_s.getScale().Y << ", " << tmat_s.getScale().Z << std::endl;
+
+    //std::cout << "\nTranslate" << std::endl;
+    //printMatrix(tmat);
+    //std::cout << "\nRotate" << std::endl;
+    //printMatrix(tmat_r);
+    //std::cout << "\nScale" << std::endl;
+    //printMatrix(tmat_s);
+
     //rc_setBilinearFilter(true);
 
     double w, h;
@@ -155,21 +178,42 @@ int main()
     rc_setActorTexture(actor1, 0, actor1_texture);
     rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
 
+    std::cout << "Create shape" << std::endl;
+    //rc_setActorSolid(actor1, true);
+    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 1);
+    rc_translateActor(actor1, 0, 150, 0);
+
+
+    std::cout << "Test end" << std::endl;
+
     double cam_rot_x = 0;
     double cam_rot_y = 0;
     double cam_rot_z = 0;
 
     //std::cout << "Cam Rot = " << rc_canvas[canvas3].camera->getRotation().X << ", " << rc_canvas[canvas3].camera->getRotation().Y << ", " << rc_canvas[canvas3].camera->getRotation().Z << std::endl;
 
-    device->getFileSystem()->addFileArchive("../../media/map-20kdm2.pk3");
+    //device->getFileSystem()->addFileArchive("../../media/map-20kdm2.pk3");
 
-	irr::scene::IAnimatedMesh *map = SceneManager->getMesh("20kdm2.bsp");
-	device->getFileSystem()->removeFileArchive((irr::u32) 0);
-	if (map)
+	//irr::scene::IAnimatedMesh *map = SceneManager->getMesh("20kdm2.bsp");
+	//device->getFileSystem()->removeFileArchive((irr::u32) 0);
+
+	int level = rc_loadMeshFromArchive("../../media/map-20kdm2.pk3", "20kdm2.bsp");
+	int actor2 = -1;
+
+	if (level >= 0)
 	{
-		irr::scene::ISceneNode *map_node = SceneManager->addOctreeSceneNode(map->getMesh(0));
+		//irr::scene::IOctreeSceneNode *map_node = SceneManager->addOctreeSceneNode(map->getMesh(0));
+		actor2 = rc_createMeshOctTreeActor(level);
+
 		//Set position
-		map_node->setPosition(vector3df(-850,-220,-850));
+		//map_node->setPosition(vector3df(-850,-220,-850));
+		//rc_actor[actor2].mesh_node->setPosition(vector3df(-850,-220,-850));
+		//rc_setActorPosition(actor2, -850, -220, -850);
+		rc_setActorSolid(actor2, true);
+		rc_setActorCollisionShape(actor2, RC_NODE_SHAPE_TYPE_TRIMESH, 0);
+
+		//IBvhTriangleMeshShape* shape = new IBvhTriangleMeshShape(map_node, map_node->getMesh(), 0);
+		//IRigidBody* rigid_body = rc_physics3D.world->addRigidBody(shape);
 	}
 
     rc_setActiveCanvas(canvas3);
@@ -177,11 +221,46 @@ int main()
     Camera tst_cam;
     tst_cam.init(SceneManager, 0, 0, 0);
 
+    rc_rotateCamera(0, 220, 0);
+
     double rot_y = -1;
+
+    bool collide = false;
+
 
 
 	while(rc_update())
 	{
+		//rc_physics3D.world->debugDrawWorld(true);
+
+		if(rc_key(SDLK_9))
+		{
+			rc_setActorPosition(actor2, -850, -220, -850);
+		}
+
+		if(rc_key(SDLK_SPACE))
+		{
+			rc_setActiveCanvas(3);
+			double xm, ym, zm;
+			rc_getCameraPosition(&xm, &ym, &zm);
+			std::cout << "CPOS = " << xm << ", " << ym << ", " << zm << std::endl;
+			rc_setActorPosition(actor1, 263, 663, 936);
+		}
+
+		if(rc_getActorCollision(actor1, actor2))
+		{
+			if(!collide)
+				std::cout << "Collision found" << std::endl;
+
+			collide = true;
+		}
+
+
+		rc_setActiveCanvas(canvas3);
+		double cmx, cmy, cmz;
+		rc_getCameraPosition(&cmx, &cmy, &cmz);
+		//std::cout << "cam = " << cmx << ", " << cmy << ", " << cmz << std::endl;
+
 	    rc_setClearColor(0);
 	    rc_clearCanvas();
         bool get_color = false;
@@ -368,6 +447,12 @@ int main()
         else if(rc_key(SDLK_j))
             x--;
 
+		if(rc_key(SDLK_0))
+		{
+			rc_actor[actor1].physics.mass = 2;
+			rc_setActorSolid(actor1, true);
+		}
+
         //rc_setCanvasAlpha(canvas1, alpha);
         rc_setCanvasOffset(canvas1, 0, 0);
         //rc_setImageAlpha(img2, alpha);
@@ -383,7 +468,7 @@ int main()
         rc_setColor(rc_rgb(255,0,0));
         rc_drawRectFill(10,10,10,10);
 
-        if(rc_key(SDLK_9))
+        if(rc_key(SDLK_7))
 		{
 			rc_setColor(rc_rgb(0,255,0));
 			rc_floodFill(15,15);
@@ -403,6 +488,7 @@ int main()
             //rc_getPixel(rc_mouseX(),rc_mouseY());
             rc_setColor(rc_rgb(255,255,255));
         }
+
 	}
 
 	std::cout << "test end" << std::endl;

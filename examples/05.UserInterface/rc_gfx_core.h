@@ -15,6 +15,9 @@
 #include "camera.h"
 #include <box2d/box2d.h>
 #include "rc_sprite2D.h"
+#include <bullet/btBulletDynamicsCommon.h>
+#include <BulletSoftBody/btSoftRigidDynamicsWorld.h>
+#include <irrBullet.h>
 
 using namespace irr;
 
@@ -234,7 +237,18 @@ irr::scene::ISceneManager *SceneManager;
 SDL_Window* rc_window;
 irr::core::dimension2d<u32> rc_window_size;
 
+struct rc_physicsWorld3D_obj
+{
+	irrBulletWorld* world;
 
+	irr::f32 DeltaTime;
+	irr::u32 maxSubSteps;
+	irr::f32 fixedTimeStep;
+
+	irr::u32 TimeStamp;
+};
+
+rc_physicsWorld3D_obj rc_physics3D;
 
 //Canvases
 struct rc_physicsWorld2D_obj
@@ -356,18 +370,57 @@ irr::core::array<rc_mesh_obj> rc_mesh;
 
 #define RC_NODE_TYPE_NONE   	0
 #define RC_NODE_TYPE_MESH   	1
-#define RC_NODE_TYPE_LIGHT		2
-#define RC_NODE_TYPE_TERRAIN	3
-#define RC_NODE_TYPE_WATER		4
+#define RC_NODE_TYPE_OTMESH		2
+#define RC_NODE_TYPE_LIGHT		3
+#define RC_NODE_TYPE_TERRAIN	4
+#define RC_NODE_TYPE_WATER		5
+
+#define RC_NODE_SHAPE_TYPE_NONE			0
+#define RC_NODE_SHAPE_TYPE_BOX			1
+#define RC_NODE_SHAPE_TYPE_SPHERE		2
+#define RC_NODE_SHAPE_TYPE_CYLINDER		3
+#define RC_NODE_SHAPE_TYPE_CAPSULE		4
+#define RC_NODE_SHAPE_TYPE_CONE			5
+#define RC_NODE_SHAPE_TYPE_CONVEXHULL	6
+#define RC_NODE_SHAPE_TYPE_TRIMESH		7
+#define RC_NODE_SHAPE_TYPE_HEIGHTFIELD	8
+
+struct rc_node_physics
+{
+	//will use rigid_body if solid and ghost if not
+	IRigidBody* rigid_body;
+	IGhostObject* ghost;
+
+	int shape_type;
+	bool isSolid;
+	double mass;
+};
 
 struct rc_scene_node
 {
     int node_type = 0;
 
-    irr::scene::IAnimatedMeshSceneNode* mesh_node;
+    irr::scene::ISceneNode* mesh_node;
+    rc_node_physics physics;
 };
 
 irr::core::array<rc_scene_node> rc_actor;
+
+void ghostPreTickCallback(btSoftRigidDynamicsWorld* world, btScalar timeStep)
+{
+	btGhostObject* ghostObject = NULL;
+
+  	for(int actor = 0; actor < rc_actor.size(); actor++)
+  	{
+		for(int i = 0; i < ghostObject->getNumOverlappingObjects(); i++)
+		{
+			btCollisionObject* c_obj = ghostObject->getOverlappingObject(i);
+			//btRigidBody *pRigidBody = dynamic_cast<btRigidBody *>(ghostObject->getOverlappingObject(i));
+			// do whatever you want to do with these pairs of colliding objects
+			//std::cout << "Collide with actor[" << c_ob
+		}
+  	}
+}
 
 
 #define RC_ACTOR_TEXTURE_TYPE_IMAGE     0

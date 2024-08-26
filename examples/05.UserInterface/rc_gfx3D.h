@@ -14,6 +14,8 @@
 #include "camera.h"
 #include "rc_gfx_core.h"
 
+#include <bullet/btBulletDynamicsCommon.h>
+#include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
 
 //load a mesh from a file
 int rc_loadMesh(std::string mesh_file)
@@ -27,6 +29,44 @@ int rc_loadMesh(std::string mesh_file)
     mesh_obj.mesh = mesh;
 
     if(!mesh)
+        return -1;
+
+    for(int i = 0; i < rc_mesh.size(); i++)
+    {
+        if(!rc_mesh[i].mesh)
+        {
+            mesh_id = i;
+            break;
+        }
+    }
+
+    if(mesh_id < 0)
+    {
+        mesh_id = rc_mesh.size();
+        rc_mesh.push_back(mesh_obj);
+    }
+    else
+    {
+        rc_mesh[mesh_id] = mesh_obj;
+    }
+
+    return mesh_id;
+}
+
+//load a mesh from an archive
+int rc_loadMeshFromArchive(std::string archive, std::string mesh_file)
+{
+	int mesh_id = -1;
+
+	device->getFileSystem()->addFileArchive(archive.c_str());
+	irr::scene::IAnimatedMesh *mesh = SceneManager->getMesh(mesh_file.c_str());
+	device->getFileSystem()->removeFileArchive((irr::u32) 0);
+
+	rc_mesh_obj mesh_obj;
+    mesh_obj.mesh_type = RC_MESH_TYPE_ANIMATED;
+    mesh_obj.mesh = mesh;
+
+	if(!mesh)
         return -1;
 
     for(int i = 0; i < rc_mesh.size(); i++)
@@ -129,6 +169,7 @@ bool rc_addMeshBuffer(int mesh_id, int vertex_count, double* vertex_data, double
 
 
 
+
 //add mesh actor to scene
 int rc_createMeshActor(int mesh_id)
 {
@@ -168,7 +209,347 @@ int rc_createMeshActor(int mesh_id)
         rc_actor[actor_id] = actor;
     }
 
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_NONE;
+    //rc_actor[actor_id].physics.rigid_body = NULL;
+
+    rc_actor[actor_id].physics.rigid_body = NULL;
+	rc_actor[actor_id].physics.ghost = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+	IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, 0, false);
+	rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+	rc_actor[actor_id].physics.mass = 0;
+	rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
+
+	//rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
+	//ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, 0, false);
+	//rc_actor[actor_id].physics.shape_ref = shape;
+	//rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+	//rc_actor[actor_id].physics.isSolid = true;
+
+	std::cout << "testing" << std::endl;
+
+    //ghostObject = new btGhostObject();
+	//ghostObject->setCollisionShape(new btBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.))));
+	//ghostObject->setWorldTransform(groundTransform);
+	//m_dynamicsWorld->addCollisionObject(ghostObject);
+	//m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
+
+	//**SAMPLE CODE**/
+	//btTransform trans=body->getCenterOfMassTransform();
+	//btQuaternion quat;
+	//quat.setEuler(irr::core::DEGTORAD*x,irr::core::DEGTORAD*y,irr::core::DEGTORAD*z);
+	//trans.setRotation(quat);
+	//body->setCenterOfMassTransform(trans);
+
+
     return actor_id;
+}
+
+
+//add mesh actor to scene
+int rc_createMeshOctTreeActor(int mesh_id)
+{
+    if(mesh_id < 0 || mesh_id >= rc_mesh.size())
+        return -1;
+
+    irr::scene::IAnimatedMesh* mesh = rc_mesh[mesh_id].mesh;
+
+    if(!mesh)
+        return -1;
+
+    int actor_id = -1;
+    //irr::scene::IAnimatedMeshSceneNode* node = SceneManager->addAnimatedMeshSceneNode(mesh);
+    irr::scene::IOctreeSceneNode *node = SceneManager->addOctreeSceneNode(mesh);
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_OTMESH;
+    actor.mesh_node = node;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    //rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_NONE;
+    //rc_actor[actor_id].physics.rigid_body = NULL;
+
+    rc_actor[actor_id].physics.rigid_body = NULL;
+	rc_actor[actor_id].physics.ghost = NULL;
+
+    rc_actor[actor_id].physics.isSolid = false;
+    //rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+	//IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, 0, false);
+	//rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+	rc_actor[actor_id].physics.mass = 0;
+	//rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
+
+
+	rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
+	ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, 0, false);
+	rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+	rc_actor[actor_id].physics.rigid_body->includeNodeOnRemoval(false);
+	rc_actor[actor_id].physics.rigid_body->getIdentification()->setId(actor_id);
+
+    //ghostObject = new btGhostObject();
+	//ghostObject->setCollisionShape(new btBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.))));
+	//ghostObject->setWorldTransform(groundTransform);
+	//m_dynamicsWorld->addCollisionObject(ghostObject);
+	//m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
+
+	//**SAMPLE CODE**/
+	//btTransform trans=body->getCenterOfMassTransform();
+	//btQuaternion quat;
+	//quat.setEuler(irr::core::DEGTORAD*x,irr::core::DEGTORAD*y,irr::core::DEGTORAD*z);
+	//trans.setRotation(quat);
+	//body->setCenterOfMassTransform(trans);
+
+
+    return actor_id;
+}
+
+
+//Set Gravity
+void rc_setGravity3D(double x, double y, double z)
+{
+	rc_physics3D.world->setGravity(irr::core::vector3d<f32>(x, y, z));
+}
+
+void rc_setActorCollisionShape(int actor_id, int shape_type, double mass)
+{
+	if(rc_actor[actor_id].physics.rigid_body)
+	{
+		rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.rigid_body, false);
+		delete rc_actor[actor_id].physics.rigid_body;
+	}
+
+	if(rc_actor[actor_id].physics.ghost)
+	{
+		rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.ghost, false);
+		delete rc_actor[actor_id].physics.ghost;
+	}
+
+	rc_actor[actor_id].physics.rigid_body = NULL;
+	rc_actor[actor_id].physics.ghost = NULL;
+
+	if(rc_actor[actor_id].physics.isSolid)
+		rc_actor[actor_id].physics.mass = mass;
+	else
+		rc_actor[actor_id].physics.mass = 0;
+
+	switch(shape_type)
+	{
+		case RC_NODE_SHAPE_TYPE_NONE:
+			break;
+
+		case RC_NODE_SHAPE_TYPE_BOX:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+				IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_SPHERE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
+				ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CYLINDER:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CYLINDER;
+				ICylinderShape* shape = new ICylinderShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CAPSULE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CAPSULE;
+				ICapsuleShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CONE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONE;
+				IConeShape* shape = new IConeShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_TRIMESH:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_TRIMESH;
+				IBvhTriangleMeshShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				//else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_WATER)
+					//shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node->getMesh(), mass);
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CONVEXHULL:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONVEXHULL;
+				IConvexHullShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+
+				if(rc_actor[actor_id].physics.isSolid)
+					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+				else
+					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
+			}
+			break;
+
+		default:
+			std::cout << "SetActorCollisionShape Error: Invalid shape_type parameter" << std::endl;
+	}
+
+	if(rc_actor[actor_id].physics.rigid_body)
+		rc_actor[actor_id].physics.rigid_body->getIdentification()->setId(actor_id);
+	else if(rc_actor[actor_id].physics.ghost)
+		rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
+}
+
+int rc_getActorCollisionShape(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(!rc_actor[actor].mesh_node)
+        return 0;
+
+	return rc_actor[actor].physics.shape_type;
+}
+
+
+void rc_setActorSolid(int actor_id, bool flag)
+{
+	if(actor_id < 0 || actor_id >= rc_actor.size())
+        return;
+
+    if(!rc_actor[actor_id].mesh_node)
+        return;
+
+	//I will figure this out eventually
+	if(flag != rc_actor[actor_id].physics.isSolid)
+	{
+		rc_actor[actor_id].physics.isSolid = flag;
+		rc_setActorCollisionShape(actor_id, rc_actor[actor_id].physics.shape_type, rc_actor[actor_id].physics.mass);
+	}
+}
+
+bool rc_getActorCollision(int actor1, int actor2)
+{
+	int numManifolds = rc_physics3D.world->getNumManifolds();
+    for (int i = 0; i < numManifolds; i++)
+    {
+        //btPersistentManifold* contactManifold =  rc_physics3D.world->getCollisionCallback(i)->getContactPoint();
+        //btCollisionObject* obA = static_cast<btCollisionObject*>(contactManifold->getBody0());
+        //btCollisionObject* obB = static_cast<btCollisionObject*>(contactManifold->getBody1());
+
+        irr::u32 a1 = rc_physics3D.world->getCollisionCallback(i)->getBody0()->getIdentification()->getId();
+        irr::u32 a2 = rc_physics3D.world->getCollisionCallback(i)->getBody1()->getIdentification()->getId();
+
+       //... here you can check for obA´s and obB´s user pointer again to see if the collision is alien and bullet and in that case initiate deletion.
+       std::cout << "collision found (" << a1 << ", " << a2 << ")" << std::endl;
+    }
+
+    return false;
 }
 
 //delete actor
@@ -429,12 +810,22 @@ void rc_setActorPosition(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    switch(rc_actor[actor].node_type)
-    {
-        case RC_NODE_TYPE_MESH:
-            rc_actor[actor].mesh_node->setPosition( irr::core::vector3d<irr::f32>((irr::f32)x, (irr::f32)y, (irr::f32)z));
-            break;
-    }
+    if(rc_actor[actor].physics.ghost)
+	{
+		//translateNode(rc_actor[actor].mesh_node, irr::core::vector3df(x,y,z));
+		std::cout << "Set GHST POS" << std::endl;
+		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
+		actor_transform.setTranslation( irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
+	}
+	else if(rc_actor[actor].physics.rigid_body)
+	{
+		std::cout << "Set POS" << std::endl;
+		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
+		actor_transform.setTranslation( irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
+		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
+	}
 }
 
 //translate actor from local orientation
@@ -443,7 +834,10 @@ void rc_translateActor(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    translateNode(rc_actor[actor].mesh_node, irr::core::vector3df(x,y,z));
+    if(!rc_actor[actor].physics.rigid_body)
+		translateNode(rc_actor[actor].mesh_node, irr::core::vector3df(x,y,z));
+	else
+		rc_actor[actor].physics.rigid_body->translate(irr::core::vector3df(x, y, z));
 }
 
 //get actor position
@@ -463,12 +857,8 @@ void rc_setActorScale(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    switch(rc_actor[actor].node_type)
-    {
-        case RC_NODE_TYPE_MESH:
-            rc_actor[actor].mesh_node->setScale( irr::core::vector3d<irr::f32>((irr::f32)x, (irr::f32)y, (irr::f32)z));
-            break;
-    }
+    rc_actor[actor].mesh_node->setScale( irr::core::vector3d<irr::f32>((irr::f32)x, (irr::f32)y, (irr::f32)z));
+
 }
 
 //scale actor
@@ -501,12 +891,7 @@ void rc_setActorRotation(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    switch(rc_actor[actor].node_type)
-    {
-        case RC_NODE_TYPE_MESH:
-            rc_actor[actor].mesh_node->setRotation( irr::core::vector3d<irr::f32>((irr::f32)x, (irr::f32)y, (irr::f32)z));
-            break;
-    }
+    rc_actor[actor].mesh_node->setRotation( irr::core::vector3d<irr::f32>((irr::f32)x, (irr::f32)y, (irr::f32)z));
 }
 
 //rotate actor
@@ -538,7 +923,8 @@ void rc_setActorAnimation(int actor, int start_frame, int end_frame)
     switch(rc_actor[actor].node_type)
     {
         case RC_NODE_TYPE_MESH:
-            //rc_actor[actor].mesh_node->setAnimation();
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setFrameLoop((irr::s32)start_frame, (irr::s32)end_frame );
             break;
     }
 }
@@ -552,7 +938,8 @@ void rc_setActorAnimationSpeed(int actor, double speed)
     switch(rc_actor[actor].node_type)
     {
         case RC_NODE_TYPE_MESH:
-            rc_actor[actor].mesh_node->setAnimationSpeed( (irr::f32)speed );
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setAnimationSpeed( (irr::f32)speed );
             break;
     }
 }

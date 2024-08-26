@@ -56,7 +56,7 @@ public:
 
     irr::scene::ISceneManager* Scene;
 
-  ICameraSceneNode *camera;  // the actual camera
+  irr::scene::ICameraSceneNode *camera;  // the actual camera
   ISceneNode       *top;     // above camera
   ISceneNode       *front;   // in front of camera
 
