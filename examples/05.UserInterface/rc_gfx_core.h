@@ -458,4 +458,10 @@ void drawBezierCurve(IVideoDriver* driver, const vector3df& p0, const vector3df&
 }
 
 
+void printMatrix(irr::core::matrix4 m)
+{
+	for(int i = 0; i < 4; i++)
+		std::cout << "[ " << m[i*4] << ", " << m[i*4+1] << ", " << m[i*4+2] << ", " << m[i*4+3] << " ]" << std::endl;
+}
+
 #endif // RC_GFX_CORE_H_INCLUDED

@@ -37,12 +37,6 @@ using namespace gui;
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
-void printMatrix(irr::core::matrix4 m)
-{
-	for(int i = 0; i < 4; i++)
-		std::cout << "[ " << m[i*4] << ", " << m[i*4+1] << ", " << m[i*4+2] << ", " << m[i*4+3] << " ]" << std::endl;
-}
-
 int main()
 {
 
@@ -227,7 +221,8 @@ int main()
 
     bool collide = false;
 
-
+	double tst_x = 0;
+	double tst_y = 0;
 
 	while(rc_update())
 	{
@@ -238,13 +233,29 @@ int main()
 			rc_setActorPosition(actor2, -850, -220, -850);
 		}
 
+		if(rc_key(SDLK_b))
+		{
+			rc_translateActor(actor1, 0, 5, 0);
+			tst_y++;
+			//rc_rotateActor(actor1, 0, 5, 0);
+		}
+		else if(rc_key(SDLK_n))
+		{
+			rc_translateActor(actor1, 0, -5, 0);
+			//rc_setActorScale(actor1, 2, 2, 2);
+			//rc_setActorRotation(actor1, tst_x, 0, 0);
+			//tst_x++;
+			//rc_rotateActor(actor1, 5, 0, 0);
+		}
+
+
 		if(rc_key(SDLK_SPACE))
 		{
 			rc_setActiveCanvas(3);
 			double xm, ym, zm;
 			rc_getCameraPosition(&xm, &ym, &zm);
 			std::cout << "CPOS = " << xm << ", " << ym << ", " << zm << std::endl;
-			rc_setActorPosition(actor1, 263, 663, 936);
+			rc_setActorPosition(actor1, 1139, 350, 2135);
 		}
 
 		if(rc_getActorCollision(actor1, actor2))
