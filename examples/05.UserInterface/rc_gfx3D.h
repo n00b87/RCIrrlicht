@@ -829,9 +829,9 @@ void rc_setActorPosition(int actor, double x, double y, double z)
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
 		actor_transform.setTranslation( irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
-		rc_setActorCollisionShape(actor, rc_actor[actor].physics.shape_type, rc_actor[actor].physics.mass);
 
 	}
 }
@@ -857,7 +857,6 @@ void rc_translateActor(int actor, double x, double y, double z)
 		actor_transform.setTranslation( actor_transform.getTranslation() + irr::core::vector3df(x, y, z) );
 		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
-
 		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
 	}
 }
@@ -909,6 +908,7 @@ void rc_setActorScale(int actor, double x, double y, double z)
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
 		actor_transform.setScale( irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
 	}
@@ -934,6 +934,7 @@ void rc_scaleActor(int actor, double x, double y, double z)
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
 		actor_transform.setScale( actor_transform.getScale() * irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
 	}
@@ -987,6 +988,7 @@ void rc_setActorRotation(int actor, double x, double y, double z)
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
 		actor_transform.setRotationDegrees( irr::core::vector3df(x, y, z) );
+		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setRotation( actor_transform.getRotationDegrees() );
 	}
@@ -1024,6 +1026,7 @@ void rc_rotateActor(int actor, double x, double y, double z)
 		n.setRotationDegrees( irr::core::vector3df(x,y,z) );
 		m *= n;
 
+		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(m);
 		rc_actor[actor].mesh_node->setRotation( m.getRotationDegrees() );
 		//rc_actor[actor].mesh_node->updateAbsolutePosition();
