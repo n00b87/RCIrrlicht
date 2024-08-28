@@ -13,6 +13,7 @@
 
 #include "camera.h"
 #include "rc_gfx_core.h"
+#include "rc_matrix.h"
 
 #include <bullet/btBulletDynamicsCommon.h>
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
@@ -1058,6 +1059,387 @@ void rc_getActorRotation(int actor, double* x, double* y, double* z)
 		*x = actor_transform.getRotationDegrees().X;
 		*y = actor_transform.getRotationDegrees().Y;
 		*z = actor_transform.getRotationDegrees().Z;
+	}
+}
+
+void rc_setActorGravity(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setGravity(irr::core::vector3df(x, y, z));
+	}
+}
+
+void rc_getActorGravity(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df gvec = rc_actor[actor].physics.rigid_body->getGravity();
+		*x = gvec.X;
+		*y = gvec.Y;
+		*z = gvec.Z;
+	}
+}
+
+void rc_setActorDamping(int actor, double lin_damping, double ang_damping)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setDamping(lin_damping, ang_damping);
+	}
+}
+
+double rc_getActorLinearDamping(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->getLinearDamping();
+	}
+	return 0;
+}
+
+double rc_getActorAngularDamping(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->getAngularDamping();
+	}
+	return 0;
+}
+
+double rc_getActorLinearSleepThreshold(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->getLinearSleepingThreshold();
+	}
+	return 0;
+}
+
+double rc_getActorAngularSleepThreshold(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->getAngularSleepingThreshold();
+	}
+	return 0;
+}
+
+void rc_applyActorDamping(int actor, double timeStep)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyDamping(timeStep);
+	}
+}
+
+void rc_setActorMassProperties(int actor, double mass, double inertia_x, double inertia_y, double inertia_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setMassProps(mass, irr::core::vector3df(inertia_x, inertia_y, inertia_z));
+	}
+}
+
+void rc_getActorLinearFactor(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df lf = rc_actor[actor].physics.rigid_body->getLinearFactor();
+		*x = lf.X;
+		*y = lf.Y;
+		*z = lf.Z;
+	}
+}
+
+void rc_setActorLinearFactor(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setLinearFactor(irr::core::vector3df(x, y, z));
+	}
+}
+
+double rc_getActorInverseMass(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->getInvMass();
+	}
+	return 0;
+}
+
+void rc_integrateActorVelocities(int actor, double step)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->integrateVelocities(step);
+	}
+}
+
+void rc_applyActorCentralForceLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyCentralForce(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorCentralForceWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyCentralForce(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_getActorTotalForce(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df f = rc_actor[actor].physics.rigid_body->getTotalForce();
+		*x = f.X;
+		*y = f.Y;
+		*z = f.Z;
+	}
+}
+
+void rc_getActorTotalTorque(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df f = rc_actor[actor].physics.rigid_body->getTotalTorque();
+		*x = f.X;
+		*y = f.Y;
+		*z = f.Z;
+	}
+}
+
+void rc_getActorInverseInertiaDiagLocal(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df f = rc_actor[actor].physics.rigid_body->getInvInertiaDiagLocal();
+		*x = f.X;
+		*y = f.Y;
+		*z = f.Z;
+	}
+}
+
+void rc_setActorInverseInertiaDiagLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setInvInertiaDiagLocal(irr::core::vector3df(x,y,z));
+	}
+}
+
+void rc_setActorSleepThresholds(int actor, double linear, double angular)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setSleepingThresholds(linear, angular);
+	}
+}
+
+void rc_applyActorTorqueLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyTorque(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorTorqueWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyTorque(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_applyActorForceLocal(int actor, double x, double y, double z, double rel_x, double rel_y, double rel_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyForce(irr::core::vector3df(x,y,z), irr::core::vector3df(rel_x, rel_y, rel_z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorForceWorld(int actor, double x, double y, double z, double rel_x, double rel_y, double rel_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyForce(irr::core::vector3df(x,y,z), irr::core::vector3df(rel_x, rel_y, rel_z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_applyActorCentralImpulseLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyCentralImpulse(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorCentralImpulseWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyCentralImpulse(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_applyActorTorqueImpulseLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyTorqueImpulse(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorTorqueImpulseWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyTorqueImpulse(irr::core::vector3df(x,y,z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_applyActorImpulseLocal(int actor, double x, double y, double z, double rel_x, double rel_y, double rel_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyImpulse(irr::core::vector3df(x,y,z), irr::core::vector3df(rel_x, rel_y, rel_z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_applyActorImpulseWorld(int actor, double x, double y, double z, double rel_x, double rel_y, double rel_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->applyImpulse(irr::core::vector3df(x,y,z), irr::core::vector3df(rel_x, rel_y, rel_z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_clearActorForces(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->clearForces();
 	}
 }
 
