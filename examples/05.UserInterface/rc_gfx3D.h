@@ -1443,6 +1443,336 @@ void rc_clearActorForces(int actor)
 	}
 }
 
+void rc_updateActorInertiaTensor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->updateInertiaTensor();
+	}
+}
+
+void rc_getActorCOMPosition(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df pos = rc_actor[actor].physics.rigid_body->getCenterOfMassPosition();
+		*x = pos.X;
+		*y = pos.Y;
+		*z = pos.Z;
+	}
+}
+
+void rc_getActorRotationQ(int actor, double* x, double* y, double* z, double* w)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+    *w = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::quaternion q = rc_actor[actor].physics.rigid_body->getOrientation();
+		*x = q.X;
+		*y = q.Y;
+		*z = q.Z;
+		*w = q.W;
+	}
+}
+
+void rc_getActorLinearVelocity(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df pos = rc_actor[actor].physics.rigid_body->getLinearVelocity();
+		*x = pos.X;
+		*y = pos.Y;
+		*z = pos.Z;
+	}
+}
+
+void rc_getActorAngularVelocity(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df pos = rc_actor[actor].physics.rigid_body->getAngularVelocity();
+		*x = pos.X;
+		*y = pos.Y;
+		*z = pos.Z;
+	}
+}
+
+void rc_setActorLinearVelocityLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setLinearVelocity(irr::core::vector3df(x, y, z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_setActorLinearVelocityWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setLinearVelocity(irr::core::vector3df(x, y, z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_setActorAngularVelocityLocal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setAngularVelocity(irr::core::vector3df(x, y, z), ERBTransformSpace::ERBTS_LOCAL);
+	}
+}
+
+void rc_setActorAngularVelocityWorld(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setAngularVelocity(irr::core::vector3df(x, y, z), ERBTransformSpace::ERBTS_WORLD);
+	}
+}
+
+void rc_getActorLocalPointVelocity(int actor, double rel_x, double rel_y, double rel_z, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df pos = rc_actor[actor].physics.rigid_body->getVelocityInLocalPoint(irr::core::vector3df(rel_x, rel_y, rel_z));
+		*x = pos.X;
+		*y = pos.Y;
+		*z = pos.Z;
+	}
+}
+
+void rc_getActorLinearVelocityLocal(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		btVector3 v = rc_actor[actor].physics.rigid_body->getPointer()->getWorldTransform().getBasis().transpose() * rc_actor[actor].physics.rigid_body->getPointer()->getLinearVelocity();
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+void rc_getActorAngularVelocityLocal(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *x = 0;
+    *y = 0;
+    *z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		btVector3 v = rc_actor[actor].physics.rigid_body->getPointer()->getWorldTransform().getBasis().transpose() * rc_actor[actor].physics.rigid_body->getPointer()->getAngularVelocity();
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+void rc_getActorAABB(int actor, double* min_x, double* min_y, double* min_z, double* max_x, double* max_y, double* max_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    *min_x = 0;
+	*min_y = 0;
+	*min_z = 0;
+	*max_x = 0;
+	*max_y = 0;
+	*max_z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df min_aabb;
+		irr::core::vector3df max_aabb;
+		rc_actor[actor].physics.rigid_body->getAabb(min_aabb, max_aabb);
+		*min_x = min_aabb.X;
+		*min_y = min_aabb.Y;
+		*min_z = min_aabb.Z;
+		*max_x = max_aabb.X;
+		*max_y = max_aabb.Y;
+		*max_z = max_aabb.Z;
+	}
+}
+
+double rc_computeActorImpulseDenominator(int actor, double pos_x, double pos_y, double pos_z, double normal_x, double normal_y, double normal_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->computeImpulseDenominator(irr::core::vector3df(pos_x, pos_y, pos_z), irr::core::vector3df(normal_x, normal_y, normal_z));
+	}
+}
+
+double rc_computeActorAngularImpulseDenominator(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		return rc_actor[actor].physics.rigid_body->computeAngularImpulseDenominator(irr::core::vector3df(x, y, z));
+	}
+}
+
+void rc_setActorAngularFactor(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		rc_actor[actor].physics.rigid_body->setAngularFactor(irr::core::vector3df(x, y, z));
+	}
+}
+
+void rc_getActorAngularFactor(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		irr::core::vector3df af = rc_actor[actor].physics.rigid_body->getAngularFactor();
+		*x = af.X;
+		*y = af.Y;
+		*z = af.Z;
+	}
+}
+
+void rc_computeActorGyroImpulseLocal(int actor, double step, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		btVector3 v = rc_actor[actor].physics.rigid_body->getPointer()->computeGyroscopicImpulseImplicit_Body(step);
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+void rc_computeActorGyroImpulseWorld(int actor, double dt, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		btVector3 v = rc_actor[actor].physics.rigid_body->getPointer()->computeGyroscopicImpulseImplicit_World(dt);
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+void rc_getActorLocalInertia(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+    if(rc_actor[actor].physics.rigid_body)
+	{
+		btVector3 v = rc_actor[actor].physics.rigid_body->getPointer()->getLocalInertia();
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+void rc_setWorld3DDeltaTime(double dt)
+{
+	rc_physics3D.DeltaTime = dt;
+}
+
+void rc_setWorld3DMaxSubSteps(double steps)
+{
+	rc_physics3D.maxSubSteps = steps;
+}
+
+void rc_setWorld3DTimeStep(double ts)
+{
+	rc_physics3D.fixedTimeStep = ts;
+}
+
+
 //set actor animation [TODO]
 void rc_setActorAnimation(int actor, int start_frame, int end_frame)
 {
