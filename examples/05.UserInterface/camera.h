@@ -47,6 +47,12 @@ void translateNode(ISceneNode *node, vector3df vel)
     node->updateAbsolutePosition();
 }
 
+void translateNodeW(ISceneNode *node, vector3df vel)
+{
+    node->setPosition(node->getPosition() + vel);
+    node->updateAbsolutePosition();
+}
+
 
 
 /* camera framework */
@@ -74,6 +80,7 @@ public:
 
   // locally translate the camera
   void translate(float x, float y, float z);
+  void translateW(float x, float y, float z);
 
 
   // locally rotate the camera
@@ -170,6 +177,17 @@ public:
 	top->updateAbsolutePosition();
   }
 
+  // locally translate the camera
+  void Camera::translateW(float x, float y, float z)
+  {
+	// translate the camera locally
+	translateNodeW(camera, vector3df(x,y,z));
+
+	// update reference nodes
+	front->updateAbsolutePosition();
+	top->updateAbsolutePosition();
+  }
+
   // locally rotate the camera
   void Camera::rotate(float x, float y, float z)
   {
@@ -196,9 +214,9 @@ public:
 
     pos = camera->getRotation();
 
-    rx=pos.X;
-    ry=pos.Y;
-    rz=pos.Z;
+    //rx=pos.X;
+    //ry=pos.Y;
+    //rz=pos.Z;
   }
 
   // sets the global rotation of the camera

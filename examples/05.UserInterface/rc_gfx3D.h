@@ -251,7 +251,7 @@ int rc_createMeshActor(int mesh_id)
 
 
 //add mesh actor to scene
-int rc_createMeshOctTreeActor(int mesh_id)
+int rc_createMeshOctreeActor(int mesh_id)
 {
     if(mesh_id < 0 || mesh_id >= rc_mesh.size())
         return -1;
@@ -1833,6 +1833,15 @@ void rc_translateCamera(double x, double y, double z)
 
     rc_canvas[rc_active_canvas].camera.translate(x, y, z);
 }
+
+void rc_translateCameraW(double x, double y, double z)
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return;
+
+    rc_canvas[rc_active_canvas].camera.translateW(x, y, z);
+}
+
 
 void rc_setCameraRotation(double x, double y, double z)
 {
