@@ -57,6 +57,92 @@ void drawDebugInfo(int overlay_canvas, int view_canvas)
 	rc_drawText("Rotation: " + cam_rot, 10, 30);
 }
 
+void test_matrix1()
+{
+	irr::core::matrix4 m;
+	m.setTranslation(irr::core::vector3df(44, 55, 66));
+	m.setRotationDegrees(irr::core::vector3df(20, 70, 30));
+
+	std::cout << "rot euler = " << m.getTranslation().X << ", " << m.getTranslation().Y << ", " << m.getTranslation().Z << std::endl;
+
+	std::cout << std::endl << "debug output 1" << std::endl;
+	printIrrMatrix(m);
+
+	irr::core::vector3df rot = m.getRotationDegrees();
+
+	std::cout << std::endl;
+
+	std::cout << "ROT = " << rot.X << ", " << rot.Y << ", " << rot.Z << std::endl;
+
+	irr::core::matrix4 m2;
+	m2.setRotationDegrees(irr::core::vector3df(11, 12, 14));
+	m2.setTranslation(irr::core::vector3df(23, 22, 19));
+	m2.setScale(irr::core::vector3df(2,3,4));
+
+	std::cout << std::endl;
+
+	std::cout << std::endl << "debug output 2" << std::endl;
+	printIrrMatrix(m2);
+
+	m = m * m2;
+
+	std::cout << std::endl;
+
+	std::cout << std::endl << "debug output 3" << std::endl;
+	printIrrMatrix(m);
+
+	std::cout << std::endl;
+
+	//printMatrix(m);
+}
+
+void test_matrix2()
+{
+	double x;
+	double y;
+	double z;
+
+	int m = DimMatrix(NEW_MATRIX, 4, 4);
+	setIdentityMatrix(m, 4);
+	rc_setMatrixTranslation(m, 44, 55, 66);
+	rc_setMatrixRotation(m, 20, 70, 30);
+
+	rc_getMatrixTranslation(m, &x, &y, &z);
+
+	std::cout << "rot euler = " << x << ", " << y << ", " << z << std::endl;
+
+	std::cout << std::endl << "debug output 1" << std::endl;
+	printRCMatrix(m);
+
+	rc_getMatrixRotation(m, &x, &y, &z);
+
+	std::cout << std::endl;
+
+	std::cout << "!!ROT = " << x << ", " << y << ", " << z << std::endl;
+
+	int m2 = DimMatrix(NEW_MATRIX, 4, 4);
+	setIdentityMatrix(m2, 4);
+	rc_setMatrixRotation(m2, 11, 12, 14);
+	rc_setMatrixTranslation(m2, 23, 22, 19);
+	rc_setMatrixScale(m2, 2,3,4);
+
+	std::cout << std::endl;
+
+	std::cout << std::endl << "debug output 2" << std::endl;
+	printRCMatrix(m2);
+
+	int mC = DimMatrix(NEW_MATRIX, 4, 4);
+
+	MultiplyMatrix(m, m2, mC);
+
+	std::cout << std::endl << "debug output 3" << std::endl;
+	printRCMatrix(mC);
+
+	std::cout << std::endl;
+
+	//printMatrix(m);
+}
+
 int main()
 {
 
@@ -88,7 +174,7 @@ int main()
     rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
 
     //rc_setActorSolid(actor1, true);
-    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 1);
+    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 0);
     rc_translateActor(actor1, 0, 150, 0);
 
 	int level = rc_loadMeshFromArchive("../../media/map-20kdm2.pk3", "20kdm2.bsp");
@@ -100,6 +186,8 @@ int main()
 		rc_setActorSolid(actor2, true);
 		rc_setActorCollisionShape(actor2, RC_NODE_SHAPE_TYPE_TRIMESH, 0);
 	}
+
+	double ax, ay, az;
 
 	while(rc_update())
 	{
@@ -131,7 +219,13 @@ int main()
         if(rc_key(SDLK_r))
 		{
 			rc_setActiveCanvas(canvas1);
-			rc_translateCameraW(0, 10, 0);
+
+			double crx, cry, crz;
+            rc_getCameraPosition(&crx, &cry, &crz);
+
+            rc_setCameraPosition(crx, cry+10, crz);
+
+			//rc_translateCameraW(0, 10, 0);
 		}
 		else if(rc_key(SDLK_f))
 		{
@@ -169,10 +263,78 @@ int main()
             double crx, cry, crz;
             rc_getCameraRotation(&crx, &cry, &crz);
 
-			rc_rotateCamera(-1*crx, 0, 0);
-			rc_rotateCamera(0, 1, 0);
-			rc_rotateCamera(crx, 0, 0);
+			rc_setCameraRotation(crx, cry+1, crz);
+			//rc_rotateCamera(-1*crx, 0, 0);
+			//rc_rotateCamera(0, 1, 0);
+			//rc_rotateCamera(crx, 0, 0);
         }
+
+        if(rc_key(SDLK_SPACE))
+		{
+			rc_setActiveCanvas(canvas1);
+			rc_setActorPosition(actor1, 1160, 399, 2122);
+			rc_setActorRotation(actor1, 0, 0, 0);
+			rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, rc_actor[actor1].physics.mass);
+			//rc_applyActorTorqueImpulseWorld(actor1, 0, 0, 0);
+
+			rc_setCameraPosition(984, 488, 2303);
+			rc_setCameraRotation(23, 1216, 0);
+		}
+
+
+		if(rc_key(SDLK_t))
+		{
+			rc_translateActorWorld(actor1, 0, 5, 0);
+		}
+		else if(rc_key(SDLK_g))
+		{
+			//rc_translateActorWorld(actor1, 0, -5, 0);
+			//rc_applyActorTorqueImpulseLocal(actor1, 0, 30, 0);
+			//rc_applyActorTorqueWorld(actor1, 0, 120, 0);
+			rc_rotateActor(actor1, 0, -5, 0);
+			ay += 5;
+			//rc_setActorRotation(actor1, ax, ay, az);
+		}
+
+		if(rc_key(SDLK_b))
+		{
+			rc_setActorLinearVelocityLocal(actor1, 10, 0, 0);
+			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
+		}
+
+		if(rc_key(SDLK_n))
+		{
+			rc_setActorLinearVelocityLocal(actor1, 0, 40, 0);
+			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
+		}
+
+
+		if(rc_key(SDLK_p))
+		{
+			rc_setActorSolid(actor1, true);
+		}
+
+		if(rc_key(SDLK_m))
+		{
+			rc_setActorMassProperties(actor1, 1, 0, 0, 0);
+			std::cout << "actors = " << rc_actor[actor1].physics.rigid_body->getIdentification()->getId() << ", " << rc_actor[actor2].physics.rigid_body->getIdentification()->getId() << std::endl;
+		}
+
+		if(!rc_getActorCollision(actor2, actor1))
+		{
+			std::cout << "NONE" << std::endl;
+		}
+
+		if(rc_key(SDLK_1))
+		{
+			//rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, 1);
+			rc_actor[actor1].physics.rigid_body->setGravity(irr::core::vector3df(0,0,0));
+			//std::cout << "Collision Flags: " << (int)rc_actor[actor_id].physics.rigid_body->getCollisionFlags() << std::endl;
+			rc_actor[actor1].physics.rigid_body->setCollisionFlags( ECollisionFlag::ECF_NO_CONTACT_RESPONSE );
+			rc_actor[actor1].physics.isSolid = false;
+			rc_actor[actor1].physics.rigid_body->setMassProps(1, irr::core::vector3df(0,0,0));
+		}
+
 
 
         drawDebugInfo(canvas2, canvas1);

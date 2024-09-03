@@ -223,6 +223,10 @@ public:
   void Camera::setRotation(float x, float y, float z)
   {
     camera->setRotation(vector3df(x,y,z));
+    camera->updateAbsolutePosition();
+
+    front->updateAbsolutePosition();
+	top->updateAbsolutePosition();
 
     rx=x;
     ry=y;
@@ -233,6 +237,7 @@ public:
   void Camera::setPosition(float x, float y, float z)
   {
     camera->setPosition(vector3df(x,y,z));
+    camera->updateAbsolutePosition();
 
 	front->updateAbsolutePosition();
 	top->updateAbsolutePosition();

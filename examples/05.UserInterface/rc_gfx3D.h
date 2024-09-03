@@ -170,6 +170,237 @@ bool rc_addMeshBuffer(int mesh_id, int vertex_count, double* vertex_data, double
 
 
 
+//Set Gravity
+void rc_setGravity3D(double x, double y, double z)
+{
+	rc_physics3D.world->setGravity(irr::core::vector3d<f32>(x, y, z));
+}
+
+void setSolidProperties(int actor)
+{
+	if(!rc_actor[actor].physics.isSolid)
+	{
+		rc_actor[actor].physics.rigid_body->setGravity(irr::core::vector3df(0,0,0));
+		rc_actor[actor].physics.rigid_body->setCollisionFlags( ECollisionFlag::ECF_NO_CONTACT_RESPONSE );
+	}
+}
+
+void rc_setActorCollisionShape(int actor_id, int shape_type, double mass)
+{
+	if(rc_actor[actor_id].physics.rigid_body)
+	{
+		rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.rigid_body, false);
+		delete rc_actor[actor_id].physics.rigid_body;
+	}
+
+	rc_actor[actor_id].physics.rigid_body = NULL;
+	rc_actor[actor_id].physics.mass = mass;
+
+	if(!rc_actor[actor_id].physics.isSolid)
+		mass = 1;
+
+	switch(shape_type)
+	{
+		case RC_NODE_SHAPE_TYPE_NONE:
+			break;
+
+		case RC_NODE_SHAPE_TYPE_BOX:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+				IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_SPHERE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
+				ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CYLINDER:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CYLINDER;
+				ICylinderShape* shape = new ICylinderShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CAPSULE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CAPSULE;
+				ICapsuleShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new ICapsuleShape(node, mass, false);
+				}
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CONE:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONE;
+				IConeShape* shape = new IConeShape(rc_actor[actor_id].mesh_node, mass, false);
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_TRIMESH:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_TRIMESH;
+				IBvhTriangleMeshShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				//else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_WATER)
+					//shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node->getMesh(), mass);
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		case RC_NODE_SHAPE_TYPE_CONVEXHULL:
+			{
+				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONVEXHULL;
+				IConvexHullShape* shape;
+
+				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
+				{
+					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
+				{
+					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
+				{
+					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
+					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
+				}
+
+				rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
+
+				setSolidProperties(actor_id);
+			}
+			break;
+
+		default:
+			std::cout << "SetActorCollisionShape Error: Invalid shape_type parameter" << std::endl;
+	}
+
+	if(rc_actor[actor_id].physics.rigid_body)
+	{
+		rc_actor[actor_id].physics.rigid_body->getIdentification()->setId(actor_id);
+		rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(ACTIVE_TAG);
+		rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(DISABLE_DEACTIVATION);
+	}
+}
+
+int rc_getActorCollisionShape(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    if(!rc_actor[actor].mesh_node)
+        return 0;
+
+	return rc_actor[actor].physics.shape_type;
+}
+
+
+void rc_setActorSolid(int actor_id, bool flag)
+{
+	if(actor_id < 0 || actor_id >= rc_actor.size())
+        return;
+
+    if(!rc_actor[actor_id].mesh_node)
+        return;
+
+	if(flag != rc_actor[actor_id].physics.isSolid)
+	{
+		rc_actor[actor_id].physics.isSolid = flag;
+		rc_setActorCollisionShape(actor_id, rc_actor[actor_id].physics.shape_type, rc_actor[actor_id].physics.mass);
+	}
+}
+
+bool rc_actorIsSolid(int actor_id)
+{
+	if(actor_id < 0 || actor_id >= rc_actor.size())
+        return false;
+
+    if(!rc_actor[actor_id].mesh_node)
+        return false;
+
+	return rc_actor[actor_id].physics.isSolid;
+}
+
+
+bool rc_getActorCollision(int actor1, int actor2)
+{
+	for(int i = 0; i < rc_actor[actor1].physics.collisions.size(); i++)
+	{
+		int c_index = rc_actor[actor1].physics.collisions[i];
+
+		int actorA = rc_collisions[c_index].actorA;
+		int actorB = rc_collisions[c_index].actorB;
+
+		if(actor2 == actorA || actor2 == actorB)
+		{
+			//std::cout << "Actor in Collide = " << (actor1 == actorA ? "A" : "B") << std::endl;
+			return true;
+		}
+	}
+
+    return false;
+}
+
 
 //add mesh actor to scene
 int rc_createMeshActor(int mesh_id)
@@ -211,40 +442,11 @@ int rc_createMeshActor(int mesh_id)
     }
 
     //Actor RigidBody
-    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_NONE;
-    //rc_actor[actor_id].physics.rigid_body = NULL;
-
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
     rc_actor[actor_id].physics.rigid_body = NULL;
-	rc_actor[actor_id].physics.ghost = NULL;
     rc_actor[actor_id].physics.isSolid = false;
 
-    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
-	IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, 0, false);
-	rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-	rc_actor[actor_id].physics.mass = 0;
-	rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
-
-	//rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
-	//ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, 0, false);
-	//rc_actor[actor_id].physics.shape_ref = shape;
-	//rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-	//rc_actor[actor_id].physics.isSolid = true;
-
-	//std::cout << "testing" << std::endl;
-
-    //ghostObject = new btGhostObject();
-	//ghostObject->setCollisionShape(new btBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.))));
-	//ghostObject->setWorldTransform(groundTransform);
-	//m_dynamicsWorld->addCollisionObject(ghostObject);
-	//m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
-
-	//**SAMPLE CODE**/
-	//btTransform trans=body->getCenterOfMassTransform();
-	//btQuaternion quat;
-	//quat.setEuler(irr::core::DEGTORAD*x,irr::core::DEGTORAD*y,irr::core::DEGTORAD*z);
-	//trans.setRotation(quat);
-	//body->setCenterOfMassTransform(trans);
-
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
 
     return actor_id;
 }
@@ -291,272 +493,14 @@ int rc_createMeshOctreeActor(int mesh_id)
     }
 
     //Actor RigidBody
-    //rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_NONE;
-    //rc_actor[actor_id].physics.rigid_body = NULL;
-
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
     rc_actor[actor_id].physics.rigid_body = NULL;
-	rc_actor[actor_id].physics.ghost = NULL;
-
     rc_actor[actor_id].physics.isSolid = false;
-    //rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
-	//IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, 0, false);
-	//rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-	rc_actor[actor_id].physics.mass = 0;
-	//rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
 
-
-	rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
-	ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, 0, false);
-	rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-	rc_actor[actor_id].physics.rigid_body->includeNodeOnRemoval(false);
-	rc_actor[actor_id].physics.rigid_body->getIdentification()->setId(actor_id);
-	rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(ACTIVE_TAG);
-	rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(DISABLE_DEACTIVATION);
-
-    //ghostObject = new btGhostObject();
-	//ghostObject->setCollisionShape(new btBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.))));
-	//ghostObject->setWorldTransform(groundTransform);
-	//m_dynamicsWorld->addCollisionObject(ghostObject);
-	//m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->setInternalGhostPairCallback(new btGhostPairCallback());
-
-	//**SAMPLE CODE**/
-	//btTransform trans=body->getCenterOfMassTransform();
-	//btQuaternion quat;
-	//quat.setEuler(irr::core::DEGTORAD*x,irr::core::DEGTORAD*y,irr::core::DEGTORAD*z);
-	//trans.setRotation(quat);
-	//body->setCenterOfMassTransform(trans);
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
 
 
     return actor_id;
-}
-
-
-//Set Gravity
-void rc_setGravity3D(double x, double y, double z)
-{
-	rc_physics3D.world->setGravity(irr::core::vector3d<f32>(x, y, z));
-}
-
-void rc_setActorCollisionShape(int actor_id, int shape_type, double mass)
-{
-	if(rc_actor[actor_id].physics.rigid_body)
-	{
-		rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.rigid_body, false);
-		delete rc_actor[actor_id].physics.rigid_body;
-	}
-
-	if(rc_actor[actor_id].physics.ghost)
-	{
-		rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.ghost, false);
-		delete rc_actor[actor_id].physics.ghost;
-	}
-
-	rc_actor[actor_id].physics.rigid_body = NULL;
-	rc_actor[actor_id].physics.ghost = NULL;
-
-	if(rc_actor[actor_id].physics.isSolid)
-		rc_actor[actor_id].physics.mass = mass;
-	else
-		rc_actor[actor_id].physics.mass = 0;
-
-	switch(shape_type)
-	{
-		case RC_NODE_SHAPE_TYPE_NONE:
-			break;
-
-		case RC_NODE_SHAPE_TYPE_BOX:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
-				IBoxShape* shape = new IBoxShape(rc_actor[actor_id].mesh_node, mass, false);
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_SPHERE:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
-				ISphereShape* shape = new ISphereShape(rc_actor[actor_id].mesh_node, mass, false);
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_CYLINDER:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CYLINDER;
-				ICylinderShape* shape = new ICylinderShape(rc_actor[actor_id].mesh_node, mass, false);
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_CAPSULE:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CAPSULE;
-				ICapsuleShape* shape;
-
-				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
-				{
-					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new ICapsuleShape(node, mass, false);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
-				{
-					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new ICapsuleShape(node, mass, false);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
-				{
-					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new ICapsuleShape(node, mass, false);
-				}
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_CONE:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONE;
-				IConeShape* shape = new IConeShape(rc_actor[actor_id].mesh_node, mass, false);
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_TRIMESH:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_TRIMESH;
-				IBvhTriangleMeshShape* shape;
-
-				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
-				{
-					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
-				{
-					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
-				{
-					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-				//else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_WATER)
-					//shape = new IBvhTriangleMeshShape(rc_actor[actor_id].mesh_node, (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node->getMesh(), mass);
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		case RC_NODE_SHAPE_TYPE_CONVEXHULL:
-			{
-				rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_CONVEXHULL;
-				IConvexHullShape* shape;
-
-				if(rc_actor[actor_id].node_type == RC_NODE_TYPE_MESH)
-				{
-					irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_OTMESH)
-				{
-					irr::scene::IOctreeSceneNode* node = (irr::scene::IOctreeSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-				else if(rc_actor[actor_id].node_type == RC_NODE_TYPE_TERRAIN)
-				{
-					irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor_id].mesh_node;
-					shape = new IConvexHullShape(rc_actor[actor_id].mesh_node, node->getMesh(), mass);
-				}
-
-				if(rc_actor[actor_id].physics.isSolid)
-					rc_actor[actor_id].physics.rigid_body = rc_physics3D.world->addRigidBody(shape);
-				else
-					rc_actor[actor_id].physics.ghost = rc_physics3D.world->addGhostObject(shape);
-			}
-			break;
-
-		default:
-			std::cout << "SetActorCollisionShape Error: Invalid shape_type parameter" << std::endl;
-	}
-
-	if(rc_actor[actor_id].physics.rigid_body)
-	{
-		rc_actor[actor_id].physics.rigid_body->getIdentification()->setId(actor_id);
-		rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(ACTIVE_TAG);
-		rc_actor[actor_id].physics.rigid_body->getPointer()->setActivationState(DISABLE_DEACTIVATION);
-	}
-	else if(rc_actor[actor_id].physics.ghost)
-		rc_actor[actor_id].physics.ghost->getIdentification()->setId(actor_id);
-}
-
-int rc_getActorCollisionShape(int actor)
-{
-	if(actor < 0 || actor >= rc_actor.size())
-        return 0;
-
-    if(!rc_actor[actor].mesh_node)
-        return 0;
-
-	return rc_actor[actor].physics.shape_type;
-}
-
-
-void rc_setActorSolid(int actor_id, bool flag)
-{
-	if(actor_id < 0 || actor_id >= rc_actor.size())
-        return;
-
-    if(!rc_actor[actor_id].mesh_node)
-        return;
-
-	//I will figure this out eventually
-	if(flag != rc_actor[actor_id].physics.isSolid)
-	{
-		rc_actor[actor_id].physics.isSolid = flag;
-		rc_setActorCollisionShape(actor_id, rc_actor[actor_id].physics.shape_type, rc_actor[actor_id].physics.mass);
-	}
-}
-
-bool rc_getActorCollision(int actor1, int actor2)
-{
-	int numManifolds = rc_physics3D.world->getNumManifolds();
-    for (int i = 0; i < numManifolds; i++)
-    {
-        //btPersistentManifold* contactManifold =  rc_physics3D.world->getCollisionCallback(i)->getContactPoint();
-        //btCollisionObject* obA = static_cast<btCollisionObject*>(contactManifold->getBody0());
-        //btCollisionObject* obB = static_cast<btCollisionObject*>(contactManifold->getBody1());
-
-        irr::u32 a1 = rc_physics3D.world->getCollisionCallback(i)->getBody0()->getIdentification()->getId();
-        irr::u32 a2 = rc_physics3D.world->getCollisionCallback(i)->getBody1()->getIdentification()->getId();
-
-       //... here you can check for obA´s and obB´s user pointer again to see if the collision is alien and bullet and in that case initiate deletion.
-       //std::cout << "collision found (" << a1 << ", " << a2 << ")" << std::endl;
-    }
-
-    return false;
 }
 
 //delete actor
@@ -567,6 +511,9 @@ void rc_deleteActor(int actor_id)
 
     if(!rc_actor[actor_id].mesh_node)
         return;
+
+	rc_physics3D.world->removeCollisionObject(rc_actor[actor_id].physics.rigid_body, false);
+	rc_actor[actor_id].physics.collisions.clear();
 
     rc_actor[actor_id].mesh_node->remove();
     rc_actor[actor_id].mesh_node = NULL;
@@ -817,21 +764,19 @@ void rc_setActorPosition(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		actor_transform.setTranslation( irr::core::vector3df(x, y, z) );
-		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
-		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
+		rc_physics3D.world->removeCollisionObject(rc_actor[actor].physics.rigid_body, false);
 		actor_transform.setTranslation( irr::core::vector3df(x, y, z) );
 		rc_actor[actor].physics.rigid_body->clearForces();
+		//rc_actor[actor].physics.rigid_body->
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
+
+		rc_actor[actor].physics.rigid_body->setMassProps(rc_actor[actor].physics.mass, irr::core::vector3df(0,0,0));
+		rc_physics3D.world->addRigidBody(rc_actor[actor].physics.rigid_body);
+
 		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
 
 	}
@@ -843,15 +788,30 @@ void rc_translateActor(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
+    if(rc_actor[actor].physics.rigid_body)
 	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		actor_transform.setTranslation( actor_transform.getTranslation() + irr::core::vector3df(x, y, z) );
-		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
+		//std::cout << "Set POS" << std::endl;
+		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
+		irr::core::matrix4 m;
+		m.setRotationDegrees(actor_transform.getRotationDegrees());
+		irr::core::vector3df v(x, y, z);
+		m.transformVect(v);
+
+		actor_transform.setTranslation( actor_transform.getTranslation() + v );
+		rc_actor[actor].physics.rigid_body->clearForces();
+		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
-	else if(rc_actor[actor].physics.rigid_body)
+}
+
+//translate actor from world orientation
+void rc_translateActorWorld(int actor, double x, double y, double z)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -859,6 +819,7 @@ void rc_translateActor(int actor, double x, double y, double z)
 		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setPosition(actor_transform.getTranslation());
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
 }
 
@@ -872,15 +833,7 @@ void rc_getActorPosition(int actor, double* x, double* y, double* z)
     *y = 0;
     *z = 0;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		*x = actor_transform.getTranslation().X;
-		*y = actor_transform.getTranslation().Y;
-		*z = actor_transform.getTranslation().Z;
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -896,15 +849,7 @@ void rc_setActorScale(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		actor_transform.setScale( irr::core::vector3df(x, y, z) );
-		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
-		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -912,6 +857,7 @@ void rc_setActorScale(int actor, double x, double y, double z)
 		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
 
 }
@@ -922,15 +868,7 @@ void rc_scaleActor(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		actor_transform.setScale( actor_transform.getScale() * irr::core::vector3df(x, y, z) );
-		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
-		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -938,6 +876,7 @@ void rc_scaleActor(int actor, double x, double y, double z)
 		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setScale(actor_transform.getScale());
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
 }
 
@@ -951,15 +890,7 @@ void rc_getActorScale(int actor, double* x, double* y, double* z)
     *y = 0;
     *z = 0;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		*x = actor_transform.getScale().X;
-		*y = actor_transform.getScale().Y;
-		*z = actor_transform.getScale().Z;
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -976,15 +907,7 @@ void rc_setActorRotation(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		actor_transform.setRotationDegrees( irr::core::vector3df(x, y, z) );
-		rc_actor[actor].physics.ghost->setWorldTransform(actor_transform);
-		rc_actor[actor].mesh_node->setRotation( actor_transform.getRotationDegrees() );
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -992,6 +915,7 @@ void rc_setActorRotation(int actor, double x, double y, double z)
 		rc_actor[actor].physics.rigid_body->clearForces();
 		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
 		rc_actor[actor].mesh_node->setRotation( actor_transform.getRotationDegrees() );
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
 }
 
@@ -1001,36 +925,20 @@ void rc_rotateActor(int actor, double x, double y, double z)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-
-		irr::core::matrix4 m;
-		m.setRotationDegrees( actor_transform.getRotationDegrees() );
-		irr::core::matrix4 n;
-		n.setRotationDegrees( irr::core::vector3df(x,y,z) );
-		m *= n;
-
-		rc_actor[actor].physics.ghost->setWorldTransform(m);
-		rc_actor[actor].mesh_node->setRotation( m.getRotationDegrees() );
-		//rc_actor[actor].mesh_node->updateAbsolutePosition();
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
 
-		irr::core::matrix4 m;
-		m.setRotationDegrees( actor_transform.getRotationDegrees() );
 		irr::core::matrix4 n;
-		n.setRotationDegrees( irr::core::vector3df(x,y,z) );
-		m *= n;
+		irr::core::vector3df rot(x, y, z);
+		n.setRotationDegrees(rot);
+		actor_transform *= n;
 
 		rc_actor[actor].physics.rigid_body->clearForces();
-		rc_actor[actor].physics.rigid_body->setWorldTransform(m);
-		rc_actor[actor].mesh_node->setRotation( m.getRotationDegrees() );
-		//rc_actor[actor].mesh_node->updateAbsolutePosition();
+		rc_actor[actor].physics.rigid_body->setWorldTransform(actor_transform);
+		rc_actor[actor].mesh_node->setRotation( actor_transform.getRotationDegrees() );
+		rc_actor[actor].mesh_node->updateAbsolutePosition();
 	}
 }
 
@@ -1044,15 +952,7 @@ void rc_getActorRotation(int actor, double* x, double* y, double* z)
 	*y = 0;
 	*z = 0;
 
-    if(rc_actor[actor].physics.ghost)
-	{
-		//std::cout << "Set GHST POS" << std::endl;
-		irr::core::matrix4 actor_transform = rc_actor[actor].physics.ghost->getWorldTransform();
-		*x = actor_transform.getRotationDegrees().X;
-		*y = actor_transform.getRotationDegrees().Y;
-		*z = actor_transform.getRotationDegrees().Z;
-	}
-	else if(rc_actor[actor].physics.rigid_body)
+    if(rc_actor[actor].physics.rigid_body)
 	{
 		//std::cout << "Set POS" << std::endl;
 		irr::core::matrix4 actor_transform = rc_actor[actor].physics.rigid_body->getWorldTransform();
@@ -1168,8 +1068,11 @@ void rc_setActorMassProperties(int actor, double mass, double inertia_x, double 
 
     if(rc_actor[actor].physics.rigid_body)
 	{
+		rc_physics3D.world->removeCollisionObject(rc_actor[actor].physics.rigid_body, false);
 		rc_actor[actor].physics.rigid_body->setMassProps(mass, irr::core::vector3df(inertia_x, inertia_y, inertia_z));
+		rc_physics3D.world->getPointer()->addRigidBody(rc_actor[actor].physics.rigid_body->getPointer());
 	}
+	rc_actor[actor].physics.mass = mass;
 }
 
 void rc_getActorLinearFactor(int actor, double* x, double* y, double* z)
@@ -1756,6 +1659,1968 @@ void rc_getActorLocalInertia(int actor, double* x, double* y, double* z)
 		*z = v.getZ();
 	}
 }
+
+int getConstraintId()
+{
+	int cid = -1;
+	for(int i = 0; i < rc_physics3D.constraints.size(); i++)
+	{
+		if(rc_physics3D.constraints[i].type <= 0)
+		{
+			cid = i;
+			break;
+		}
+	}
+
+	if(cid >= 0)
+		return cid;
+
+	rc_constraint_obj constraint;
+	cid = rc_physics3D.constraints.size();
+	rc_physics3D.constraints.push_back(constraint);
+	return cid;
+}
+
+int rc_createPointConstraint(int actorA, double pxA, double pyA, double pzA)
+{
+	if(actorA < 0 || actorA >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body)
+	{
+		rc_constraint_obj p2p;
+		p2p.type = RC_CONSTRAINT_TYPE_POINT;
+		btVector3 pvtA(pxA, pyA, pzA);
+		p2p.constraint = new btPoint2PointConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), pvtA);
+		rc_physics3D.world->getPointer()->addConstraint(p2p.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = p2p;
+		return constraint_id;
+	}
+
+	return -1;
+}
+
+int rc_createPointConstraintEx(int actorA, int actorB, double pxA, double pyA, double pzA, double pxB, double pyB, double pzB)
+{
+	if(actorA < 0 || actorA >= rc_actor.size() || actorB < 0 || actorB >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body && rc_actor[actorB].physics.rigid_body)
+	{
+		rc_constraint_obj p2p;
+		p2p.type = RC_CONSTRAINT_TYPE_POINT;
+		btVector3 pvtA(pxA, pyA, pzA);
+		btVector3 pvtB(pxB, pyB, pzB);
+		p2p.constraint = new btPoint2PointConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), *rc_actor[actorB].physics.rigid_body->getPointer(),
+														pvtA, pvtB);
+		rc_physics3D.world->getPointer()->addConstraint(p2p.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = p2p;
+		return constraint_id;
+	}
+}
+
+void rc_setConstraintPivotA(int constraint_id, double x, double y, double z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+    if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* c = (btPoint2PointConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		c->setPivotA(btVector3(x, y, z));
+	}
+}
+
+void rc_setConstraintPivotB(int constraint_id, double x, double y, double z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+    if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* c = (btPoint2PointConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		c->setPivotB(btVector3(x, y, z));
+	}
+}
+
+int rc_createHingeConstraint(int actorA, double pxA, double pyA, double pzA, double axA, double ayA, double azA)
+{
+	if(actorA < 0 || actorA >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body)
+	{
+		rc_constraint_obj hinge;
+		hinge.type = RC_CONSTRAINT_TYPE_HINGE;
+		btVector3 pvtA(pxA, pyA, pzA);
+		btVector3 axis(axA, ayA, azA);
+		hinge.constraint = new btHingeConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), pvtA, axis);
+		rc_physics3D.world->getPointer()->addConstraint(hinge.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = hinge;
+		return constraint_id;
+	}
+}
+
+
+int rc_createHingeConstraintEx(int actorA,  int actorB, double pxA, double pyA, double pzA, double pxB, double pyB, double pzB,
+													   double axA, double ayA, double azA, double axB, double ayB, double azB)
+{
+	if(actorA < 0 || actorA >= rc_actor.size() || actorB < 0 || actorB >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body && rc_actor[actorB].physics.rigid_body)
+	{
+		rc_constraint_obj hinge;
+		hinge.type = RC_CONSTRAINT_TYPE_HINGE;
+
+		btVector3 pvtA(pxA, pyA, pzA);
+		btVector3 axisA(axA, ayA, azA);
+
+		btVector3 pvtB(pxB, pyB, pzB);
+		btVector3 axisB(axB, ayB, azB);
+
+		hinge.constraint = new btHingeConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), *rc_actor[actorB].physics.rigid_body->getPointer(), pvtA, pvtB, axisA, axisB);
+		rc_physics3D.world->getPointer()->addConstraint(hinge.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = hinge;
+		return constraint_id;
+	}
+}
+
+int rc_createSlideConstraint(int actorA, int frameInB_matrix, bool useLinearReferenceFrameA)
+{
+	if(actorA < 0 || actorA >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body)
+	{
+		rc_constraint_obj slide;
+		slide.type = RC_CONSTRAINT_TYPE_SLIDER;
+
+		irr::core::matrix4 irr_mat = rc_convertToIrrMatrix(frameInB_matrix);
+		btTransform frameInB;
+		btTransformFromIrrlichtMatrix(irr_mat, frameInB);
+
+		slide.constraint = new btSliderConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), frameInB, useLinearReferenceFrameA);
+		rc_physics3D.world->getPointer()->addConstraint(slide.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = slide;
+		return constraint_id;
+	}
+}
+
+int rc_createSlideConstraintEx(int actorA, int actorB, int frameInA_matrix, int frameInB_matrix, bool useLinearReferenceFrameA)
+{
+	if(actorA < 0 || actorA >= rc_actor.size() || actorB < 0 || actorB >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body && rc_actor[actorB].physics.rigid_body)
+	{
+		rc_constraint_obj slide;
+		slide.type = RC_CONSTRAINT_TYPE_SLIDER;
+
+		irr::core::matrix4 irr_matA = rc_convertToIrrMatrix(frameInA_matrix);
+		irr::core::matrix4 irr_matB = rc_convertToIrrMatrix(frameInB_matrix);
+
+		btTransform frameInA, frameInB;
+		btTransformFromIrrlichtMatrix(irr_matA, frameInA);
+		btTransformFromIrrlichtMatrix(irr_matB, frameInB);
+
+		slide.constraint = new btSliderConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), *rc_actor[actorB].physics.rigid_body->getPointer(), frameInA, frameInB, useLinearReferenceFrameA);
+		rc_physics3D.world->getPointer()->addConstraint(slide.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = slide;
+		return constraint_id;
+	}
+}
+
+
+int rc_createConeConstraint(int actorA, int rbAFrame_matrix)
+{
+	if(actorA < 0 || actorA >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body)
+	{
+		rc_constraint_obj cone;
+		cone.type = RC_CONSTRAINT_TYPE_CONE;
+
+		irr::core::matrix4 irr_matA = rc_convertToIrrMatrix(rbAFrame_matrix);
+
+		btTransform rba;
+		btTransformFromIrrlichtMatrix(irr_matA, rba);
+
+		cone.constraint = new btConeTwistConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), rba);
+		rc_physics3D.world->getPointer()->addConstraint(cone.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = cone;
+		return constraint_id;
+	}
+}
+
+int rc_createConeConstraintEx(int actorA, int actorB, int rbAFrame_matrix, int rbBFrame_matrix)
+{
+	if(actorA < 0 || actorA >= rc_actor.size() || actorB < 0 || actorB >= rc_actor.size())
+        return -1;
+
+    if(rc_actor[actorA].physics.rigid_body && rc_actor[actorB].physics.rigid_body)
+	{
+		rc_constraint_obj cone;
+		cone.type = RC_CONSTRAINT_TYPE_CONE;
+
+		irr::core::matrix4 irr_matA = rc_convertToIrrMatrix(rbAFrame_matrix);
+		irr::core::matrix4 irr_matB = rc_convertToIrrMatrix(rbBFrame_matrix);
+
+		btTransform rba, rbb;
+		btTransformFromIrrlichtMatrix(irr_matA, rba);
+		btTransformFromIrrlichtMatrix(irr_matB, rbb);
+
+		cone.constraint = new btConeTwistConstraint(*rc_actor[actorA].physics.rigid_body->getPointer(), *rc_actor[actorB].physics.rigid_body->getPointer(), rba, rbb);
+		rc_physics3D.world->getPointer()->addConstraint(cone.constraint);
+		int constraint_id = getConstraintId();
+		rc_physics3D.constraints[constraint_id] = cone;
+		return constraint_id;
+	}
+}
+
+void rc_deleteConstraint(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+    if(rc_physics3D.constraints[constraint_id].constraint)
+	{
+		rc_physics3D.world->getPointer()->removeConstraint(rc_physics3D.constraints[constraint_id].constraint);
+		rc_physics3D.constraints[constraint_id].constraint = NULL;
+		rc_physics3D.constraints[constraint_id].type = 0;
+	}
+}
+
+
+void rc_getConstraintFrameOffsetA(int constraint_id, double* x, double* y, double* z, double* rx, double* ry, double* rz)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	*rx = 0;
+	*ry = 0;
+	*rz = 0;
+
+    if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		//btTransform t = hinge->getFrameOffsetA();
+		//t.getBasis().getEulerZYX()
+		*x = hinge->getFrameOffsetA().getOrigin().getX();
+		*y = hinge->getFrameOffsetA().getOrigin().getY();
+		*z = hinge->getFrameOffsetA().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		hinge->getFrameOffsetA().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		*x = cone->getFrameOffsetA().getOrigin().getX();
+		*y = cone->getFrameOffsetA().getOrigin().getY();
+		*z = cone->getFrameOffsetA().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		cone->getFrameOffsetA().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		*x = slide->getFrameOffsetA().getOrigin().getX();
+		*y = slide->getFrameOffsetA().getOrigin().getY();
+		*z = slide->getFrameOffsetA().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		slide->getFrameOffsetA().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+}
+
+void rc_getConstraintFrameOffsetB(int constraint_id, double* x, double* y, double* z, double* rx, double* ry, double* rz)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	*rx = 0;
+	*ry = 0;
+	*rz = 0;
+
+    if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		*x = hinge->getFrameOffsetB().getOrigin().getX();
+		*y = hinge->getFrameOffsetB().getOrigin().getY(); btTransform:
+		*z = hinge->getFrameOffsetB().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		hinge->getFrameOffsetB().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		*x = cone->getFrameOffsetB().getOrigin().getX();
+		*y = cone->getFrameOffsetB().getOrigin().getY();
+		*z = cone->getFrameOffsetB().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		cone->getFrameOffsetB().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*)rc_physics3D.constraints[constraint_id].constraint;
+		*x = slide->getFrameOffsetB().getOrigin().getX();
+		*y = slide->getFrameOffsetB().getOrigin().getY();
+		*z = slide->getFrameOffsetB().getOrigin().getZ();
+
+		btScalar yaw, pitch, roll;
+		slide->getFrameOffsetB().getBasis().getEulerZYX(yaw, pitch, roll);
+		*rx = roll;
+		*ry = pitch;
+		*rz = yaw;
+	}
+}
+
+
+void rc_useConstraintFrameOffset(int constraint_id, bool flag)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setUseFrameOffset(flag);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setUseFrameOffset(flag);
+	}
+}
+
+//btHingeConstraint::getHingeAngle()
+double rc_getHingeAngle(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getHingeAngle();
+	}
+
+	return 0;
+}
+
+double rc_getHingeAngleEx(int constraint_id, int t_matrixA, int t_matrixB)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform transformA, transformB;
+		irr::core::matrix4 irr_matA = rc_convertToIrrMatrix(t_matrixA);
+		irr::core::matrix4 irr_matB = rc_convertToIrrMatrix(t_matrixB);
+		btTransformFromIrrlichtMatrix(irr_matA, transformA);
+		btTransformFromIrrlichtMatrix(irr_matB, transformB);
+		return hinge->getHingeAngle(transformA, transformB);
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getBreakingImpulseThreshold()
+double rc_getConstraintBreakingImpulseThreshold(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getBreakingImpulseThreshold();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return p2p->getBreakingImpulseThreshold();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getBreakingImpulseThreshold();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getBreakingImpulseThreshold();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getAFrame()
+int rc_getConstraintAFrame(int constraint_id, int mA)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return -1;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform aframe = hinge->getAFrame();
+		irr::core::matrix4 irr_mat;
+		btTransformToIrrlichtMatrix(aframe, irr_mat);
+		mA = rc_convertFromIrrMatrix(irr_mat, mA);
+		return mA;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform aframe = cone->getAFrame();
+		irr::core::matrix4 irr_mat;
+		btTransformToIrrlichtMatrix(aframe, irr_mat);
+		mA = rc_convertFromIrrMatrix(irr_mat, mA);
+		return mA;
+	}
+
+	return -1;
+}
+
+//btHingeConstraint::getBFrame()
+int rc_getConstraintBFrame(int constraint_id, int mA)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return -1;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform bframe = hinge->getBFrame();
+		irr::core::matrix4 irr_mat;
+		btTransformToIrrlichtMatrix(bframe, irr_mat);
+		mA = rc_convertFromIrrMatrix(irr_mat, mA);
+		return mA;
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform bframe = cone->getBFrame();
+		irr::core::matrix4 irr_mat;
+		btTransformToIrrlichtMatrix(bframe, irr_mat);
+		mA = rc_convertFromIrrMatrix(irr_mat, mA);
+		return mA;
+	}
+
+	return -1;
+}
+
+//btHingeConstraint::setAxis()
+void rc_setConstraintAxis(int constraint_id, double x, double y, double z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 axis(x,y,z);
+		hinge->setAxis(axis);
+	}
+}
+
+//btHingeConstraint::setBreakingImpulseThreshold()
+void rc_setConstraintBreakingImpulseThreshold(int constraint_id, double threshold)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setBreakingImpulseThreshold(threshold);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		p2p->setBreakingImpulseThreshold(threshold);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setBreakingImpulseThreshold(threshold);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setBreakingImpulseThreshold(threshold);
+	}
+}
+
+//btHingeConstraint::setFrames()
+void rc_setConstraintFrames(int constraint_id, int frameA_matrix, int frameB_matrix)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform frameA, frameB;
+		irr::core::matrix4 irr_matA, irr_matB;
+		irr_matA = rc_convertToIrrMatrix(frameA_matrix);
+		irr_matB = rc_convertToIrrMatrix(frameB_matrix);
+		btTransformFromIrrlichtMatrix(irr_matA, frameA);
+		btTransformFromIrrlichtMatrix(irr_matB, frameB);
+		hinge->setFrames(frameA, frameB);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform frameA, frameB;
+		irr::core::matrix4 irr_matA, irr_matB;
+		irr_matA = rc_convertToIrrMatrix(frameA_matrix);
+		irr_matB = rc_convertToIrrMatrix(frameB_matrix);
+		btTransformFromIrrlichtMatrix(irr_matA, frameA);
+		btTransformFromIrrlichtMatrix(irr_matB, frameB);
+		cone->setFrames(frameA, frameB);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btTransform frameA, frameB;
+		irr::core::matrix4 irr_matA, irr_matB;
+		irr_matA = rc_convertToIrrMatrix(frameA_matrix);
+		irr_matB = rc_convertToIrrMatrix(frameB_matrix);
+		btTransformFromIrrlichtMatrix(irr_matA, frameA);
+		btTransformFromIrrlichtMatrix(irr_matB, frameB);
+		slide->setFrames(frameA, frameB);
+	}
+}
+
+//btHingeConstraint::setLimit();
+void rc_setHingeLimit(int constraint_id, double low, double high, double softness, double bias_factor, double relaxation_factor)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setLimit(low, high, softness, bias_factor, relaxation_factor);
+	}
+}
+
+void rc_setConeLimit(int constraint_id, double swingSpan1, double swingSpan2, double twistSpan, double softness, double bias_factor, double relaxation_factor)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setLimit(swingSpan1, swingSpan2, twistSpan, softness, bias_factor, relaxation_factor);
+	}
+}
+
+//btHingeConstraint::getLimitBiasFactor()
+double rc_getConstraintLimitBiasFactor(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getLimitBiasFactor();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getLimitRelaxationFactor()
+double rc_getLimitRelaxationFactor(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getLimitRelaxationFactor();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getLimitSign()
+double rc_getConstraintLimitSign(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getLimitSign();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getSolveLimit()
+int rc_getHingeSolveLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getSolveLimit();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::setUseReferenceFrameA()
+void rc_useHingeReferenceFrameA(int constraint_id, bool flag)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setUseReferenceFrameA(flag);
+	}
+}
+
+
+//
+//btPoint2PointConstraint::getAppliedImpulse()
+double rc_getConstraintAppliedImpulse(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getAppliedImpulse();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return p2p->getAppliedImpulse();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getAppliedImpulse();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getAppliedImpulse();
+	}
+
+	return 0;
+}
+
+
+//btPoint2PointConstraint::getFixedBody()
+int rc_getConstraintFixedActor(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return -1;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = hinge->getFixedBody();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = p2p->getFixedBody();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = cone->getFixedBody();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = slide->getFixedBody();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+
+	return -1;
+}
+
+//btPoint2PointConstraint::getPivotInA()
+void rc_getConstraintPivotA(int constraint_id, double* x, double* y, double* z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 pivot = p2p->getPivotInA();
+		*x = pivot.getX();
+		*y = pivot.getY();
+		*z = pivot.getZ();
+	}
+}
+
+//btPoint2PointConstraint::getPivotInB()
+void rc_getConstraintPivotB(int constraint_id, double* x, double* y, double* z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 pivot = p2p->getPivotInB();
+		*x = pivot.getX();
+		*y = pivot.getY();
+		*z = pivot.getZ();
+	}
+}
+
+//btPoint2PointConstraint::getRigidBodyA()
+int rc_getConstraintActorA(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return -1;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = hinge->getRigidBodyA();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = p2p->getRigidBodyA();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = cone->getRigidBodyA();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = slide->getRigidBodyA();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+
+	return -1;
+}
+
+//btPoint2PointConstraint::getRigidBodyB()
+int rc_getConstraintActorB(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return -1;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = hinge->getRigidBodyB();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = p2p->getRigidBodyB();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = cone->getRigidBodyB();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btRigidBody body = slide->getRigidBodyB();
+		SCollisionObjectIdentification* identification = (SCollisionObjectIdentification*)body.getUserPointer();
+		return identification->getId();
+	}
+
+	return -1;
+}
+
+//btPoint2PointConstraint::setOverrideNumSolverIterations()
+void rc_setConstraintSolverIterations(int constraint_id, int num)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setOverrideNumSolverIterations(num);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		p2p->setOverrideNumSolverIterations(num);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setOverrideNumSolverIterations(num);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setOverrideNumSolverIterations(num);
+	}
+}
+
+//
+//btConeTwistConstraint::getBiasFactor()
+double rc_getConstraintBiasFactor(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getBiasFactor();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getDamping()
+double rc_getConstraintDamping(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getDamping();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getFixThresh()
+double rc_getConstraintFixThresh(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getFixThresh();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getLimit()
+double rc_getConstraintLimit(int constraint_id, int limit_index)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getLimit(limit_index);
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getLimitSoftness()
+double rc_getConstraintLimitSoftness(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getLimitSoftness();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getLimitSoftness();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getOverrideNumSolverIterations()
+double rc_getConstraintSolverIterations(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getOverrideNumSolverIterations();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_POINT)
+	{
+		btPoint2PointConstraint* p2p = (btPoint2PointConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return p2p->getOverrideNumSolverIterations();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getOverrideNumSolverIterations();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getOverrideNumSolverIterations();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::GetPointForAngle()
+void rc_getConstraintAnglePoint(int constraint_id, double angle, double len, double* x, double* y, double* z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 v = cone->GetPointForAngle( radians(angle), len);
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+//btConeTwistConstraint::getAngularOnly()
+bool rc_getConstraintAngularOnly(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return false;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getAngularOnly();
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getAngularOnly();
+	}
+
+	return false;
+}
+
+//btConeTwistConstraint::getSolveSwingLimit()
+int rc_getConstraintSolveSwingLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getSolveSwingLimit();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getSolveTwistLimit()
+int rc_getConstraintSolveTwistLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getSolveTwistLimit();
+	}
+
+	return 0;
+}
+
+//btHingeConstraint::getSolveLimit()
+int rc_getConstraintSolveLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return hinge->getSolveLimit();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getSwingSpan1()
+double rc_getConstraintSwingSpan1(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getSwingSpan1();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getSwingSpan2()
+int rc_getConstraintSwingSpan2(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getSwingSpan2();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getTwistAngle()
+double rc_getConstraintTwistAngle(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getTwistAngle();
+	}
+
+	return 0;
+}
+
+
+//btConeTwistConstraint::getTwistLimitSign()
+double rc_getConstraintTwistLimitSign(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getTwistLimitSign();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::getTwistSpan()
+int rc_getConstraintTwistSpan(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return cone->getTwistSpan();
+	}
+
+	return 0;
+}
+
+//btConeTwistConstraint::setAngularOnly()
+void rc_setConstraintAngularOnly(int constraint_id, bool flag)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_HINGE)
+	{
+		btHingeConstraint* hinge = (btHingeConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		hinge->setAngularOnly(flag);
+	}
+	else if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setAngularOnly(flag);
+	}
+}
+
+//btConeTwistConstraint::setDamping()
+void rc_setConstraintDamping(int constraint_id, double damping)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setDamping(damping);
+	}
+}
+
+//btConeTwistConstraint::setFixThresh()
+void rc_setConstraintFixThresh(int constraint_id, double fixThresh)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_CONE)
+	{
+		btConeTwistConstraint* cone = (btConeTwistConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		cone->setFixThresh(fixThresh);
+	}
+}
+
+
+//btSliderConstraint::getAncorInA()
+void rc_getConstraintAnchorA(int constraint_id, double* x, double* y, double* z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 v = slide->getAncorInA();
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+//btSliderConstraint::getAncorInB()
+void rc_getConstraintAnchorB(int constraint_id, double* x, double* y, double* z)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		btVector3 v = slide->getAncorInB();
+		*x = v.getX();
+		*y = v.getY();
+		*z = v.getZ();
+	}
+}
+
+//btSliderConstraint::getAngDepth()
+double rc_getConstraintAngDepth(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getAngDepth();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getAngularPos()
+double rc_getConstraintAngularPos(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getAngularPos();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingDirAng()
+double rc_getConstraintDampingDirAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingDirAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingDirLin()
+double rc_getConstraintDampingDirLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingDirLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingLimAng()
+double rc_getConstraintDampingLimAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingLimAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingLimLin()
+double rc_getConstraintDampingLimLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingLimLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingOrthoAng()
+double rc_getConstraintDampingOrthoAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingOrthoAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getDampingOrthoLin()
+double rc_getConstraintDampingOrthoLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getDampingOrthoLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getLinearPos()
+double rc_getConstraintLinearPos(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getLinearPos();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getLinDepth()
+double rc_getConstraintLinDepth(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getLinDepth();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getLowerAngLimit()
+double rc_getConstraintLowerAngLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getLowerAngLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getLowerLinLimit()
+double rc_getConstraintLowerLinLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getLowerLinLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionDirAng()
+double rc_getConstraintRestitutionDirAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionDirAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionDirLin()
+double rc_getConstraintRestitutionDirLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionDirLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionLimAng()
+double rc_getConstraintRestitutionLimAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionLimAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionLimLin()
+double rc_getConstraintRestitutionLimLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionLimLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionOrthoAng()
+double rc_getConstraintRestitutionOrthoAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionOrthoAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getRestitutionOrthoLin()
+double rc_getConstraintRestitutionOrthoLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getRestitutionOrthoLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessDirAng()
+double rc_getConstraintSoftnessDirAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessDirAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessDirLin()
+double rc_getConstraintSoftnessDirLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessDirLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessLimAng()
+double rc_getConstraintSoftnessLimAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessLimAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessLimLin()
+double rc_getConstraintSoftnessLimLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessLimLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessOrthoAng()
+double rc_getConstraintSoftnessOrthoAng(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessOrthoAng();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSoftnessOrthoLin()
+double rc_getConstraintSoftnessOrthoLin(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSoftnessOrthoLin();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSolveAngLimit()
+bool rc_getConstraintSolveAngLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSolveAngLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getSolveLinLimit()
+bool rc_getConstraintSolveLinLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getSolveLinLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getUpperAngLimit()
+double rc_getConstraintUpperAngLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getUpperAngLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getUpperLinLimit()
+double rc_getConstraintUpperLinLimit(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getUpperLinLimit();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::getUseFrameOffset()
+bool rc_getConstraintUseFrameOffset(int constraint_id)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return 0;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		return slide->getUseFrameOffset();
+	}
+
+	return 0;
+}
+
+//btSliderConstraint::setDampingDirAng()
+void rc_setConstraintDampingDirAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingDirAng(n);
+	}
+}
+
+//btSliderConstraint::setDampingDirLin()
+void rc_setConstraintDampingDirLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingDirLin(n);
+	}
+}
+
+//btSliderConstraint::setDampingLimAng()
+void rc_setConstraintDampingLimAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingLimAng(n);
+	}
+}
+
+//btSliderConstraint::setDampingLimLin()
+void rc_setConstraintDampingLimLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingLimLin(n);
+	}
+}
+
+//btSliderConstraint::setDampingOrthoAng()
+void rc_setConstraintDampingOrthoAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingOrthoAng(n);
+	}
+}
+
+//btSliderConstraint::setDampingOrthoLin()
+void rc_setConstraintDampingOrthoLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setDampingOrthoLin(n);
+	}
+}
+
+//btSliderConstraint::setLowerAngLimit()
+void rc_setConstraintLowerAngLimit(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setLowerAngLimit(n);
+	}
+}
+
+//btSliderConstraint::setLowerLinLimit()
+void rc_setConstraintLowerLinLimit(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setLowerLinLimit(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionDirAng()
+void rc_setConstraintRestitutionDirAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionDirAng(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionDirLin()
+void rc_setConstraintRestitutionDirLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionDirLin(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionLimAng()
+void rc_setConstraintRestitutionLimAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionLimAng(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionLimLin()
+void rc_setConstraintRestitutionLimLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionLimLin(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionOrthoAng()
+void rc_setConstraintRestitutionOrthoAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionOrthoAng(n);
+	}
+}
+
+//btSliderConstraint::setRestitutionOrthoLin()
+void rc_setConstraintRestitutionOrthoLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setRestitutionOrthoLin(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessDirAng()
+void rc_setConstraintSoftnessDirAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessDirAng(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessDirLin()
+void rc_setConstraintSoftnessDirLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessDirLin(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessLimAng()
+void rc_setConstraintSoftnessLimAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessLimAng(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessLimLin()
+void rc_setConstraintSoftnessLimLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessLimLin(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessOrthoAng()
+void rc_setConstraintSoftnessOrthoAng(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessOrthoAng(n);
+	}
+}
+
+//btSliderConstraint::setSoftnessOrthoLin()
+void rc_setConstraintSoftnessOrthoLin(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setSoftnessOrthoLin(n);
+	}
+}
+
+//btSliderConstraint::setUpperAngLimit()
+void rc_setConstraintUpperAngLimit(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setUpperAngLimit(n);
+	}
+}
+
+//btSliderConstraint::setUpperLinLimit()
+void rc_setConstraintUpperLinLimit(int constraint_id, double n)
+{
+	if(constraint_id < 0 || constraint_id >= rc_physics3D.constraints.size())
+        return;
+
+	if(rc_physics3D.constraints[constraint_id].type == RC_CONSTRAINT_TYPE_SLIDER)
+	{
+		btSliderConstraint* slide = (btSliderConstraint*) rc_physics3D.constraints[constraint_id].constraint;
+		slide->setUpperLinLimit(n);
+	}
+}
+
+
+
+
 
 void rc_setWorld3DDeltaTime(double dt)
 {

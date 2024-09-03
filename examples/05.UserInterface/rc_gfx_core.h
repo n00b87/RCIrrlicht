@@ -237,6 +237,18 @@ irr::scene::ISceneManager *SceneManager;
 SDL_Window* rc_window;
 irr::core::dimension2d<u32> rc_window_size;
 
+#define RC_CONSTRAINT_TYPE_POINT	1
+#define RC_CONSTRAINT_TYPE_HINGE	2
+#define RC_CONSTRAINT_TYPE_SLIDER	3
+#define RC_CONSTRAINT_TYPE_CONE		4
+
+struct rc_constraint_obj
+{
+	btTypedConstraint* constraint;
+
+	int type;
+};
+
 struct rc_physicsWorld3D_obj
 {
 	irrBulletWorld* world;
@@ -246,6 +258,8 @@ struct rc_physicsWorld3D_obj
 	irr::f32 fixedTimeStep;
 
 	irr::u32 TimeStamp;
+
+	irr::core::array<rc_constraint_obj> constraints;
 };
 
 rc_physicsWorld3D_obj rc_physics3D;
@@ -385,15 +399,26 @@ irr::core::array<rc_mesh_obj> rc_mesh;
 #define RC_NODE_SHAPE_TYPE_TRIMESH		7
 #define RC_NODE_SHAPE_TYPE_HEIGHTFIELD	8
 
+struct rc_node_physics_collision
+{
+	int actorA;
+	int actorB;
+	irr::core::array<irr::core::vector3df> pointA;
+	irr::core::array<irr::core::vector3df> pointB;
+	irr::core::array<irr::core::vector3df> normalB;
+};
+
+irr::core::array<rc_node_physics_collision> rc_collisions;
+
 struct rc_node_physics
 {
-	//will use rigid_body if solid and ghost if not
 	IRigidBody* rigid_body;
-	IGhostObject* ghost;
 
 	int shape_type;
 	bool isSolid;
 	double mass;
+
+	irr::core::array<irr::u32> collisions;
 };
 
 struct rc_scene_node
@@ -406,20 +431,66 @@ struct rc_scene_node
 
 irr::core::array<rc_scene_node> rc_actor;
 
-void ghostPreTickCallback(btSoftRigidDynamicsWorld* world, btScalar timeStep)
-{
-	btGhostObject* ghostObject = NULL;
 
-  	for(int actor = 0; actor < rc_actor.size(); actor++)
-  	{
-		for(int i = 0; i < ghostObject->getNumOverlappingObjects(); i++)
+void myTickCallback2(btSoftRigidDynamicsWorld* dynamicsWorld, btScalar timeStep)
+{
+	rc_collisions.clear();
+    int numManifolds = dynamicsWorld->getDispatcher()->getNumManifolds();
+
+    int c_index = 0;
+
+    rc_node_physics_collision collision;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+	{
+		rc_actor[i].physics.collisions.clear();
+	}
+
+
+    for (int i = 0; i < rc_physics3D.world->getNumManifolds(); i++)
+	{
+		ICollisionCallbackInformation* manifold = rc_physics3D.world->getCollisionCallback(i);
+
+        int numContacts = manifold->getPointer()->getNumContacts();
+
+        int actorA = manifold->getBody0()->getIdentification()->getId();
+        int actorB = manifold->getBody1()->getIdentification()->getId();
+
+        collision.actorA = actorA;
+        collision.actorB = actorB;
+
+        //std::cout << "Collision Details: " << actorA << ", " << actorB << ", " << numContacts << std::endl;
+
+        if(numContacts < 1)
+			continue;
+
+        for (int j = 0; j < numContacts; j++)
 		{
-			btCollisionObject* c_obj = ghostObject->getOverlappingObject(i);
-			//btRigidBody *pRigidBody = dynamic_cast<btRigidBody *>(ghostObject->getOverlappingObject(i));
-			// do whatever you want to do with these pairs of colliding objects
-			//std::cout << "Collide with actor[" << c_ob
+            SManifoldPoint pt = manifold->getContactPoint(j);
+            collision.pointA.push_back(pt.getPositionWorldOnA());
+            collision.pointB.push_back(pt.getPositionWorldOnB());
+            collision.normalB.push_back(pt.getNormalWorldOnB());
+        }
+
+        c_index = rc_collisions.size();
+        rc_collisions.push_back(collision);
+        rc_actor[actorA].physics.collisions.push_back(c_index);
+        rc_actor[actorB].physics.collisions.push_back(c_index);
+    }
+
+    for(int i = 0; i < rc_actor.size(); i++)
+	{
+		if(!rc_actor[i].physics.isSolid)
+		{
+			if(rc_actor[i].physics.collisions.size() > 0)
+			{
+				rc_physics3D.world->removeCollisionObject(rc_actor[i].physics.rigid_body, false);
+				rc_physics3D.world->addRigidBody(rc_actor[i].physics.rigid_body);
+				rc_actor[i].physics.rigid_body->setMassProps(1, irr::core::vector3df(0,0,0));
+				rc_actor[i].physics.rigid_body->setGravity(irr::core::vector3df(0,0,0));
+			}
 		}
-  	}
+	}
 }
 
 
@@ -458,7 +529,7 @@ void drawBezierCurve(IVideoDriver* driver, const vector3df& p0, const vector3df&
 }
 
 
-void printMatrix(irr::core::matrix4 m)
+void printIrrMatrix(irr::core::matrix4 m)
 {
 	for(int i = 0; i < 4; i++)
 		std::cout << "[ " << m[i*4] << ", " << m[i*4+1] << ", " << m[i*4+2] << ", " << m[i*4+3] << " ]" << std::endl;
