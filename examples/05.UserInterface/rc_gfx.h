@@ -1092,6 +1092,104 @@ int rc_canvasZ(int canvas_id)
     return 0;
 }
 
+int rc_cloneCanvas(int origin_canvas_id, int mode)
+{
+	if(!VideoDriver)
+        return -1;
+
+	if(origin_canvas_id < 0 || origin_canvas_id >= rc_canvas.size())
+		return -1;
+
+	if(!rc_canvas[origin_canvas_id].texture)
+		return -1;
+
+    rc_canvas_obj canvas;
+    canvas.texture = rc_canvas[origin_canvas_id].texture;
+    canvas.sprite_layer = rc_canvas[origin_canvas_id].sprite_layer;
+
+    if(!canvas.texture)
+        return -1;
+
+
+    if(SceneManager)
+    {
+        canvas.camera.init(SceneManager, 0, 0, 0);
+        //canvas.camera = SceneManager->addCameraSceneNode(0, vector3df(0,0,0), vector3df(0,0,0));
+        //canvas.camera->setPosition(irr::core::vector3df(0,0,0));
+        //canvas.camera->setTarget(irr::core::vector3df(0,0,100));
+        //canvas.camera->bindTargetAndRotation(true);
+    }
+
+    //std::cout << "texture format = " << canvas.texture->getColorFormat() << std::endl;
+
+    canvas.dimension.Width = rc_canvas[origin_canvas_id].dimension.Width;
+    canvas.dimension.Height = rc_canvas[origin_canvas_id].dimension.Height;
+
+    canvas.viewport.position.X = rc_canvas[origin_canvas_id].viewport.position.X;
+    canvas.viewport.position.Y = rc_canvas[origin_canvas_id].viewport.position.Y;
+    canvas.viewport.dimension.Width = rc_canvas[origin_canvas_id].viewport.dimension.Width;
+    canvas.viewport.dimension.Height = rc_canvas[origin_canvas_id].viewport.dimension.Height;
+
+    canvas.offset.X = 0;
+    canvas.offset.Y = 0;
+
+    canvas.mode = mode;
+
+    canvas.color_mod = irr::video::SColor(255,255,255,255).color;
+
+    //2D Physics World
+    b2Vec2 gravity(0, -9.8);
+    canvas.physics2D.world = new b2World(gravity);
+    canvas.physics2D.timeStep = 1/20.0;      //the length of time passed to simulate (seconds)
+	canvas.physics2D.velocityIterations = 8;   //how strongly to correct velocity
+	canvas.physics2D.positionIterations = 3;   //how strongly to correct position
+
+
+    switch(mode)
+    {
+        case 0:
+            break;
+        case 1:
+            VideoDriver->makeColorKeyTexture(canvas.texture, irr::video::SColor(0,0,0,0));
+            break;
+    }
+
+    int canvas_id = -1;
+
+    for(int i = 0; i < rc_canvas.size(); i++)
+    {
+        if(!rc_canvas[i].texture)
+        {
+            canvas_id = i;
+            break;
+        }
+    }
+
+    if(canvas_id < 0)
+    {
+        canvas_id = rc_canvas.size();
+        rc_canvas.push_back(canvas);
+    }
+
+    if(rc_active_canvas < 0)
+        rc_active_canvas = canvas_id;
+
+    for(int i = 0; i < rc_canvas_zOrder.size(); i++)
+    {
+        if(rc_canvas_zOrder[i] == canvas_id)
+        {
+            rc_canvas_zOrder.erase(i);
+            i--;
+        }
+    }
+
+    rc_canvas_zOrder.push_back(canvas_id);
+
+    sortCanvasZ();
+
+
+    return canvas_id;
+}
 
 void rc_setClearColor(Uint32 color)
 {
