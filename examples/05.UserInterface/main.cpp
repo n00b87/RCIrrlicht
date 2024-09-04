@@ -173,8 +173,8 @@ int main()
     rc_setActorTexture(actor1, 0, actor1_texture);
     rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
 
-    //rc_setActorSolid(actor1, true);
-    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 0);
+    rc_setActorSolid(actor1, true);
+    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 25);
     rc_translateActor(actor1, 0, 150, 0);
 
 	int level = rc_loadMeshFromArchive("../../media/map-20kdm2.pk3", "20kdm2.bsp");
@@ -189,8 +189,48 @@ int main()
 
 	double ax, ay, az;
 
+	rc_setActiveCanvas(canvas1);
+	rc_setActorPosition(actor1, 1160, 399, 2122);
+	rc_setActorRotation(actor1, 0, 0, 0);
+	//rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, 1);
+	//rc_setActorSolid(actor1, true);
+	//rc_setActorMassProperties(actor1, 1, 0, 0, 0);
+	//rc_applyActorTorqueImpulseWorld(actor1, 0, 0, 0);
+
+	rc_setCameraPosition(984, 488, 2303);
+	rc_setCameraRotation(23, 1216, 0);
+
+	bool init = true;
+	int i = 0;
+
+	//rc_setActorSolid(actor1, true);
+
 	while(rc_update())
 	{
+
+		rc_setActorAngularVelocityWorld(actor1, 0, 0, 0);
+
+		if(rc_key(SDLK_p) && init)
+		{
+			//rc_setActorSolid(actor1, true);
+			double x, y, z;
+			rc_getActorLocalInertia(actor1, &x, &y, &z);
+			btVector3 v;
+			double mass = 8;
+			rc_actor[actor1].physics.rigid_body->getPointer()->getCollisionShape()->calculateLocalInertia(mass, v);
+			std::cout << "Set Mass: " << x << ", " << y << ", " << z << std::endl;
+			std::cout << "Set Vect: " << v.getX() << ", " << v.getY() << ", " << v.getZ() << std::endl;
+			//rc_physics3D.world->getPointer()->removeRigidBody(rc_actor[actor1].physics.rigid_body->getPointer());
+			//rc_actor[actor1].physics.rigid_body->getPointer()->setMassProps(mass, v);
+			//rc_physics3D.world->getPointer()->addRigidBody(rc_actor[actor1].physics.rigid_body->getPointer());
+
+
+			rc_setActorMassProperties(actor1, mass, v.getX(), v.getY(), v.getZ());
+			rc_setActorGravity(actor1, 0, -100, 0);
+			//init = false;
+		}
+
+
 		if(rc_key(SDLK_ESCAPE))
 			break;
 
@@ -269,72 +309,30 @@ int main()
 			//rc_rotateCamera(crx, 0, 0);
         }
 
-        if(rc_key(SDLK_SPACE))
+        if(rc_key(SDLK_g))
 		{
-			rc_setActiveCanvas(canvas1);
-			rc_setActorPosition(actor1, 1160, 399, 2122);
-			rc_setActorRotation(actor1, 0, 0, 0);
-			rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, rc_actor[actor1].physics.mass);
-			//rc_applyActorTorqueImpulseWorld(actor1, 0, 0, 0);
-
-			rc_setCameraPosition(984, 488, 2303);
-			rc_setCameraRotation(23, 1216, 0);
-		}
-
-
-		if(rc_key(SDLK_t))
-		{
-			rc_translateActorWorld(actor1, 0, 5, 0);
-		}
-		else if(rc_key(SDLK_g))
-		{
+			rc_setActorAngularVelocityLocal(actor1, 0, 10, 0);
 			//rc_translateActorWorld(actor1, 0, -5, 0);
 			//rc_applyActorTorqueImpulseLocal(actor1, 0, 30, 0);
 			//rc_applyActorTorqueWorld(actor1, 0, 120, 0);
-			rc_rotateActor(actor1, 0, -5, 0);
-			ay += 5;
+			//rc_rotateActor(actor1, 0, -5, 0);
+			//ay += 5;
 			//rc_setActorRotation(actor1, ax, ay, az);
 		}
 
 		if(rc_key(SDLK_b))
 		{
-			rc_setActorLinearVelocityLocal(actor1, 10, 0, 0);
+			rc_setActorLinearVelocityLocal(actor1, 80, 0, 0);
+			//rc_setActorAngularFactor(actor1, 0, 0, 0);
 			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
 		}
 
 		if(rc_key(SDLK_n))
 		{
-			rc_setActorLinearVelocityLocal(actor1, 0, 40, 0);
+			rc_setActorLinearVelocityLocal(actor1, 0, 120, 0);
+			//rc_setActorAngularFactor(actor1, 0, 0, 0);
 			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
 		}
-
-
-		if(rc_key(SDLK_p))
-		{
-			rc_setActorSolid(actor1, true);
-		}
-
-		if(rc_key(SDLK_m))
-		{
-			rc_setActorMassProperties(actor1, 1, 0, 0, 0);
-			std::cout << "actors = " << rc_actor[actor1].physics.rigid_body->getIdentification()->getId() << ", " << rc_actor[actor2].physics.rigid_body->getIdentification()->getId() << std::endl;
-		}
-
-		if(!rc_getActorCollision(actor2, actor1))
-		{
-			std::cout << "NONE" << std::endl;
-		}
-
-		if(rc_key(SDLK_1))
-		{
-			//rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, 1);
-			rc_actor[actor1].physics.rigid_body->setGravity(irr::core::vector3df(0,0,0));
-			//std::cout << "Collision Flags: " << (int)rc_actor[actor_id].physics.rigid_body->getCollisionFlags() << std::endl;
-			rc_actor[actor1].physics.rigid_body->setCollisionFlags( ECollisionFlag::ECF_NO_CONTACT_RESPONSE );
-			rc_actor[actor1].physics.isSolid = false;
-			rc_actor[actor1].physics.rigid_body->setMassProps(1, irr::core::vector3df(0,0,0));
-		}
-
 
 
         drawDebugInfo(canvas2, canvas1);

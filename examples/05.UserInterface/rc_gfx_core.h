@@ -418,6 +418,8 @@ struct rc_node_physics
 	bool isSolid;
 	double mass;
 
+	irr::core::vector3df gravity; //only used when changing from Solid to Non-Solid and vice versa
+
 	irr::core::array<irr::u32> collisions;
 };
 

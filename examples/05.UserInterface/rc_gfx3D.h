@@ -180,8 +180,13 @@ void setSolidProperties(int actor)
 {
 	if(!rc_actor[actor].physics.isSolid)
 	{
+		rc_actor[actor].physics.gravity = rc_actor[actor].physics.rigid_body->getGravity();
 		rc_actor[actor].physics.rigid_body->setGravity(irr::core::vector3df(0,0,0));
 		rc_actor[actor].physics.rigid_body->setCollisionFlags( ECollisionFlag::ECF_NO_CONTACT_RESPONSE );
+	}
+	else
+	{
+		//rc_actor[actor].physics.rigid_body->setGravity(rc_actor[actor].physics.gravity);
 	}
 }
 
@@ -499,6 +504,88 @@ int rc_createMeshOctreeActor(int mesh_id)
 
     rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
 
+
+    return actor_id;
+}
+
+//add mesh actor to scene
+int rc_createCubeActor(double cube_size)
+{
+    int actor_id = -1;
+    irr::scene::IMeshSceneNode* node = SceneManager->addCubeSceneNode(cube_size);
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_MESH;
+    actor.mesh_node = node;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
+
+    return actor_id;
+}
+
+//add mesh actor to scene
+int rc_createSphereActor(double radius)
+{
+    int actor_id = -1;
+    irr::scene::IMeshSceneNode* node = SceneManager->addSphereSceneNode(radius);
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_MESH;
+    actor.mesh_node = node;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_SPHERE;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_SPHERE, 1);
 
     return actor_id;
 }
@@ -1070,7 +1157,7 @@ void rc_setActorMassProperties(int actor, double mass, double inertia_x, double 
 	{
 		rc_physics3D.world->removeCollisionObject(rc_actor[actor].physics.rigid_body, false);
 		rc_actor[actor].physics.rigid_body->setMassProps(mass, irr::core::vector3df(inertia_x, inertia_y, inertia_z));
-		rc_physics3D.world->getPointer()->addRigidBody(rc_actor[actor].physics.rigid_body->getPointer());
+		rc_physics3D.world->addRigidBody(rc_actor[actor].physics.rigid_body);
 	}
 	rc_actor[actor].physics.mass = mass;
 }
