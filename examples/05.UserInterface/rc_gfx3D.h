@@ -423,6 +423,9 @@ int rc_createMeshActor(int mesh_id)
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_MESH;
     actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
 
     if(!node)
         return -1;
@@ -474,6 +477,9 @@ int rc_createMeshOctreeActor(int mesh_id)
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_OTMESH;
     actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
 
     if(!node)
         return -1;
@@ -509,6 +515,52 @@ int rc_createMeshOctreeActor(int mesh_id)
 }
 
 //add mesh actor to scene
+int rc_createTerrainActor( std::string height_map )
+{
+
+    int actor_id = -1;
+    irr::scene::ITerrainSceneNode *node = SceneManager->addTerrainSceneNode(height_map.c_str());
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_TERRAIN;
+    actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 0);
+
+
+    return actor_id;
+}
+
+//add mesh actor to scene
 int rc_createCubeActor(double cube_size)
 {
     int actor_id = -1;
@@ -516,6 +568,9 @@ int rc_createCubeActor(double cube_size)
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_MESH;
     actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
 
     if(!node)
         return -1;
@@ -557,6 +612,9 @@ int rc_createSphereActor(double radius)
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_MESH;
     actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
 
     if(!node)
         return -1;
@@ -604,7 +662,10 @@ void rc_deleteActor(int actor_id)
 
     rc_actor[actor_id].mesh_node->remove();
     rc_actor[actor_id].mesh_node = NULL;
+    rc_actor[actor_id].shadow = NULL;
     rc_actor[actor_id].node_type = 0;
+    rc_actor[actor_id].transition = false;
+    rc_actor[actor_id].transition_time = 0;
 }
 
 //set actor texture
@@ -3740,6 +3801,79 @@ void rc_setActorAnimation(int actor, int start_frame, int end_frame)
     }
 }
 
+void rc_setActorMD2Animation(int actor, int md2_animation)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setMD2Animation( (irr::scene::EMD2_ANIMATION_TYPE) md2_animation );
+            break;
+    }
+}
+
+void rc_setActorMD2AnimationByName(int actor, std::string animation_name)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setMD2Animation( animation_name.c_str() );
+            break;
+    }
+}
+
+int rc_getActorStartFrame(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getStartFrame();
+    }
+
+    return 0;
+}
+
+int rc_getActorEndFrame(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getEndFrame();
+    }
+
+    return 0;
+}
+
+int rc_getActorCurrentFrame(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getFrameNr();
+    }
+
+    return 0;
+}
+
 //set actor animation speed
 void rc_setActorAnimationSpeed(int actor, double speed)
 {
@@ -3755,6 +3889,392 @@ void rc_setActorAnimationSpeed(int actor, double speed)
     }
 }
 
+double rc_getActorAnimationSpeed(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getAnimationSpeed();
+    }
+
+    return 0;
+}
+
+//set actor animation speed
+void rc_setActorAutoCulling(int actor, int cull_type)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+    	case RC_NODE_TYPE_OTMESH:
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IMeshSceneNode* node = (irr::scene::IMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setAutomaticCulling((irr::scene::E_CULLING_TYPE) cull_type);
+            break;
+    }
+}
+
+int rc_getActorAutoCulling(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+    	case RC_NODE_TYPE_OTMESH:
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IMeshSceneNode* node = (irr::scene::IMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getAutomaticCulling();
+    }
+
+    return 0;
+}
+
+
+void rc_addActorShadow(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].shadow)
+		return;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+        case RC_NODE_TYPE_OTMESH:
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            rc_actor[actor].shadow = node->addShadowVolumeSceneNode();
+            break;
+    }
+}
+
+void rc_removeActorShadow(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(!rc_actor[actor].shadow)
+		return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_TERRAIN:
+        case RC_NODE_TYPE_OTMESH:
+        case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->removeChild(rc_actor[actor].shadow);
+            break;
+    }
+}
+
+void rc_setActorFrame(int actor, int frame)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setCurrentFrame(frame);
+            break;
+    }
+}
+
+void rc_loopActorAnimation(int actor, bool flag)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setLoopMode(flag);
+            break;
+    }
+}
+
+bool rc_actorAnimationIsLooped(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            return node->getLoopMode();
+    }
+
+    return false;
+}
+
+//set actor animation speed
+void rc_setActorVisible(int actor, bool flag)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    irr::scene::ISceneNode* node = rc_actor[actor].mesh_node;
+	node->setVisible(flag);
+}
+
+bool rc_actorIsVisible(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+    return rc_actor[actor].mesh_node->isVisible();
+}
+
+void rc_startActorTransition(int actor, double frame, double transition_time)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].transition)
+		return;
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setTransitionTime(transition_time);
+            node->setJointMode(irr::scene::EJUOR_CONTROL);
+            node->setCurrentFrame(frame);
+            rc_actor[actor].transition = true;
+            rc_actor[actor].transition_time = transition_time;
+            rc_actor[actor].transition_start_time = ((double)SDL_GetTicks())/1000.0d;
+            rc_transition_actor.push_back(actor);
+    }
+}
+
+double rc_getActorTransitionTime(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].transition)
+		return rc_actor[actor].transition_time;
+
+    return 0;
+}
+
+
+void rc_stopActorTransition(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_MESH:
+            irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[actor].mesh_node;
+            node->setTransitionTime(0);
+            node->setJointMode(irr::scene::EJUOR_NONE);
+            rc_actor[actor].transition = false;
+            rc_actor[actor].transition_time = 0;
+
+            for(int i = 0; i < rc_transition_actor.size();)
+			{
+				if(rc_transition_actor[i] == actor)
+				{
+					rc_transition_actor.erase(i);
+				}
+				else
+					i++;
+			}
+    }
+}
+
+bool rc_actorIsInTransition(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+	return rc_actor[actor].transition;
+}
+
+
+void rc_getTerrainPatchAABB(int actor, double patch_x, double patch_z, double* min_x, double* min_y, double* min_z, double* max_x, double* max_y, double* max_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*min_x = 0;
+	*min_y = 0;
+	*min_z = 0;
+
+	*max_x = 0;
+	*max_y = 0;
+    *max_z = 0;
+
+
+    switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+            irr::scene::ITerrainSceneNode* node = (irr::scene::ITerrainSceneNode*)rc_actor[actor].mesh_node;
+            irr::core::aabbox3d bbox = node->getBoundingBox(patch_x, patch_z);
+
+            *min_x = bbox.MinEdge.X;
+            *min_y = bbox.MinEdge.Y;
+            *min_z = bbox.MinEdge.Z;
+
+            *max_x = bbox.MaxEdge.X;
+            *max_y = bbox.MaxEdge.Y;
+            *max_z = bbox.MaxEdge.Z;
+    }
+}
+
+
+int rc_getTerrainPatchLOD(int actor, int patchX, int patchZ)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return -1;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+
+			irr::core::array<irr::s32> lod;
+			int lodp_size = terrain->getCurrentLODOfPatches(lod);
+			irr::s32 dim_size = irr::core::squareroot(lodp_size);
+			return lod[patchX * dim_size + patchZ];
+    }
+
+	return -1;
+}
+
+double rc_getTerrainHeight(int actor, int patchX, int patchZ )
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			return terrain->getHeight(patchX, patchZ);
+    }
+
+	return 0;
+}
+
+void rc_getTerrainCenter(int actor, double* x, double* y, double* z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			irr::core::vector3df v = terrain->getTerrainCenter();
+			*x = v.X;
+			*y = v.Y;
+			*z = v.Z;
+    }
+}
+
+void rc_setTerrainLODDistance(int actor, int lod, double distance)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			terrain->overrideLODDistance(lod, distance);
+    }
+}
+
+void rc_scaleTerrainTexture(int actor, double scale1, double scale2)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			terrain->scaleTexture(scale1, scale2);
+    }
+}
+
+void rc_setTerrainCameraMovementDelta(int actor, double delta)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			terrain->setCameraMovementDelta(delta);
+    }
+}
+
+void rc_setTerrainCameraRotationDelta(int actor, double delta)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			terrain->setCameraRotationDelta(delta);
+    }
+}
+
+void rc_setTerrainPatchLOD(int actor, int patchX, int patchZ, int lod)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+    {
+    	case RC_NODE_TYPE_TERRAIN:
+			irr::scene::ITerrainSceneNode* terrain = (irr::scene::ITerrainSceneNode*) rc_actor[actor].mesh_node;
+			terrain->setLODOfPatch(patchX, patchZ, lod);
+    }
+}
+
+
+bool rc_getActorTransform(int actor, int t_mat)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+	if(t_mat < 0 || t_mat >= rc_matrix.size())
+		return false;
+
+	if(!rc_matrix[t_mat].active)
+		return false;
+
+	irr::core::matrix4 m = rc_actor[actor].mesh_node->getAbsoluteTransformation();
+	rc_convertFromIrrMatrix(m, t_mat);
+
+	return true;
+}
 
 void rc_setCameraPosition(double x, double y, double z)
 {

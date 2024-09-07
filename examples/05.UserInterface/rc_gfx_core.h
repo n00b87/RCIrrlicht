@@ -428,10 +428,17 @@ struct rc_scene_node
     int node_type = 0;
 
     irr::scene::ISceneNode* mesh_node;
+    irr::scene::IShadowVolumeSceneNode* shadow;
     rc_node_physics physics;
+
+    bool transition;
+    double transition_time;
+    double transition_start_time;
 };
 
 irr::core::array<rc_scene_node> rc_actor;
+
+irr::core::array<int> rc_transition_actor;
 
 
 void myTickCallback2(btSoftRigidDynamicsWorld* dynamicsWorld, btScalar timeStep)

@@ -3584,6 +3584,29 @@ bool rc_update()
 
         irr::core::vector2d screenSize( (irr::f32) rc_canvas[0].dimension.Width, (irr::f32) rc_canvas[0].dimension.Height );
 
+        double frame_current_time = ((double)SDL_GetTicks())/1000.0d;
+
+        for(int i = 0; i < rc_transition_actor.size();)
+		{
+			if((frame_current_time - rc_actor[i].transition_start_time) >= rc_actor[i].transition_time)
+			{
+				irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[i].mesh_node;
+				node->setTransitionTime(0);
+				node->setJointMode(irr::scene::EJUOR_NONE);
+				rc_actor[i].transition = false;
+				rc_actor[i].transition_time = 0;
+				rc_actor[i].transition_start_time = 0;
+				rc_transition_actor.erase(i);
+			}
+			else
+			{
+				irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[i].mesh_node;
+				node->animateJoints();
+				i++;
+			}
+		}
+
+
         VideoDriver->beginScene(true, true);
 
         rc_physics3D.DeltaTime = device->getTimer()->getTime() - rc_physics3D.TimeStamp;
