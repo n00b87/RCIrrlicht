@@ -237,6 +237,13 @@ irr::scene::ISceneManager *SceneManager;
 SDL_Window* rc_window;
 irr::core::dimension2d<u32> rc_window_size;
 
+struct rc_scene_properties_obj
+{
+	irr::scene::ISceneNode* sky = NULL;
+};
+
+rc_scene_properties_obj rc_scene_properties;
+
 #define RC_CONSTRAINT_TYPE_POINT	1
 #define RC_CONSTRAINT_TYPE_HINGE	2
 #define RC_CONSTRAINT_TYPE_SLIDER	3

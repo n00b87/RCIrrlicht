@@ -14,6 +14,7 @@
 #include "camera.h"
 #include "rc_gfx_core.h"
 #include "rc_matrix.h"
+#include "RealisticWater.h"
 
 #include <bullet/btBulletDynamicsCommon.h>
 #include <bullet/BulletCollision/CollisionDispatch/btGhostObject.h>
@@ -174,6 +175,14 @@ bool rc_addMeshBuffer(int mesh_id, int vertex_count, double* vertex_data, double
 void rc_setGravity3D(double x, double y, double z)
 {
 	rc_physics3D.world->setGravity(irr::core::vector3d<f32>(x, y, z));
+}
+
+void rc_getGravity3D(double* x, double* y, double* z)
+{
+	btVector3 v = rc_physics3D.world->getPointer()->getGravity();
+	*x = v.getX();
+	*y = v.getY();
+	*z = v.getZ();
 }
 
 void setSolidProperties(int actor)
@@ -648,6 +657,50 @@ int rc_createSphereActor(double radius)
     return actor_id;
 }
 
+//add mesh actor to scene
+int rc_createWaterPlaneActor(double w, double h)
+{
+    int actor_id = -1;
+    RealisticWaterSceneNode* node = new RealisticWaterSceneNode(SceneManager, w, h);
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_WATER;
+    actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
+
+    return actor_id;
+}
+
 //delete actor
 void rc_deleteActor(int actor_id)
 {
@@ -667,6 +720,155 @@ void rc_deleteActor(int actor_id)
     rc_actor[actor_id].transition = false;
     rc_actor[actor_id].transition_time = 0;
 }
+
+void rc_setWaterWindForce(int actor, double f)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			water->setWindForce(f);
+	}
+}
+
+double rc_getWaterWindForce(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			return water->getWindForce();
+	}
+
+	return 0;
+}
+
+void rc_setWaterWaveHeight(int actor, double h)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			water->setWaveHeight(h);
+	}
+}
+
+double rc_getWaterWaveHeight(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			return water->getWaveHeight();
+	}
+
+	return 0;
+}
+
+void rc_setWaterWindDirection(int actor, double x, double z)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			water->setWindDirection( irr::core::vector2df(x, z));
+	}
+}
+
+void rc_getWaterWindDirection(int actor, double* x, double* z)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*x = 0;
+	*z = 0;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			irr::core::vector2df v = water->getWindDirection();
+			*x = v.X;
+			*z = v.Y;
+	}
+}
+
+void rc_setWaterColor(int actor, Uint32 c)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			irr::video::SColor color;
+			color.set(c);
+			SColorf cf(color);
+			water->setWaterColor( cf );
+	}
+}
+
+irr::u32 rc_getWaterColor(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			irr::video::SColorf color = water->getWaterColor();
+			return color.toSColor().color;
+	}
+
+	return 0;
+}
+
+
+void rc_setWaterColorBlendFactor(int actor, double cbfactor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			water->setColorBlendFactor(cbfactor);
+	}
+}
+
+double rc_getWaterColorBlendFactor(int actor)
+{
+    if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	switch(rc_actor[actor].node_type)
+	{
+		case RC_NODE_TYPE_WATER:
+			RealisticWaterSceneNode* water = (RealisticWaterSceneNode*)rc_actor[actor].mesh_node;
+			return water->getColorBlendFactor();
+	}
+
+	return 0;
+}
+
 
 //set actor texture
 void rc_setActorTexture(int actor, int layer, int image_id)
@@ -4340,6 +4542,121 @@ void rc_rotateCamera(double x, double y, double z)
 
     rc_canvas[rc_active_canvas].camera.rotate(x, y, z);
 }
+
+void rc_setCameraFOV(double fov)
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return;
+
+    rc_canvas[rc_active_canvas].camera.camera->setFOV(fov);
+}
+
+double rc_getCameraFOV()
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return 0;
+
+    return rc_canvas[rc_active_canvas].camera.camera->getFOV();
+}
+
+void rc_setCameraAspectRatio(double aspect)
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return;
+
+    rc_canvas[rc_active_canvas].camera.camera->setAspectRatio(aspect);
+}
+
+double rc_getCameraAspectRatio()
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return 0;
+
+    return rc_canvas[rc_active_canvas].camera.camera->getAspectRatio();
+}
+
+void rc_setCameraFarValue(double zf)
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return;
+
+    rc_canvas[rc_active_canvas].camera.camera->setFarValue(zf);
+}
+
+double rc_getCameraFarValue()
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return 0;
+
+    return rc_canvas[rc_active_canvas].camera.camera->getFarValue();
+}
+
+void rc_setCameraNearValue(double zn)
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return;
+
+    rc_canvas[rc_active_canvas].camera.camera->setNearValue(zn);
+}
+
+double rc_getCameraNearValue()
+{
+    if(!(rc_active_canvas > 0 && rc_active_canvas < rc_canvas.size()))
+        return 0;
+
+    return rc_canvas[rc_active_canvas].camera.camera->getNearValue();
+}
+
+
+void rc_addSceneSkyBox(int img_top, int img_bottom, int img_left, int img_right, int img_front, int img_back)
+{
+	if(!SceneManager)
+		return;
+
+	if(rc_scene_properties.sky)
+		return;
+
+	irr::video::ITexture* tp = rc_image[img_top].image;
+	irr::video::ITexture* bt = rc_image[img_bottom].image;
+	irr::video::ITexture* lf = rc_image[img_left].image;
+	irr::video::ITexture* rt = rc_image[img_right].image;
+	irr::video::ITexture* ft = rc_image[img_front].image;
+	irr::video::ITexture* bk = rc_image[img_back].image;
+	rc_scene_properties.sky = SceneManager->addSkyBoxSceneNode(tp, bt, lf, rt, ft, bk);
+}
+
+void rc_addSceneSkyDome(int img)
+{
+	if(!SceneManager)
+		return;
+
+	if(rc_scene_properties.sky)
+		return;
+
+	irr::video::ITexture* texture = rc_image[img].image;
+	rc_scene_properties.sky = SceneManager->addSkyDomeSceneNode(texture);
+}
+
+void rc_addSceneSkyDomeEx(int img, Uint32 horiRes, Uint32 vertRes, double txPercentage, double spherePercentage, double radius)
+{
+	if(!SceneManager)
+		return;
+
+	if(rc_scene_properties.sky)
+		return;
+
+	irr::video::ITexture* texture = rc_image[img].image;
+	rc_scene_properties.sky = SceneManager->addSkyDomeSceneNode(texture, horiRes, vertRes, txPercentage, spherePercentage, radius);
+}
+
+void rc_removeSceneSky()
+{
+	if(rc_scene_properties.sky)
+		rc_scene_properties.sky->remove();
+
+	rc_scene_properties.sky = NULL;
+}
+
 
 
 #endif // RC_GFX3D_H_INCLUDED
