@@ -395,6 +395,9 @@ irr::core::array<rc_mesh_obj> rc_mesh;
 #define RC_NODE_TYPE_LIGHT		3
 #define RC_NODE_TYPE_TERRAIN	4
 #define RC_NODE_TYPE_WATER		5
+#define RC_NODE_TYPE_BILLBOARD	6
+#define RC_NODE_TYPE_PARTICLE	7
+
 
 #define RC_NODE_SHAPE_TYPE_NONE			0
 #define RC_NODE_SHAPE_TYPE_BOX			1
@@ -430,6 +433,40 @@ struct rc_node_physics
 	irr::core::array<irr::u32> collisions;
 };
 
+#define RC_PARTICLE_TYPE_POINT		1
+#define RC_PARTICLE_TYPE_BOX		2
+#define RC_PARTICLE_TYPE_SPHERE		3
+#define RC_PARTICLE_TYPE_CYLINDER	4
+#define RC_PARTICLE_TYPE_MESH		5
+#define RC_PARTICLE_TYPE_RING		6
+
+struct rc_particle_properties_obj
+{
+	int particle_type = 0;
+	bool everyMeshVertex;
+	irr::s32 mbNumber = 0;
+	irr::f32 normalDirectionModifier;
+	bool useNormalDirection;
+	irr::s32 mesh_id;
+	irr::core::vector3df direction;
+	irr::u32 minParticlesPerSecond;
+	irr::u32 maxParticlesPerSecond;
+	irr::video::SColor minStartColor;
+	irr::video::SColor maxStartColor;
+	irr::u32 lifeTimeMin;
+	irr::u32 lifeTimeMax;
+	irr::s32 maxAngleDegrees;
+	irr::core::dimension2df minStartSize;
+	irr::core::dimension2df maxStartSize;
+	irr::core::vector3df center;
+	irr::f32 radius;
+	irr::f32 ringThickness;
+	irr::core::aabbox3df box;
+	irr::core::vector3df normal;
+	irr::f32 length;
+	bool outlineOnly;
+};
+
 struct rc_scene_node
 {
     int node_type = 0;
@@ -441,6 +478,8 @@ struct rc_scene_node
     bool transition;
     double transition_time;
     double transition_start_time;
+
+    rc_particle_properties_obj particle_properties;
 };
 
 irr::core::array<rc_scene_node> rc_actor;

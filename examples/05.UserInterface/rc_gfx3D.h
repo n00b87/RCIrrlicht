@@ -569,6 +569,52 @@ int rc_createTerrainActor( std::string height_map )
     return actor_id;
 }
 
+int rc_createParticleActor( int particle_type )
+{
+    int actor_id = -1;
+    irr::scene::IParticleSystemSceneNode *node = SceneManager->addParticleSystemSceneNode( false );
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_PARTICLE;
+    actor.particle_properties.particle_type = particle_type;
+    actor.particle_properties.mesh_id = -1;
+    actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 0);
+
+
+    return actor_id;
+}
+
 //add mesh actor to scene
 int rc_createCubeActor(double cube_size)
 {
@@ -664,6 +710,92 @@ int rc_createWaterPlaneActor(double w, double h)
     RealisticWaterSceneNode* node = new RealisticWaterSceneNode(SceneManager, w, h);
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_WATER;
+    actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
+
+    return actor_id;
+}
+
+int rc_createBillboardActor()
+{
+    int actor_id = -1;
+    irr::scene::IBillboardSceneNode* node = SceneManager->addBillboardSceneNode();
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_BILLBOARD;
+    actor.mesh_node = node;
+    actor.shadow = NULL;
+    actor.transition = false;
+    actor.transition_time = 0;
+
+    if(!node)
+        return -1;
+
+    for(int i = 0; i < rc_actor.size(); i++)
+    {
+        if(!rc_actor[i].mesh_node)
+        {
+            actor_id = i;
+            break;
+        }
+    }
+
+    if(actor_id < 0)
+    {
+        actor_id = rc_actor.size();
+        rc_actor.push_back(actor);
+    }
+    else
+    {
+        rc_actor[actor_id] = actor;
+    }
+
+    //Actor RigidBody
+    rc_actor[actor_id].physics.shape_type = RC_NODE_SHAPE_TYPE_BOX;
+    rc_actor[actor_id].physics.rigid_body = NULL;
+    rc_actor[actor_id].physics.isSolid = false;
+
+    rc_setActorCollisionShape(actor_id, RC_NODE_SHAPE_TYPE_BOX, 1);
+
+    return actor_id;
+}
+
+int rc_createLightActor()
+{
+    int actor_id = -1;
+    irr::scene::ILightSceneNode* node = SceneManager->addLightSceneNode();
+    rc_scene_node actor;
+    actor.node_type = RC_NODE_TYPE_LIGHT;
     actor.mesh_node = node;
     actor.shadow = NULL;
     actor.transition = false;
@@ -4112,15 +4244,7 @@ void rc_setActorAutoCulling(int actor, int cull_type)
     if(actor < 0 || actor >= rc_actor.size())
         return;
 
-    switch(rc_actor[actor].node_type)
-    {
-    	case RC_NODE_TYPE_TERRAIN:
-    	case RC_NODE_TYPE_OTMESH:
-        case RC_NODE_TYPE_MESH:
-            irr::scene::IMeshSceneNode* node = (irr::scene::IMeshSceneNode*)rc_actor[actor].mesh_node;
-            node->setAutomaticCulling((irr::scene::E_CULLING_TYPE) cull_type);
-            break;
-    }
+	rc_actor[actor].mesh_node->setAutomaticCulling((irr::scene::E_CULLING_TYPE) cull_type);
 }
 
 int rc_getActorAutoCulling(int actor)
@@ -4128,16 +4252,10 @@ int rc_getActorAutoCulling(int actor)
     if(actor < 0 || actor >= rc_actor.size())
         return 0;
 
-    switch(rc_actor[actor].node_type)
-    {
-    	case RC_NODE_TYPE_TERRAIN:
-    	case RC_NODE_TYPE_OTMESH:
-        case RC_NODE_TYPE_MESH:
-            irr::scene::IMeshSceneNode* node = (irr::scene::IMeshSceneNode*)rc_actor[actor].mesh_node;
-            return node->getAutomaticCulling();
-    }
+    if(rc_actor[actor].mesh_node)
+		return rc_actor[actor].mesh_node->getAutomaticCulling();
 
-    return 0;
+	return 0;
 }
 
 
@@ -4179,6 +4297,77 @@ void rc_removeActorShadow(int actor)
     }
 }
 
+bool rc_lightIsCastingShadow(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            return node->getCastShadow();
+    }
+
+    return false;
+}
+
+int rc_getLightType(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            return (int)node->getLightType();
+    }
+
+    return 0;
+}
+
+double rc_getLightRadius(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            return node->getRadius();
+    }
+
+    return 0;
+}
+
+void rc_setLightType(int actor, int light_type)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            node->setLightType((irr::video::E_LIGHT_TYPE)light_type);
+    }
+}
+
+void rc_setLightRadius(int actor, double radius)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            node->setRadius(radius);
+    }
+}
+
 void rc_setActorFrame(int actor, int frame)
 {
     if(actor < 0 || actor >= rc_actor.size())
@@ -4192,6 +4381,250 @@ void rc_setActorFrame(int actor, int frame)
             break;
     }
 }
+
+void rc_setLightShadowCast(int actor, bool flag)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            node->enableCastShadow(flag);
+    }
+}
+
+void rc_setLightAmbientColor(int actor, Uint32 color)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SColor c;
+            c.set(color);
+            irr::video::SColorf cf(c);
+            irr::video::SLight light_data = node->getLightData();
+            light_data.AmbientColor = cf;
+            node->setLightData(light_data);
+    }
+}
+
+Uint32 rc_getLightAmbientColor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.AmbientColor.toSColor().color;
+    }
+
+    return 0;
+}
+
+void rc_setLightAttenuation(int actor, double l_constant, double l_linear, double l_quadratic)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            light_data.Attenuation.set(l_constant, l_linear, l_quadratic);
+            node->setLightData(light_data);
+    }
+}
+
+void rc_getLightAttenuation(int actor, double* l_constant, double* l_linear, double* l_quadratic)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	*l_constant = 0;
+	*l_linear = 0;
+	*l_quadratic = 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+           *l_constant = light_data.Attenuation.X;
+           *l_linear = light_data.Attenuation.Y;
+           *l_quadratic = light_data.Attenuation.Z;
+    }
+}
+
+void rc_setLightDiffuseColor(int actor, Uint32 color)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SColor c;
+            c.set(color);
+            irr::video::SColorf cf(c);
+            irr::video::SLight light_data = node->getLightData();
+            light_data.DiffuseColor = cf;
+            node->setLightData(light_data);
+    }
+}
+
+Uint32 rc_getLightDiffuseColor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.DiffuseColor.toSColor().color;
+    }
+
+    return 0;
+}
+
+void rc_setLightFalloff(int actor, double falloff)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            light_data.Falloff = falloff;
+            node->setLightData(light_data);
+    }
+}
+
+double rc_getLightFalloff(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.Falloff;
+    }
+
+    return 0;
+}
+
+void rc_setLightInnerCone(int actor, double angle)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            light_data.InnerCone = angle;
+            node->setLightData(light_data);
+    }
+}
+
+double rc_getLightInnerCone(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.InnerCone;
+    }
+
+    return 0;
+}
+
+void rc_setLightOuterCone(int actor, double angle)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            light_data.OuterCone = angle;
+            node->setLightData(light_data);
+    }
+}
+
+double rc_getLightOuterCone(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.OuterCone;
+    }
+
+    return 0;
+}
+
+void rc_setLightSpecularColor(int actor, Uint32 color)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SColor c;
+            c.set(color);
+            irr::video::SColorf cf(c);
+            irr::video::SLight light_data = node->getLightData();
+            light_data.SpecularColor = cf;
+            node->setLightData(light_data);
+    }
+}
+
+Uint32 rc_getLightSpecularColor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+    switch(rc_actor[actor].node_type)
+    {
+        case RC_NODE_TYPE_LIGHT:
+            irr::scene::ILightSceneNode* node = (irr::scene::ILightSceneNode*)rc_actor[actor].mesh_node;
+            irr::video::SLight light_data = node->getLightData();
+            return light_data.SpecularColor.toSColor().color;
+    }
+
+    return 0;
+}
+
 
 void rc_loopActorAnimation(int actor, bool flag)
 {
@@ -4459,6 +4892,855 @@ void rc_setTerrainPatchLOD(int actor, int patchX, int patchZ, int lod)
 			terrain->setLODOfPatch(patchX, patchZ, lod);
     }
 }
+
+void rc_startParticleEmitter(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+
+	bool everyMeshVertex = rc_actor[actor].particle_properties.everyMeshVertex;
+	irr::s32 mbNumber = rc_actor[actor].particle_properties.mbNumber;
+	irr::f32 normalDirectionModifier = rc_actor[actor].particle_properties.normalDirectionModifier;
+	bool useNormalDirection = rc_actor[actor].particle_properties.useNormalDirection;
+	irr::s32 mesh_id = rc_actor[actor].particle_properties.mesh_id;
+	irr::core::vector3df direction = rc_actor[actor].particle_properties.direction;
+	irr::u32 minParticlesPerSecond = rc_actor[actor].particle_properties.minParticlesPerSecond;
+	irr::u32 maxParticlesPerSecond = rc_actor[actor].particle_properties.maxParticlesPerSecond;
+	irr::video::SColor minStartColor = rc_actor[actor].particle_properties.minStartColor;
+	irr::video::SColor maxStartColor = rc_actor[actor].particle_properties.maxStartColor;
+	irr::u32 lifeTimeMin = rc_actor[actor].particle_properties.lifeTimeMin;
+	irr::u32 lifeTimeMax = rc_actor[actor].particle_properties.lifeTimeMax;
+	irr::s32 maxAngleDegrees = rc_actor[actor].particle_properties.maxAngleDegrees;
+	irr::core::dimension2df minStartSize = rc_actor[actor].particle_properties.minStartSize;
+	irr::core::dimension2df maxStartSize = rc_actor[actor].particle_properties.maxStartSize;
+	irr::core::vector3df center = rc_actor[actor].particle_properties.center;
+	irr::f32 radius = rc_actor[actor].particle_properties.radius;
+	irr::f32 ringThickness = rc_actor[actor].particle_properties.ringThickness;
+	irr::core::aabbox3df box = rc_actor[actor].particle_properties.box;
+	irr::core::vector3df normal = rc_actor[actor].particle_properties.normal;
+	irr::f32 length = rc_actor[actor].particle_properties.length;
+	bool outlineOnly = rc_actor[actor].particle_properties.outlineOnly;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*) rc_actor[actor].mesh_node;
+
+	irr::scene::IParticleEmitter* em = NULL;
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+    {
+    	case RC_PARTICLE_TYPE_POINT:
+			em = node->createPointEmitter(direction, minParticlesPerSecond, maxParticlesPerSecond,
+										minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+										maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+
+		case RC_PARTICLE_TYPE_BOX:
+			em = node->createBoxEmitter(box, direction, minParticlesPerSecond, maxParticlesPerSecond,
+										minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+										maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+
+		case RC_PARTICLE_TYPE_SPHERE:
+			em = node->createSphereEmitter(center, radius, direction,
+											minParticlesPerSecond, maxParticlesPerSecond,
+											minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+											maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+
+		case RC_PARTICLE_TYPE_CYLINDER:
+			em = node->createCylinderEmitter(center, radius, normal, length, outlineOnly,
+											direction, minParticlesPerSecond, maxParticlesPerSecond,
+											minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+											maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+
+		case RC_PARTICLE_TYPE_MESH:
+			if(mesh_id < 0 || mesh_id >= rc_mesh.size())
+				return;
+
+			if(!rc_mesh[mesh_id].mesh)
+				return;
+
+			em = node->createMeshEmitter(rc_mesh[mesh_id].mesh, useNormalDirection,
+										direction, normalDirectionModifier, mbNumber, everyMeshVertex,
+										minParticlesPerSecond, maxParticlesPerSecond,
+										minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+										maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+
+		case RC_PARTICLE_TYPE_RING:
+			em = node->createRingEmitter(center, radius, ringThickness,
+											direction, minParticlesPerSecond, maxParticlesPerSecond,
+											minStartColor, maxStartColor, lifeTimeMin, lifeTimeMax,
+											maxAngleDegrees, minStartSize, maxStartSize);
+			node->setEmitter(em);
+			em->drop();
+			break;
+    }
+}
+
+void rc_stopParticleEmitter(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*) rc_actor[actor].mesh_node;
+	node->setEmitter(0);
+}
+
+void rc_setParticleDirection(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.direction.set(x, y, z);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setDirection( rc_actor[actor].particle_properties.direction );
+}
+
+void rc_getParticleDirection(int actor, double* x, double* y, double* z)
+{
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*x = rc_actor[actor].particle_properties.direction.X;
+	*y = rc_actor[actor].particle_properties.direction.Y;
+	*z = rc_actor[actor].particle_properties.direction.Z;
+}
+
+void rc_useParticleEveryMeshVertex(int actor, bool flag)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return;
+
+	rc_actor[actor].particle_properties.everyMeshVertex = flag;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+	{
+		irr::scene::IParticleMeshEmitter* em = (irr::scene::IParticleMeshEmitter*)node->getEmitter();
+		em->setEveryMeshVertex(rc_actor[actor].particle_properties.everyMeshVertex);
+	}
+}
+
+bool rc_particleIsUsingEveryMeshVertex(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return false;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return false;
+
+	return rc_actor[actor].particle_properties.everyMeshVertex;
+
+}
+
+void rc_setParticleNormalDirectionMod(int actor, double mod)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return;
+
+	rc_actor[actor].particle_properties.normalDirectionModifier = mod;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+	{
+		irr::scene::IParticleMeshEmitter* em = (irr::scene::IParticleMeshEmitter*)node->getEmitter();
+		em->setNormalDirectionModifier(rc_actor[actor].particle_properties.normalDirectionModifier);
+	}
+}
+
+double rc_getParticleNormalDirectionMod(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return 0;
+
+	return rc_actor[actor].particle_properties.normalDirectionModifier;
+}
+
+void rc_useParticleNormalDirection(int actor, bool flag)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return;
+
+	rc_actor[actor].particle_properties.useNormalDirection = flag;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+	{
+		irr::scene::IParticleMeshEmitter* em = (irr::scene::IParticleMeshEmitter*)node->getEmitter();
+		em->setUseNormalDirection(rc_actor[actor].particle_properties.useNormalDirection);
+	}
+}
+
+bool rc_particleIsUsingNormalDirection(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return false;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return false;
+
+	return rc_actor[actor].particle_properties.useNormalDirection;
+}
+
+void rc_setParticleMesh(int actor, int mesh)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	if(rc_actor[actor].particle_properties.particle_type != RC_PARTICLE_TYPE_MESH)
+		return;
+
+	rc_actor[actor].particle_properties.mesh_id = mesh;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+	{
+		if(mesh < 0 || mesh >= rc_mesh.size())
+			return;
+
+		if(!rc_mesh[mesh].mesh)
+			return;
+
+		irr::scene::IParticleMeshEmitter* em = (irr::scene::IParticleMeshEmitter*)node->getEmitter();
+		em->setMesh(rc_mesh[mesh].mesh);
+	}
+}
+
+void rc_setParticleMinParticlesPerSecond(int actor, Uint32 minParticlesPerSecond)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.minParticlesPerSecond = minParticlesPerSecond;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMinParticlesPerSecond(minParticlesPerSecond);
+}
+
+Uint32 rc_getParticleMinParticlesPerSecond(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.minParticlesPerSecond;
+}
+
+void rc_setParticleMaxParticlesPerSecond(int actor, Uint32 maxParticlesPerSecond)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.maxParticlesPerSecond = maxParticlesPerSecond;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMaxParticlesPerSecond(maxParticlesPerSecond);
+}
+
+Uint32 rc_getParticleMaxParticlesPerSecond(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.maxParticlesPerSecond;
+}
+
+void rc_setParticleMinStartColor(int actor, Uint32 color)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.minStartColor = irr::video::SColor(color);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMinStartColor(rc_actor[actor].particle_properties.minStartColor);
+}
+
+Uint32 rc_getParticleMinStartColor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.minStartColor.color;
+}
+
+void rc_setParticleMaxStartColor(int actor, Uint32 color)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.maxStartColor = irr::video::SColor(color);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMaxStartColor(rc_actor[actor].particle_properties.maxStartColor);
+}
+
+Uint32 rc_getParticleMaxStartColor(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.maxStartColor.color;
+}
+
+void rc_setParticleMinLife(int actor, Uint32 minLife)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.lifeTimeMin = minLife;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMinLifeTime(rc_actor[actor].particle_properties.lifeTimeMin);
+}
+
+Uint32 rc_getParticleMinLife(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.lifeTimeMin;
+}
+
+void rc_setParticleMaxLife(int actor, Uint32 maxLife)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.lifeTimeMax = maxLife;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMaxLifeTime(rc_actor[actor].particle_properties.lifeTimeMax);
+}
+
+Uint32 rc_getParticleMaxLife(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.lifeTimeMax;
+}
+
+void rc_setParticleMaxAngle(int actor, int maxAngle)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.maxAngleDegrees = maxAngle;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMaxAngleDegrees(rc_actor[actor].particle_properties.maxAngleDegrees);
+}
+
+int rc_getParticleMaxAngle(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.maxAngleDegrees;
+}
+
+void rc_setParticleMinStartSize(int actor, double w, double h)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.minStartSize = irr::core::dimension2df(w, h);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMinStartSize(rc_actor[actor].particle_properties.minStartSize);
+}
+
+void rc_getParticleMinStartSize(int actor, double* w, double* h)
+{
+	*w = 0;
+	*h = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*w = rc_actor[actor].particle_properties.minStartSize.Width;
+	*h = rc_actor[actor].particle_properties.minStartSize.Height;
+}
+
+void rc_setParticleMaxStartSize(int actor, double w, double h)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.maxStartSize = irr::core::dimension2df(w, h);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(node->getEmitter())
+		node->getEmitter()->setMaxStartSize(rc_actor[actor].particle_properties.maxStartSize);
+}
+
+void rc_getParticleMaxStartSize(int actor, double* w, double* h)
+{
+	*w = 0;
+	*h = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*w = rc_actor[actor].particle_properties.maxStartSize.Width;
+	*h = rc_actor[actor].particle_properties.maxStartSize.Height;
+}
+
+void rc_setParticleCenter(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.center = irr::core::vector3df(x, y, z);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_SPHERE:
+		{
+			irr::scene::IParticleSphereEmitter* em = (irr::scene::IParticleSphereEmitter*)node->getEmitter();
+			em->setCenter(rc_actor[actor].particle_properties.center);
+		}
+		break;
+		case RC_PARTICLE_TYPE_CYLINDER:
+		{
+			irr::scene::IParticleCylinderEmitter* em = (irr::scene::IParticleCylinderEmitter*)node->getEmitter();
+			em->setCenter(rc_actor[actor].particle_properties.center);
+		}
+		break;
+		case RC_PARTICLE_TYPE_RING:
+			{
+			irr::scene::IParticleRingEmitter* em = (irr::scene::IParticleRingEmitter*)node->getEmitter();
+			em->setCenter(rc_actor[actor].particle_properties.center);
+		}
+		break;
+	}
+}
+
+void rc_getParticleCenter(int actor, double* x, double* y, double* z)
+{
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*x = rc_actor[actor].particle_properties.center.X;
+	*y = rc_actor[actor].particle_properties.center.Y;
+	*z = rc_actor[actor].particle_properties.center.Z;
+}
+
+void rc_setParticleRadius(int actor, double radius)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.radius = radius;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_SPHERE:
+		{
+			irr::scene::IParticleSphereEmitter* em = (irr::scene::IParticleSphereEmitter*)node->getEmitter();
+			em->setRadius(rc_actor[actor].particle_properties.radius);
+		}
+		break;
+		case RC_PARTICLE_TYPE_CYLINDER:
+		{
+			irr::scene::IParticleCylinderEmitter* em = (irr::scene::IParticleCylinderEmitter*)node->getEmitter();
+			em->setRadius(rc_actor[actor].particle_properties.radius);
+		}
+		break;
+		case RC_PARTICLE_TYPE_RING:
+			{
+			irr::scene::IParticleRingEmitter* em = (irr::scene::IParticleRingEmitter*)node->getEmitter();
+			em->setRadius(rc_actor[actor].particle_properties.radius);
+		}
+		break;
+	}
+}
+
+double rc_getParticleRadius(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.radius;
+}
+
+void rc_setParticleRingThickness(int actor, double ringThickness)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.ringThickness = ringThickness;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_RING:
+		{
+			irr::scene::IParticleRingEmitter* em = (irr::scene::IParticleRingEmitter*)node->getEmitter();
+			em->setRingThickness(rc_actor[actor].particle_properties.ringThickness);
+		}
+		break;
+	}
+}
+
+double rc_getParticleRingThickness(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.ringThickness;
+}
+
+void rc_setParticleBox(int actor, double min_x, double min_y, double min_z, double max_x, double max_y, double max_z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.box = irr::core::aabbox3df(min_x, min_y, min_z, max_x, max_y, max_z);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_BOX:
+		{
+			irr::scene::IParticleBoxEmitter* em = (irr::scene::IParticleBoxEmitter*)node->getEmitter();
+			em->setBox(rc_actor[actor].particle_properties.box);
+		}
+		break;
+	}
+}
+
+void rc_getParticleBox(int actor, double* min_x, double* min_y, double* min_z, double* max_x, double* max_y, double* max_z)
+{
+	*min_x = 0;
+	*min_y = 0;
+	*min_z = 0;
+
+	*max_x = 0;
+	*max_y = 0;
+	*max_z = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*min_x = rc_actor[actor].particle_properties.box.MinEdge.X;
+	*min_y = rc_actor[actor].particle_properties.box.MinEdge.Y;
+	*min_z = rc_actor[actor].particle_properties.box.MinEdge.Z;
+
+	*max_x = rc_actor[actor].particle_properties.box.MaxEdge.X;
+	*max_y = rc_actor[actor].particle_properties.box.MaxEdge.Y;
+	*max_z = rc_actor[actor].particle_properties.box.MaxEdge.Z;
+}
+
+void rc_setParticleNormal(int actor, double x, double y, double z)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.normal.set(x, y, z);
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_CYLINDER:
+		{
+			irr::scene::IParticleCylinderEmitter* em = (irr::scene::IParticleCylinderEmitter*)node->getEmitter();
+			em->setNormal(rc_actor[actor].particle_properties.normal);
+		}
+		break;
+	}
+}
+
+void rc_getParticleNormal(int actor, double* x, double* y, double* z)
+{
+	*x = 0;
+	*y = 0;
+	*z = 0;
+
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	*x = rc_actor[actor].particle_properties.normal.X;
+	*y = rc_actor[actor].particle_properties.normal.Y;
+	*z = rc_actor[actor].particle_properties.normal.Z;
+}
+
+void rc_setParticleLength(int actor, double length)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.length = length;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_CYLINDER:
+		{
+			irr::scene::IParticleCylinderEmitter* em = (irr::scene::IParticleCylinderEmitter*)node->getEmitter();
+			em->setLength(rc_actor[actor].particle_properties.length);
+		}
+		break;
+	}
+}
+
+double rc_getParticleLength(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return 0;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return 0;
+
+	return rc_actor[actor].particle_properties.length;
+}
+
+void rc_useParticleOutlineOnly(int actor, bool flag)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return;
+
+	rc_actor[actor].particle_properties.outlineOnly = flag;
+
+	irr::scene::IParticleSystemSceneNode* node = (irr::scene::IParticleSystemSceneNode*)rc_actor[actor].mesh_node;
+
+	if(!node->getEmitter())
+		return;
+
+
+	switch(rc_actor[actor].particle_properties.particle_type)
+	{
+		case RC_PARTICLE_TYPE_CYLINDER:
+		{
+			irr::scene::IParticleCylinderEmitter* em = (irr::scene::IParticleCylinderEmitter*)node->getEmitter();
+			em->setOutlineOnly(flag);
+		}
+		break;
+	}
+}
+
+bool rc_particleIsUsingOutlineOnly(int actor)
+{
+	if(actor < 0 || actor >= rc_actor.size())
+        return false;
+
+	if(rc_actor[actor].node_type != RC_NODE_TYPE_PARTICLE)
+		return false;
+
+	return rc_actor[actor].particle_properties.outlineOnly;
+}
+
 
 
 bool rc_getActorTransform(int actor, int t_mat)
