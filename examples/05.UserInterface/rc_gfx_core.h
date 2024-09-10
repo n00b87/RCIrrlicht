@@ -480,6 +480,8 @@ struct rc_scene_node
     double transition_start_time;
 
     rc_particle_properties_obj particle_properties;
+
+    int material_ref_index = -1;
 };
 
 irr::core::array<rc_scene_node> rc_actor;

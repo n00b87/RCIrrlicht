@@ -170,8 +170,16 @@ int main()
 
     int actor1 = rc_createMeshActor(mesh1);
     int actor1_texture = rc_loadImage("../../media/sydney.bmp");
-    rc_setActorTexture(actor1, 0, actor1_texture);
-    rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
+    int mat = rc_createMaterial();
+    rc_setMaterialTexture(mat, 0, actor1_texture);
+    rc_setMaterialLighting(mat, false);
+	rc_setActorMaterial(actor1, 0, mat);
+
+	int mat2 = rc_copyActorMaterial(actor1, 0);
+	rc_setMaterialLighting(mat2, true);
+
+    //rc_setActorTexture(actor1, 0, actor1_texture);
+    //rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
 
     rc_setActorSolid(actor1, true);
     rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 25);
