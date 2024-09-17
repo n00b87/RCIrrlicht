@@ -49,12 +49,22 @@ void drawDebugInfo(int overlay_canvas, int view_canvas)
 	rc_getCameraRotation(&rot_x, &rot_y, &rot_z);
 	std::string cam_rot = rc_intern_str(rot_x) + ", " + rc_intern_str(rot_y) + ", " + rc_intern_str(rot_z);
 
+	double mouse_x, mouse_y, mb1, mb2, mb3;
+	rc_getMouse(&mouse_x, &mouse_y, &mb1, &mb2, &mb3);
+	std::string mouse_info = "";
+	mouse_info += rc_intern_str(mouse_x) + ", ";
+	mouse_info += rc_intern_str(mouse_y) + "   ";
+	mouse_info += "LEFT = " + rc_intern_str(mb1) + ", ";
+	mouse_info += "MIDDLE = " + rc_intern_str(mb2) + ", ";
+	mouse_info += "RIGHT = " + rc_intern_str(mb3) + ", ";
+
 	rc_setActiveCanvas(overlay_canvas);
 	rc_clearCanvas();
 	rc_setColor(rc_rgb(255,255,255));
 
 	rc_drawText("Position: " + cam_pos, 10, 10);
 	rc_drawText("Rotation: " + cam_rot, 10, 30);
+	rc_drawText("Mouse Info: " + mouse_info, 10, 50);
 }
 
 void test_matrix1()
@@ -163,7 +173,8 @@ int main()
 
 	rc_setCanvas3D(canvas1, true);
 
-    rc_loadFont("NotoSansJP-VariableFont_wght.ttf", 12);
+    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
+    rc_loadFont(fnt, 12);
 
 
     int mesh1 = rc_loadMesh("../../media/sydney.md2");
@@ -175,8 +186,8 @@ int main()
     rc_setMaterialLighting(mat, false);
 	rc_setActorMaterial(actor1, 0, mat);
 
-	int mat2 = rc_copyActorMaterial(actor1, 0);
-	rc_setMaterialLighting(mat2, true);
+	int a_mat = rc_getActorMaterial(actor1, 0);
+	rc_setMaterialLighting(a_mat, true);
 
     //rc_setActorTexture(actor1, 0, actor1_texture);
     //rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);

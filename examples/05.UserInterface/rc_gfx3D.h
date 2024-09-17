@@ -1030,41 +1030,6 @@ void rc_setActorTexture(int actor, int layer, int image_id)
     }
 }
 
-//set actor texture
-void rc_setActorTextureEx(int actor, int material, int layer, int resource_type, int resource_id)
-{
-    if(actor < 0 || actor >= rc_actor.size())
-        return;
-
-    if(!rc_actor[actor].mesh_node)
-        return;
-
-    if(resource_type == RC_ACTOR_TEXTURE_TYPE_IMAGE)
-    {
-        int image_id = resource_id;
-
-        if(image_id < 0 || image_id >= rc_image.size())
-            return;
-
-        if(rc_image[image_id].image)
-        {
-            rc_actor[actor].mesh_node->getMaterial(material).setTexture(layer, rc_image[image_id].image);
-        }
-    }
-    else if(resource_type == RC_ACTOR_TEXTURE_TYPE_CANVAS)
-    {
-        int canvas_id = resource_id;
-
-        if(canvas_id < 0 || canvas_id >= rc_canvas.size())
-            return;
-
-        if(rc_canvas[canvas_id].texture)
-        {
-            rc_actor[actor].mesh_node->getMaterial(material).setTexture(layer, rc_canvas[canvas_id].texture);
-        }
-    }
-}
-
 //get Material count
 Uint32 rc_getActorMaterialCount(int actor)
 {
@@ -1087,18 +1052,6 @@ void rc_setActorMaterialFlag(int actor, int flag, bool flag_value)
         return;
 
     rc_actor[actor].mesh_node->setMaterialFlag((irr::video::E_MATERIAL_FLAG)flag, flag_value);
-}
-
-//set Actor Material Flag
-void rc_setActorMaterialFlagEx(int actor, int material, int flag, bool flag_value)
-{
-    if(actor < 0 || actor >= rc_actor.size())
-        return;
-
-    if(!rc_actor[actor].mesh_node)
-        return;
-
-    rc_actor[actor].mesh_node->getMaterial(material).setFlag((irr::video::E_MATERIAL_FLAG)flag, flag_value);
 }
 
 //set Actor Material Flag
@@ -1243,6 +1196,38 @@ int rc_copyActorMaterial(int actor, int material_num)
     return material_id;
 }
 
+int rc_copyMaterial(int src_material_id)
+{
+    int material_id = -1;
+
+    for(int i = 0; i < rc_material.size(); i++)
+    {
+        if(!rc_material[i].isUsed)
+        {
+            rc_material[i].isUsed = true;
+            material_id = i;
+            break;
+        }
+    }
+
+    rc_material_obj nmat;
+	nmat.isUsed = true;
+	nmat.mat = rc_material[src_material_id].mat;
+	nmat.isReference = false;
+	nmat.refActor = -1;
+	nmat.refMatNum = 0;
+
+    if(material_id < 0)
+    {
+        material_id = rc_material.size();
+        rc_material.push_back(nmat);
+    }
+    else
+        rc_material[material_id] = nmat;
+
+    return material_id;
+}
+
 int rc_getActorMaterial(int actor, int material_num)
 {
     if(actor < 0 || actor >= rc_actor.size())
@@ -1302,6 +1287,27 @@ void rc_setMaterialAmbientColor(int material_id, Uint32 color)
 	}
 	else
 		rc_material[material_id].mat.AmbientColor = irr::video::SColor(color);
+}
+
+void rc_setMaterialTextureCanvas(int material_id, int level, int canvas_id)
+{
+	if(material_id < 0 || material_id >= rc_material.size())
+		return;
+
+	if(canvas_id < 0 || canvas_id >= rc_canvas.size())
+		return;
+
+	if(!rc_canvas[canvas_id].texture)
+		return;
+
+	if(rc_material[material_id].isReference)
+	{
+		int refActor = rc_material[material_id].refActor;
+		int refMatNum = rc_material[material_id].refMatNum;
+		rc_actor[refActor].mesh_node->getMaterial(refMatNum).setTexture(level, rc_canvas[canvas_id].texture);
+	}
+	else
+		rc_material[material_id].mat.setTexture(level, rc_canvas[canvas_id].texture);
 }
 
 Uint32 rc_getMaterialAmbientColor(int material_id)

@@ -1432,8 +1432,9 @@ void rc_drawEllipseFill(int x, int y, int rx, int ry)
 
 
 
-int rc_loadFont(irr::io::path file_path, int font_size)
+int rc_loadFont(std::string fnt_file, int font_size)
 {
+	irr::io::path file_path = fnt_file.c_str();
     int font_id = -1;
     for(int i = 0; i < rc_font.size(); i++)
     {
@@ -1572,20 +1573,9 @@ bool rc_cursor_visible = true;
 
 bool rc_mouseButton(int b)
 {
-    bool button_state = false;
-    switch(b)
-    {
-        case 0:
-            button_state = ((MouseButtonStates & irr::EMBSM_LEFT)!=0);
-            break;
-        case 1:
-            button_state = ((MouseButtonStates & irr::EMBSM_MIDDLE)!=0);
-            break;
-        case 2:
-            button_state = ((MouseButtonStates & irr::EMBSM_RIGHT)!=0);
-            break;
-    }
-    return button_state;
+	int ix, iy;
+    int current_button_state = SDL_GetMouseState(&ix, &iy);
+    return (current_button_state & SDL_BUTTON(b));
 }
 
 int rc_mouseX()
@@ -1602,10 +1592,15 @@ int rc_mouseY()
     return y;
 }
 
-void rc_getMouse(double* x, double* y)
+void rc_getMouse(double* x, double* y, double* mb1, double* mb2, double* mb3)
 {
     int ix, iy;
-    SDL_GetMouseState(&ix, &iy);
+    int current_button_state = SDL_GetMouseState(&ix, &iy);
+
+    *mb1 = (current_button_state & SDL_BUTTON(SDL_BUTTON_LEFT))!=0;
+    *mb2 = (current_button_state & SDL_BUTTON(SDL_BUTTON_MIDDLE))!=0;
+    *mb3 = (current_button_state & SDL_BUTTON(SDL_BUTTON_RIGHT))!=0;
+
     *x = ix;
     *y = iy;
 }
@@ -1634,10 +1629,15 @@ int rc_globalMouseY()
     return y;
 }
 
-void rc_globalMouse(double * x, double* y)
+void rc_getGlobalMouse(double * x, double* y, double* mb1, double* mb2, double* mb3)
 {
     int ix, iy;
-    SDL_GetGlobalMouseState(&ix,&iy);
+    int current_button_state = SDL_GetGlobalMouseState(&ix,&iy);
+
+    *mb1 = (current_button_state & SDL_BUTTON(SDL_BUTTON_LEFT))!=0;
+    *mb2 = (current_button_state & SDL_BUTTON(SDL_BUTTON_MIDDLE))!=0;
+    *mb3 = (current_button_state & SDL_BUTTON(SDL_BUTTON_RIGHT))!=0;
+
     *x = ix;
     *y = iy;
 }
@@ -2031,7 +2031,7 @@ irr::video::E_BLEND_OPERATION rc_blend_mode = irr::video::EBO_ADD;
 bool rc_bilinear_filter = false;
 
 
-int rc_loadImageEx(std::string img_file, Uint32 color_key = 0, bool use_color_key = false)
+int rc_loadImageEx(std::string img_file, Uint32 color_key = 0, bool use_color_key = true)
 {
     rc_image_obj img;
     img.image = VideoDriver->getTexture(img_file.c_str());
@@ -2068,7 +2068,7 @@ int rc_loadImageEx(std::string img_file, Uint32 color_key = 0, bool use_color_ke
 
 int rc_loadImage(std::string img_file)
 {
-    return rc_loadImageEx(img_file);
+    return rc_loadImageEx(img_file, 0, false);
 }
 
 void rc_deleteImage(int img_id)
@@ -2084,7 +2084,7 @@ void rc_deleteImage(int img_id)
     }
 }
 
-int rc_createImageEx(int w, int h, double * pdata, Uint32 colorkey, bool use_color_key=false)
+int rc_createImageEx(int w, int h, double * pdata, Uint32 colorkey, bool use_color_key=true)
 {
     if(w <= 0 || h <=0)
         return -1;
@@ -2137,7 +2137,7 @@ int rc_createImageEx(int w, int h, double * pdata, Uint32 colorkey, bool use_col
 
 int rc_createImage(int w, int h, double* pdata)
 {
-    return rc_createImageEx(w, h, pdata, 0);
+    return rc_createImageEx(w, h, pdata, 0, false);
 }
 
 
@@ -2169,7 +2169,7 @@ bool rc_getBilinearFilter()
     return rc_bilinear_filter;
 }
 
-void rc_setColorMod(int img_id, Uint32 color)
+void rc_setImageColorMod(int img_id, Uint32 color)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2180,7 +2180,7 @@ void rc_setColorMod(int img_id, Uint32 color)
     }
 }
 
-Uint32 rc_getColorMod(int img_id)
+Uint32 rc_getImageColorMod(int img_id)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return 0;
@@ -2488,7 +2488,7 @@ int rc_copyImage(int src_id)
 }
 
 
-void rc_drawImage_rotate(int img_id, int x, int y, double angle)
+void rc_drawImage_Rotate(int img_id, int x, int y, double angle)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2516,7 +2516,7 @@ void rc_drawImage_rotate(int img_id, int x, int y, double angle)
     }
 }
 
-void rc_drawImage_zoom(int img_id, int x, int y, double zx, double zy)
+void rc_drawImage_Zoom(int img_id, int x, int y, double zx, double zy)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2544,7 +2544,7 @@ void rc_drawImage_zoom(int img_id, int x, int y, double zx, double zy)
     }
 }
 
-void rc_drawImage_zoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double zx, double zy)
+void rc_drawImage_ZoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double zx, double zy)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2572,7 +2572,7 @@ void rc_drawImage_zoomEx(int img_id, int x, int y, int src_x, int src_y, int src
     }
 }
 
-void rc_drawImage_rotozoom(int img_id, int x, int y, double angle, double zx, double zy)
+void rc_drawImage_Rotozoom(int img_id, int x, int y, double angle, double zx, double zy)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2600,7 +2600,7 @@ void rc_drawImage_rotozoom(int img_id, int x, int y, double angle, double zx, do
     }
 }
 
-void rc_drawImage_rotozoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double angle, double zx, double zy)
+void rc_drawImage_RotozoomEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, double angle, double zx, double zy)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2629,7 +2629,7 @@ void rc_drawImage_rotozoomEx(int img_id, int x, int y, int src_x, int src_y, int
 }
 
 
-void rc_drawImage_flip(int img_id, int x, int y, bool h, bool v)
+void rc_drawImage_Flip(int img_id, int x, int y, bool h, bool v)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2658,7 +2658,7 @@ void rc_drawImage_flip(int img_id, int x, int y, bool h, bool v)
     }
 }
 
-void rc_drawImage_flipEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, bool h, bool v)
+void rc_drawImage_FlipEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, bool h, bool v)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2688,7 +2688,7 @@ void rc_drawImage_flipEx(int img_id, int x, int y, int src_x, int src_y, int src
 }
 
 
-void rc_drawImage_blit(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h)
+void rc_drawImage_Blit(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2719,7 +2719,7 @@ void rc_drawImage_blit(int img_id, int x, int y, int src_x, int src_y, int src_w
 }
 
 
-void rc_drawImage_rotateEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, int angle)
+void rc_drawImage_RotateEx(int img_id, int x, int y, int src_x, int src_y, int src_w, int src_h, int angle)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;
@@ -2749,7 +2749,7 @@ void rc_drawImage_rotateEx(int img_id, int x, int y, int src_x, int src_y, int s
     }
 }
 
-void rc_drawImage_blitEx(int img_id, int x, int y, int w, int h, int src_x, int src_y, int src_w, int src_h)
+void rc_drawImage_BlitEx(int img_id, int x, int y, int w, int h, int src_x, int src_y, int src_w, int src_h)
 {
     if(img_id < 0 || img_id >= rc_image.size())
         return;

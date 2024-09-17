@@ -83,7 +83,7 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters& param)
     }
     */
 
-    //os::Printer::Logger->setLogLevel(ELL_NONE);
+    os::Printer::Logger->setLogLevel(ELL_NONE);
 	#ifdef _DEBUG
 	setDebugName("CIrrDeviceSDL");
 	#endif
