@@ -17,8 +17,13 @@
 #include "IImagePresenter.h"
 #include "ICursorControl.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
+#ifdef _IRR_ANDROID_PLATFORM_
+	#include "SDL.h"
+	#include "SDL_syswm.h"
+#else
+	#include <SDL2/SDL.h>
+	#include <SDL2/SDL_syswm.h>
+#endif
 
 namespace irr
 {

@@ -125,6 +125,25 @@ int rc_createMesh()
     return mesh_id;
 }
 
+int rc_createPlaneMesh(double w, double h, double tileCount_w, double tileCount_h)
+{
+	irr::scene::IAnimatedMesh* mesh = SceneManager->addHillPlaneMesh( "plane",
+																irr::core::dimension2d<irr::f32>(w/tileCount_w, h/tileCount_h),
+																irr::core::dimension2d<irr::u32>(tileCount_w, tileCount_h));
+
+    if(!mesh)
+        return -1;
+
+    int mesh_id = rc_mesh.size();
+    rc_mesh_obj mesh_obj;
+    mesh_obj.mesh = mesh;
+    mesh_obj.mesh_type = RC_MESH_TYPE_ANIMATED;
+
+    rc_mesh.push_back(mesh_obj);
+
+    return mesh_id;
+}
+
 
 //create mesh from geometry data [TODO]
 bool rc_addMeshBuffer(int mesh_id, int vertex_count, double* vertex_data, double* normal_data, double* uv_data, int index_count, double* index_data)
@@ -710,10 +729,16 @@ int rc_createSphereActor(double radius)
 }
 
 //add mesh actor to scene
-int rc_createWaterPlaneActor(double w, double h)
+int rc_createWaterActor(int mesh_id, double waveHeight, double waveSpeed, double waveLength)
 {
     int actor_id = -1;
-    RealisticWaterSceneNode* node = new RealisticWaterSceneNode(SceneManager, w, h);
+    if(mesh_id < 0 || mesh_id >= rc_mesh.size())
+		return -1;
+
+	if(!rc_mesh[mesh_id].mesh)
+		return -1;
+
+    irr::scene::ISceneNode* node = SceneManager->addWaterSurfaceSceneNode(rc_mesh[mesh_id].mesh, waveHeight, waveSpeed, waveLength);
     rc_scene_node actor;
     actor.node_type = RC_NODE_TYPE_WATER;
     actor.mesh_node = node;

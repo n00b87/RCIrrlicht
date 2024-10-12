@@ -26,7 +26,11 @@
 #include "IProfiler.h"
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-#include <SDL2/SDL.h>
+#ifdef _IRR_ANDROID_PLATFORM_
+	#include "SDL.h"
+#else
+	#include <SDL2/SDL.h>
+#endif
 #include "CIrrDeviceSDL.h"
 #endif // _IRR_COMPILE_WITH_SDL_DEVICE_
 

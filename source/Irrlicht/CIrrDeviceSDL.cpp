@@ -17,9 +17,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "SIrrCreationParameters.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
-#include <SDL2/SDL_video.h>
+
+#ifdef _IRR_ANDROID_PLATFORM_
+	#include "SDL.h"
+	#include "SDL_syswm.h"
+	#include "SDL_video.h"
+#else
+	#include <SDL2/SDL.h>
+	#include <SDL2/SDL_syswm.h>
+	#include <SDL2/SDL_video.h>
+#endif
 
 #ifdef _MSC_VER
 #pragma comment(lib, "SDL.lib")

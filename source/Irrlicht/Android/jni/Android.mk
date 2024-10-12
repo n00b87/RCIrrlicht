@@ -8,13 +8,18 @@ IRRLICHT_LIB_NAME := lib$(LOCAL_MODULE).a
 
 LOCAL_CFLAGS := -Wall -pipe -fno-exceptions -fno-rtti -fstrict-aliasing
 
+
+SDL_PATH := ../../../SDL
+LOCAL_CPP_FEATURES += exceptions
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/$(SDL_PATH)/include
+
 ifndef NDEBUG
 LOCAL_CFLAGS += -g -D_DEBUG
 else
 LOCAL_CFLAGS += -fexpensive-optimizations -O3
 endif
 
-LOCAL_C_INCLUDES := ../../../include
+LOCAL_C_INCLUDES += ../../../include
 LOCAL_C_INCLUDES += ../zlib ../jpeglib ../libpng
 
 LOCAL_SRC_FILES := \
@@ -333,6 +338,7 @@ LOCAL_SRC_FILES := \
 zlib/adler32.c   zlib/crc32.c    zlib/gzclose.c  zlib/gzread.c   zlib/infback.c  zlib/inflate.c   zlib/trees.c    zlib/zutil.c\
 zlib/compress.c  zlib/deflate.c  zlib/gzlib.c    zlib/gzwrite.c  zlib/inffast.c  zlib/inftrees.c  zlib/uncompr.c
 
+LOCAL_SHARED_LIBRARIES := SDL2
 LOCAL_STATIC_LIBRARIES := android_native_app_glue
 
 include $(BUILD_STATIC_LIBRARY)

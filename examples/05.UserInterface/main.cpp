@@ -25,6 +25,7 @@ and a pointer to a listbox.
 #include "rc_gfx.h"
 #include "rc_gfx3D.h"
 #include "camera.h"
+#include "an8parser.h"
 
 using namespace irr;
 
@@ -219,8 +220,36 @@ int main()
 	rc_setCameraPosition(984, 488, 2303);
 	rc_setCameraRotation(23, 1216, 0);
 
+	int water_mat = rc_createMaterial();
+	rc_setMaterialDiffuseColor(water_mat, rc_rgba(0,0,255,255));
+	rc_setMaterialAmbientColor(water_mat, rc_rgba(0,0,255,255));
+	rc_setMaterialFlag(water_mat, EMF_LIGHTING, false);
+	rc_setMaterialTexture(water_mat, 0, actor1_texture);
+
+	int plane_mesh = rc_createPlaneMesh(500, 500, 50, 50);
+	int water = rc_createWaterActor(plane_mesh, 2, 300, 10);
+
+	rc_setActorMaterial(water, 0, water_mat);
+	//rc_setActorMaterialFlag(water, EMF_LIGHTING, false);
+	rc_setActorVisible(actor2, false);
+
+	rc_translateActor(water, 0, -50, 0);
+
 	bool init = true;
 	int i = 0;
+
+	an8::an8_project p = an8::loadAN8("assets/knight_f6.an8");
+	irr::scene::IAnimatedMesh* test_mesh = an8::loadAN8Scene(device, p, "scene01");
+	irr::scene::IAnimatedMeshSceneNode* node = SceneManager->addAnimatedMeshSceneNode(test_mesh);
+
+	irr::video::SMaterial material;
+	material.setTexture(0, VideoDriver->getTexture("assets/knight_f_texture.bmp"));
+	material.Lighting = false;
+	node->getMaterial(0) = material;
+
+	node->setPosition(rc_actor[water].mesh_node->getAbsolutePosition());
+
+
 
 	//rc_setActorSolid(actor1, true);
 
