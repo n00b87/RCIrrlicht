@@ -21,11 +21,17 @@ and a pointer to a listbox.
 #include "exampleHelper.h"
 
 #include "gui_freetype_font.h"
+#include "camera.h"
+#include "an8parser.h"
+#include "rc_defines.h"
 #include "rc_stdlib.h"
 #include "rc_gfx.h"
 #include "rc_gfx3D.h"
-#include "camera.h"
-#include "an8parser.h"
+#include "rc_matrix.h"
+#include "rc_geometry.h"
+#include "rc_audio.h"
+#include "rc_net.h"
+#include "rc_video.h"
 
 using namespace irr;
 
@@ -114,7 +120,7 @@ void test_matrix2()
 	double z;
 
 	int m = DimMatrix(NEW_MATRIX, 4, 4);
-	setIdentityMatrix(m, 4);
+	rc_setIdentityMatrix(m, 4);
 	rc_setMatrixTranslation(m, 44, 55, 66);
 	rc_setMatrixRotation(m, 20, 70, 30);
 
@@ -132,7 +138,7 @@ void test_matrix2()
 	std::cout << "!!ROT = " << x << ", " << y << ", " << z << std::endl;
 
 	int m2 = DimMatrix(NEW_MATRIX, 4, 4);
-	setIdentityMatrix(m2, 4);
+	rc_setIdentityMatrix(m2, 4);
 	rc_setMatrixRotation(m2, 11, 12, 14);
 	rc_setMatrixTranslation(m2, 23, 22, 19);
 	rc_setMatrixScale(m2, 2,3,4);
@@ -144,7 +150,7 @@ void test_matrix2()
 
 	int mC = DimMatrix(NEW_MATRIX, 4, 4);
 
-	MultiplyMatrix(m, m2, mC);
+	rc_multiplyMatrix(m, m2, mC);
 
 	std::cout << std::endl << "debug output 3" << std::endl;
 	printRCMatrix(mC);
@@ -154,7 +160,14 @@ void test_matrix2()
 	//printMatrix(m);
 }
 
-int main()
+void rcbasic_init()
+{
+	rc_audio_init();
+    rc_gfx_init();
+    rc_net_init();
+}
+
+int sprite_test()
 {
 
     rcbasic_init();
@@ -167,224 +180,106 @@ int main()
 
 	std::cout << "test start" << std::endl;
 
-	uint32_t canvas1 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
+	uint32_t canvas1 = rc_canvasOpenSpriteLayer(0, 0, 640, 480);
 	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
 
-	rc_setCanvasZ(canvas2, 0);
-
-	rc_setCanvas3D(canvas1, true);
+	rc_setCanvasZ(canvas1, 0);
+	rc_setCanvasZ(canvas2, 1);
 
     std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
     rc_loadFont(fnt, 12);
 
+    int img_a = rc_loadImage("graizor.png");
+    int img_b = rc_loadImage("rcbasic.png");
 
-    int mesh1 = rc_loadMesh("../../media/sydney.md2");
+    rc_setActiveCanvas(canvas1);
+    int spriteA = rc_createSprite(img_a, 64, 64);
+	int walk_animation_left = rc_createSpriteAnimation(spriteA, 4, 8);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 0, 28);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 1, 29);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 2, 30);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 3, 31);
 
-    int actor1 = rc_createMeshActor(mesh1);
-    int actor1_texture = rc_loadImage("../../media/sydney.bmp");
-    int mat = rc_createMaterial();
-    rc_setMaterialTexture(mat, 0, actor1_texture);
-    rc_setMaterialLighting(mat, false);
-	rc_setActorMaterial(actor1, 0, mat);
+	int walk_animation_right = rc_createSpriteAnimation(spriteA, 4, 8);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 0, 0);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 1, 1);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 2, 2);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 3, 3);
 
-	int a_mat = rc_getActorMaterial(actor1, 0);
-	rc_setMaterialLighting(a_mat, true);
+	rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
+	//rc_loopSpriteAnimation(spriteA, -1);
 
-    //rc_setActorTexture(actor1, 0, actor1_texture);
-    //rc_setActorMaterialFlag(actor1, EMF_LIGHTING, false);
+	int spriteB = rc_createSprite(img_b, 96, 96);
+	rc_setSpritePosition(spriteB, 1, 100);
 
-    rc_setActorSolid(actor1, true);
-    rc_setActorCollisionShape(actor1, RC_NODE_SHAPE_TYPE_CAPSULE, 25);
-    rc_translateActor(actor1, 0, 150, 0);
+	//rc_setSpriteSolid(spriteA, true);
+	//rc_setSpriteSolid(spriteB, true);
 
-	int level = rc_loadMeshFromArchive("../../media/map-20kdm2.pk3", "20kdm2.bsp");
-	int actor2 = -1;
-
-	if (level >= 0)
-	{
-		actor2 = rc_createMeshOctreeActor(level);
-		rc_setActorSolid(actor2, true);
-		rc_setActorCollisionShape(actor2, RC_NODE_SHAPE_TYPE_TRIMESH, 0);
-	}
-
-	double ax, ay, az;
-
-	rc_setActiveCanvas(canvas1);
-	rc_setActorPosition(actor1, 1160, 399, 2122);
-	rc_setActorRotation(actor1, 0, 0, 0);
-	//rc_setActorCollisionShape(actor1, rc_actor[actor1].physics.shape_type, 1);
-	//rc_setActorSolid(actor1, true);
-	//rc_setActorMassProperties(actor1, 1, 0, 0, 0);
-	//rc_applyActorTorqueImpulseWorld(actor1, 0, 0, 0);
-
-	rc_setCameraPosition(984, 488, 2303);
-	rc_setCameraRotation(23, 1216, 0);
-
-	int water_mat = rc_createMaterial();
-	rc_setMaterialDiffuseColor(water_mat, rc_rgba(0,0,255,255));
-	rc_setMaterialAmbientColor(water_mat, rc_rgba(0,0,255,255));
-	rc_setMaterialFlag(water_mat, EMF_LIGHTING, false);
-	rc_setMaterialTexture(water_mat, 0, actor1_texture);
-
-	int plane_mesh = rc_createPlaneMesh(500, 500, 50, 50);
-	int water = rc_createWaterActor(plane_mesh, 2, 300, 10);
-
-	rc_setActorMaterial(water, 0, water_mat);
-	//rc_setActorMaterialFlag(water, EMF_LIGHTING, false);
-	rc_setActorVisible(actor2, false);
-
-	rc_translateActor(water, 0, -50, 0);
-
-	bool init = true;
-	int i = 0;
-
-	an8::an8_project p = an8::loadAN8("assets/knight_f6.an8");
-	irr::scene::IAnimatedMesh* test_mesh = an8::loadAN8Scene(device, p, "scene01");
-	irr::scene::IAnimatedMeshSceneNode* node = SceneManager->addAnimatedMeshSceneNode(test_mesh);
-
-	irr::video::SMaterial material;
-	material.setTexture(0, VideoDriver->getTexture("assets/knight_f_texture.bmp"));
-	material.Lighting = false;
-	node->getMaterial(0) = material;
-
-	node->setPosition(rc_actor[water].mesh_node->getAbsolutePosition());
-
-
-
-	//rc_setActorSolid(actor1, true);
+	rc_setSpriteZ(spriteA, 1);
+	rc_setSpriteZ(spriteB, 0);
 
 	while(rc_update())
 	{
-
-		rc_setActorAngularVelocityWorld(actor1, 0, 0, 0);
-
-		if(rc_key(SDLK_p) && init)
-		{
-			//rc_setActorSolid(actor1, true);
-			double x, y, z;
-			rc_getActorLocalInertia(actor1, &x, &y, &z);
-			btVector3 v;
-			double mass = 8;
-			rc_actor[actor1].physics.rigid_body->getPointer()->getCollisionShape()->calculateLocalInertia(mass, v);
-			std::cout << "Set Mass: " << x << ", " << y << ", " << z << std::endl;
-			std::cout << "Set Vect: " << v.getX() << ", " << v.getY() << ", " << v.getZ() << std::endl;
-			//rc_physics3D.world->getPointer()->removeRigidBody(rc_actor[actor1].physics.rigid_body->getPointer());
-			//rc_actor[actor1].physics.rigid_body->getPointer()->setMassProps(mass, v);
-			//rc_physics3D.world->getPointer()->addRigidBody(rc_actor[actor1].physics.rigid_body->getPointer());
-
-
-			rc_setActorMassProperties(actor1, mass, v.getX(), v.getY(), v.getZ());
-			rc_setActorGravity(actor1, 0, -100, 0);
-			//init = false;
-		}
-
-
 		if(rc_key(SDLK_ESCAPE))
 			break;
 
+		if(rc_key(SDLK_1))
+		{
+			rc_setSpriteSolid(spriteA, true);
+			rc_setSpriteSolid(spriteB, true);
+		}
+		else if(rc_key(SDLK_2))
+		{
+			rc_setSpriteSolid(spriteA, false);
+			rc_setSpriteSolid(spriteB, false);
+		}
+		else if(rc_key(SDLK_3))
+		{
+			std::cout << "3" << std::endl;
+			rc_setSpriteAnimationLength(spriteA, walk_animation_left, 1);
+		}
+		else if(rc_key(SDLK_4))
+		{
+			std::cout << "4" << std::endl;
+			rc_setSpriteFrame(spriteA, 21);
+		}
+
+		if(rc_key(SDLK_LEFT))
+		{
+			if(rc_getSpriteAnimation(spriteA)!=walk_animation_left)
+				rc_setSpriteAnimation(spriteA, walk_animation_left, -1);
+		}
+		else if(rc_key(SDLK_RIGHT))
+		{
+			if(rc_getSpriteAnimation(spriteA)!=walk_animation_right)
+				rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
+		}
+
+		int lv = 30;
+		if(rc_key(SDLK_a))
+		{
+			//rc_translateSprite(spriteB, -1, 0);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(-lv, 0));
+		}
+		else if(rc_key(SDLK_d))
+		{
+			//rc_translateSprite(spriteB, 1, 0);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(lv, 0));
+		}
+
 		if(rc_key(SDLK_w))
-        {
-            rc_setActiveCanvas(canvas1);
-            rc_translateCamera(0,0,10);
-        }
-        else if(rc_key(SDLK_s))
-        {
-            rc_setActiveCanvas(canvas1);
-            rc_translateCamera(0,0,-10);
-        }
-
-        if(rc_key(SDLK_a))
-        {
-            rc_setActiveCanvas(canvas1);
-            rc_translateCamera(-10,0,0);
-        }
-        else if(rc_key(SDLK_d))
-        {
-            rc_setActiveCanvas(canvas1);
-            rc_translateCamera(10,0,0);
-        }
-
-        if(rc_key(SDLK_r))
 		{
-			rc_setActiveCanvas(canvas1);
-
-			double crx, cry, crz;
-            rc_getCameraPosition(&crx, &cry, &crz);
-
-            rc_setCameraPosition(crx, cry+10, crz);
-
-			//rc_translateCameraW(0, 10, 0);
+			//rc_translateSprite(spriteB, 0, -1);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0, -lv));
 		}
-		else if(rc_key(SDLK_f))
+		else if(rc_key(SDLK_s))
 		{
-			rc_setActiveCanvas(canvas1);
-			rc_translateCameraW(0, -10, 0);
+			//rc_translateSprite(spriteB, 0, 1);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0,lv));
 		}
 
-
-        if(rc_key(SDLK_UP))
-        {
-            rc_setActiveCanvas(canvas1);
-            rc_rotateCamera(1, 0, 0);
-        }
-        else if(rc_key(SDLK_DOWN))
-        {
-            rc_setActiveCanvas(canvas1);
-			rc_rotateCamera(-1, 0, 0);
-        }
-
-        if(rc_key(SDLK_LEFT))
-        {
-            rc_setActiveCanvas(canvas1);
-
-            double crx, cry, crz;
-            rc_getCameraRotation(&crx, &cry, &crz);
-
-			rc_rotateCamera(-1*crx, 0, 0);
-			rc_rotateCamera(0, -1, 0);
-			rc_rotateCamera(crx, 0, 0);
-        }
-        else if(rc_key(SDLK_RIGHT))
-        {
-            rc_setActiveCanvas(canvas1);
-
-            double crx, cry, crz;
-            rc_getCameraRotation(&crx, &cry, &crz);
-
-			rc_setCameraRotation(crx, cry+1, crz);
-			//rc_rotateCamera(-1*crx, 0, 0);
-			//rc_rotateCamera(0, 1, 0);
-			//rc_rotateCamera(crx, 0, 0);
-        }
-
-        if(rc_key(SDLK_g))
-		{
-			rc_setActorAngularVelocityLocal(actor1, 0, 10, 0);
-			//rc_translateActorWorld(actor1, 0, -5, 0);
-			//rc_applyActorTorqueImpulseLocal(actor1, 0, 30, 0);
-			//rc_applyActorTorqueWorld(actor1, 0, 120, 0);
-			//rc_rotateActor(actor1, 0, -5, 0);
-			//ay += 5;
-			//rc_setActorRotation(actor1, ax, ay, az);
-		}
-
-		if(rc_key(SDLK_b))
-		{
-			rc_setActorLinearVelocityLocal(actor1, 80, 0, 0);
-			//rc_setActorAngularFactor(actor1, 0, 0, 0);
-			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
-		}
-
-		if(rc_key(SDLK_n))
-		{
-			rc_setActorLinearVelocityLocal(actor1, 0, 120, 0);
-			//rc_setActorAngularFactor(actor1, 0, 0, 0);
-			//rc_applyActorCentralForceWorld(actor1, 0, 0, 10);
-		}
-
-
-        drawDebugInfo(canvas2, canvas1);
-
+		//rc_rotateSprite(spriteB, 1);
+		rc_sprite[spriteB].physics.body->SetAngularVelocity(10);
 	}
 
 	std::cout << "test end" << std::endl;
@@ -393,6 +288,309 @@ int main()
 	SDL_Quit();
 	device->drop();
 
+	return 0;
+}
+
+
+int tile_test()
+{
+
+    rcbasic_init();
+
+    rc_windowOpen("testing", 640, 480, false, true);
+
+
+	SDL_Event event;
+	bool quit = false;
+
+	std::cout << "test start" << std::endl;
+
+	uint32_t canvas1 = rc_canvasOpenSpriteLayer(0, 0, 640, 480);
+	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
+
+	uint32_t canvas3 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
+
+	rc_setCanvasZ(canvas1, 0);
+	rc_setCanvasZ(canvas2, 1);
+	rc_setCanvasZ(canvas3, 2);
+
+	rc_setActiveCanvas(canvas3);
+	rc_setColor(rc_rgb(120, 120, 120));
+	rc_drawRectFill(0, 0, 640, 480);
+
+    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
+    rc_loadFont(fnt, 12);
+
+    int img_a = rc_loadImage("graizor.png");
+    int img_b = rc_loadImage("rcbasic.png");
+
+    rc_setActiveCanvas(canvas1);
+    int spriteA = rc_createSprite(img_a, 64, 64);
+	int walk_animation_left = rc_createSpriteAnimation(spriteA, 4, 8);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 0, 28);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 1, 29);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 2, 30);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 3, 31);
+
+	int walk_animation_right = rc_createSpriteAnimation(spriteA, 4, 8);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 0, 0);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 1, 1);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 2, 2);
+	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 3, 3);
+
+	rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
+	//rc_loopSpriteAnimation(spriteA, -1);
+
+	int spriteB = rc_createSprite(img_b, 96, 96);
+	rc_setSpritePosition(spriteB, 1, 100);
+
+	//rc_setSpriteSolid(spriteA, true);
+	//rc_setSpriteSolid(spriteB, true);
+
+	rc_setSpriteZ(spriteA, 1);
+	rc_setSpriteZ(spriteB, 0);
+
+
+	int tile_img = rc_loadImage("tiles2.png");
+
+	std::cout << "img = " << tile_img << std::endl;
+
+	rc_setActiveCanvas(canvas2);
+
+	int tileset = rc_createTileSet(tile_img, 32, 32);
+	int tilemap = rc_createTileMap(tileset, 500, 500);
+
+	rc_fillTile(tilemap, 7, 3, 3, 4, 2);
+
+	rc_setTileAnimationLength(tileset, 7, 2);
+	rc_setTileAnimationSpeed(tileset, 7, 1);
+	rc_setTileAnimationFrame(tileset, 7, 1, 8);
+
+	int offset_x = 0;
+	int offset_y = 0;
+
+
+	while(rc_update())
+	{
+		if(rc_key(SDLK_ESCAPE))
+			break;
+
+		if(rc_key(SDLK_0))
+		{
+			std::cout << "Current Speed = " << rc_getTileAnimationSpeed(tileset, 7) << std::endl;
+		}
+		else if(rc_key(SDLK_1))
+			rc_setTileAnimationSpeed(tileset, 7, rc_getTileAnimationSpeed(tileset, 7)+1);
+
+		if(rc_key(SDLK_UP))
+			offset_y -= 2;
+		else if(rc_key(SDLK_DOWN))
+			offset_y += 2;
+
+		if(rc_key(SDLK_LEFT))
+			offset_x -= 2;
+		else if(rc_key(SDLK_RIGHT))
+			offset_x += 2;
+
+		if(rc_key(SDLK_1))
+		{
+			rc_setSpriteSolid(spriteA, true);
+			rc_setSpriteSolid(spriteB, true);
+		}
+		else if(rc_key(SDLK_2))
+		{
+			rc_setSpriteSolid(spriteA, false);
+			rc_setSpriteSolid(spriteB, false);
+		}
+		else if(rc_key(SDLK_3))
+		{
+			std::cout << "3" << std::endl;
+			rc_setSpriteAnimationLength(spriteA, walk_animation_left, 1);
+		}
+		else if(rc_key(SDLK_4))
+		{
+			std::cout << "4" << std::endl;
+			rc_setSpriteFrame(spriteA, 21);
+		}
+
+		if(rc_key(SDLK_a))
+		{
+			if(rc_getSpriteAnimation(spriteA)!=walk_animation_left)
+				rc_setSpriteAnimation(spriteA, walk_animation_left, -1);
+		}
+		else if(rc_key(SDLK_d))
+		{
+			if(rc_getSpriteAnimation(spriteA)!=walk_animation_right)
+				rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
+		}
+
+		int lv = 30;
+		if(rc_key(SDLK_a))
+		{
+			//rc_translateSprite(spriteB, -1, 0);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(-lv, 0));
+		}
+		else if(rc_key(SDLK_d))
+		{
+			//rc_translateSprite(spriteB, 1, 0);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(lv, 0));
+		}
+
+		if(rc_key(SDLK_w))
+		{
+			//rc_translateSprite(spriteB, 0, -1);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0, -lv));
+		}
+		else if(rc_key(SDLK_s))
+		{
+			//rc_translateSprite(spriteB, 0, 1);
+			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0,lv));
+		}
+
+		//rc_rotateSprite(spriteB, 1);
+		rc_sprite[spriteB].physics.body->SetAngularVelocity(10);
+
+		rc_setCanvasOffset(canvas1, offset_x, offset_y);
+		rc_drawTileMap(tilemap, 0, 0, 640, 480, offset_x, offset_y);
+	}
+
+	std::cout << "test end" << std::endl;
+
+	SDL_DestroyWindow(rc_window);
+	SDL_Quit();
+	device->drop();
+
+	return 0;
+}
+
+
+void control3D(double cam_speed)
+{
+
+	if(rc_key(SDLK_w))
+		rc_translateCamera(0, 0, cam_speed);
+
+	if(rc_key(SDLK_s))
+		rc_translateCamera(0, 0, -cam_speed);
+
+	if(rc_key(SDLK_a))
+		rc_translateCamera(-cam_speed, 0, 0);
+
+	if(rc_key(SDLK_d))
+		rc_translateCamera(cam_speed, 0, 0);
+
+	if(rc_key(SDLK_UP))
+		rc_rotateCamera(cam_speed, 0, 0);
+
+	if(rc_key(SDLK_DOWN))
+		rc_rotateCamera(-cam_speed, 0, 0);
+
+	if(rc_key(SDLK_LEFT))
+	{
+		double crx, cry, crz;
+		rc_getCameraRotation(&crx, &cry, &crz);
+		rc_setCameraRotation(crx, cry-cam_speed, crz);
+		//rc_rotateCamera(0, -cam_speed, 0);
+	}
+
+	if(rc_key(SDLK_RIGHT))
+	{
+		double crx, cry, crz;
+		rc_getCameraRotation(&crx, &cry, &crz);
+
+		rc_setCameraRotation(crx, cry+cam_speed, crz);
+		//rc_rotateCamera(0, cam_speed, 0);
+	}
+}
+
+int actor_test()
+{
+
+    rcbasic_init();
+
+    rc_windowOpen("testing", 640, 480, false, true);
+
+
+	SDL_Event event;
+	bool quit = false;
+
+	std::cout << "test start" << std::endl;
+
+	uint32_t canvas1 = rc_canvasOpen3D(0, 0, 640, 480, 0);
+	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
+
+	rc_setCanvasZ(canvas1, 0);
+	rc_setCanvasZ(canvas2, 1);
+
+    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
+    rc_loadFont(fnt, 12);
+
+    std::string media_path = "../../media/";
+    int q3map_mesh = rc_loadMeshFromArchive(media_path + "map-20kdm2.pk3", "20kdm2.bsp");
+    int q3map = rc_createOctreeActor(q3map_mesh);
+
+    int tst_mesh = rc_loadMesh(media_path + "dwarf.x");
+    int tst_actor = rc_createAnimatedActor(tst_mesh);
+
+    int tst_texture = rc_loadImage(media_path + "dwarf.jpg");
+    rc_setActorTexture(tst_actor, 0, tst_texture);
+    int tst_material = rc_getActorMaterial(tst_actor, 0);
+    rc_setMaterialLighting(tst_material, false);
+
+    int a1 = rc_createActorAnimation(tst_actor, 0, 8, 24);
+    //rc_setActorAnimation(tst_actor, a1, 0);
+
+    rc_setActorPosition(q3map, -1350,-130,-1400);
+    rc_setActorPosition(tst_actor, -90,-15,-140);
+
+    rc_setActiveCanvas(canvas1);
+
+	double cam_speed = 3;
+
+	rc_rotateCamera(0, 180, 0);
+	irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[tst_actor].mesh_node;
+	std::cout << "mesh type = " << ((int)node->getMesh()->getMeshType()) << std::endl;
+	//std::cout << "mesh joint_used = " << ((int)node->) << std::endl;
+
+	node->setDebugDataVisible(irr::scene::EDS_MESH_WIRE_OVERLAY);
+
+	while(rc_update())
+	{
+		if(rc_key(SDLK_ESCAPE))
+			break;
+
+		if(rc_key(SDLK_SPACE))
+			rc_setActorPosition(tst_actor, 0, 0, 0);
+
+		if(rc_key(SDLK_1))
+			rc_setActorAnimation(tst_actor, a1, 2);
+
+		if(!rc_actorAnimationIsPlaying(tst_actor))
+			rc_setActorFrame(tst_actor, 0);
+
+		if(rc_key(SDLK_2) && (!rc_actorIsInTransition(tst_actor)))
+		{
+			rc_startActorTransition(tst_actor, 8, 10);
+			//rc_setActorAnimationSpeed(tst_actor, a1, rc_getActorAnimationSpeed(tst_actor, a1)+1);
+		}
+
+		control3D(cam_speed);
+	}
+
+	std::cout << "test end" << std::endl;
+
+	SDL_DestroyWindow(rc_window);
+	SDL_Quit();
+	device->drop();
+
+	return 0;
+}
+
+int main()
+{
+	//actor_test();
+	//sprite_test();
+	tile_test();
 	return 0;
 }
 

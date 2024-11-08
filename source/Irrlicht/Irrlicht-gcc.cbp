@@ -259,6 +259,7 @@
 					<Add directory="jpeglib" />
 				</Compiler>
 				<Linker>
+					<Add library="EGL" />
 					<Add library="GL" />
 					<Add library="Xxf86vm" />
 					<Add directory="/usr/X11R6/lib" />
@@ -284,6 +285,7 @@
 					<Add directory="jpeglib" />
 				</Compiler>
 				<Linker>
+					<Add library="EGL" />
 					<Add library="GL" />
 					<Add library="Xxf86vm" />
 					<Add directory="/usr/X11R6/lib" />
@@ -403,13 +405,11 @@
 			<Add option="-fno-rtti" />
 			<Add option="-fstrict-aliasing" />
 			<Add option="-U__STRICT_ANSI__" />
+			<Add option="`wx-config --cxxflags`" />
 			<Add option="-D_IRR_COMPILE_WITH_OGLES2_" />
 			<Add option="-D_IRR_COMPILE_WITH_SDL_DEVICE_" />
 			<Add option="-D_IRR_COMPILE_WITH_OPENGL_" />
 		</Compiler>
-		<Linker>
-			<Add option="-lSDL2" />
-		</Linker>
 		<Unit filename="../../changes.txt" />
 		<Unit filename="../../include/CDynamicMeshBuffer.h" />
 		<Unit filename="../../include/CIndexBuffer.h" />
@@ -786,6 +786,8 @@
 		<Unit filename="CIrrDeviceStub.h" />
 		<Unit filename="CIrrDeviceWin32.cpp" />
 		<Unit filename="CIrrDeviceWin32.h" />
+		<Unit filename="CIrrDeviceWx.cpp" />
+		<Unit filename="CIrrDeviceWx.h" />
 		<Unit filename="CIrrMeshFileLoader.cpp" />
 		<Unit filename="CIrrMeshFileLoader.h" />
 		<Unit filename="CIrrMeshWriter.cpp" />

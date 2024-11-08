@@ -500,7 +500,10 @@ COGLES2Driver::~COGLES2Driver()
 
 		#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
 			if ( DeviceType == EIDT_SDL )
-				glFrontFace(GL_CW);
+			{
+				SDL_GL_MakeCurrent(SDLDevice->window, SDLDevice->context);
+				//glFrontFace(GL_CW);
+			}
 		#endif
 
 		clearBuffers(clearFlag, clearColor, clearDepth, clearStencil);

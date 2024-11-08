@@ -1751,7 +1751,7 @@ void CSceneManager::drawAll()
 #endif
 		GuiNodeList.set_used(0);
 	}
-	
+
 
 	if (LightManager)
 		LightManager->OnPostRender();

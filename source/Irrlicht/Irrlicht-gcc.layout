@@ -1,25 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_layout_file>
 	<FileVersion major="1" minor="0" />
-	<ActiveTarget name="All" />
-	<File name="../../include/EDriverFeatures.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="130" />
-		</Cursor>
-	</File>
-	<File name="COpenGLCommon.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1246" topLine="177" />
-		</Cursor>
-	</File>
+	<ActiveTarget name="Linux - Release - accurate math - shared" />
 	<File name="../../include/IVideoDriver.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="513" topLine="0" />
-		</Cursor>
-	</File>
-	<File name="COGLES2Driver.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="15879" topLine="393" />
+			<Cursor1 position="71851" topLine="1512" />
 		</Cursor>
 	</File>
 	<File name="COGLES2MaterialRenderer.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -27,44 +12,9 @@
 			<Cursor1 position="6059" topLine="197" />
 		</Cursor>
 	</File>
-	<File name="os.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="COpenGLCoreCacheHandler.h" open="0" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="732" topLine="450" />
-		</Cursor>
-	</File>
-	<File name="COGLES2Driver.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="93024" topLine="2589" />
-		</Cursor>
-	</File>
-	<File name="COGLESDriver.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="4993" topLine="150" />
-		</Cursor>
-	</File>
-	<File name="CNullDriver.cpp" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="28605" topLine="341" />
-		</Cursor>
-	</File>
-	<File name="COGLES2Renderer2D.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="5" />
-		</Cursor>
-	</File>
-	<File name="IBurningShader.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="0" topLine="192" />
-		</Cursor>
-	</File>
-	<File name="COGLES2Common.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="1717" topLine="40" />
-		</Cursor>
-	</File>
-	<File name="CIrrDeviceLinux.cpp" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
-		<Cursor>
-			<Cursor1 position="19244" topLine="165" />
+			<Cursor1 position="1492" topLine="634" />
 		</Cursor>
 	</File>
 	<File name="../../include/irrlicht.h" open="0" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -72,24 +22,29 @@
 			<Cursor1 position="12934" topLine="338" />
 		</Cursor>
 	</File>
-	<File name="../../include/IrrCompileConfig.h" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="Irrlicht.cpp" open="0" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5643" topLine="123" />
+			<Cursor1 position="3694" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="COpenGLDriver.cpp" open="0" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="COpenGLDriver.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="11321" topLine="207" />
+			<Cursor1 position="22622" topLine="519" />
 		</Cursor>
 	</File>
-	<File name="CWebGL1Driver.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="CIrrDeviceLinux.cpp" open="1" top="0" tabpos="13" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="356" topLine="0" />
+			<Cursor1 position="915" topLine="17" />
 		</Cursor>
 	</File>
-	<File name="CWebGL1Driver.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="COGLES2Driver.cpp" open="1" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="200" topLine="0" />
+			<Cursor1 position="98422" topLine="2939" />
+		</Cursor>
+	</File>
+	<File name="COpenGLCommon.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1246" topLine="177" />
 		</Cursor>
 	</File>
 	<File name="../../include/IrrlichtDevice.h" open="0" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -97,9 +52,84 @@
 			<Cursor1 position="9968" topLine="261" />
 		</Cursor>
 	</File>
-	<File name="Irrlicht.cpp" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="CEGLManager.h" open="1" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="3533" topLine="109" />
+			<Cursor1 position="317" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="CIrrDeviceStub.cpp" open="0" top="0" tabpos="19" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2447" topLine="90" />
+		</Cursor>
+	</File>
+	<File name="libpng/pngrtran.c" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="766" topLine="72" />
+		</Cursor>
+	</File>
+	<File name="COGLESDriver.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4993" topLine="150" />
+		</Cursor>
+	</File>
+	<File name="../../include/EDriverFeatures.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="130" />
+		</Cursor>
+	</File>
+	<File name="COGLES2Driver.h" open="1" top="0" tabpos="4" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="844" topLine="31" />
+		</Cursor>
+	</File>
+	<File name="../../include/ITexture.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="13792" topLine="292" />
+		</Cursor>
+	</File>
+	<File name="os.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="732" topLine="450" />
+		</Cursor>
+	</File>
+	<File name="CIrrDeviceWx.cpp" open="0" top="0" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4041" topLine="93" />
+		</Cursor>
+	</File>
+	<File name="COpenGLCoreTexture.h" open="1" top="0" tabpos="6" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="10301" topLine="294" />
+		</Cursor>
+	</File>
+	<File name="CNullDriver.cpp" open="0" top="0" tabpos="14" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="21626" topLine="810" />
+		</Cursor>
+	</File>
+	<File name="../../include/EDeviceTypes.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="2835" topLine="45" />
+		</Cursor>
+	</File>
+	<File name="COGLESDriver.h" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="15938" topLine="12" />
+		</Cursor>
+	</File>
+	<File name="../../include/ISceneNode.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="18278" topLine="564" />
+		</Cursor>
+	</File>
+	<File name="CIrrDeviceWx.h" open="0" top="0" tabpos="3" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="6077" topLine="223" />
+		</Cursor>
+	</File>
+	<File name="../../include/IrrCompileConfig.h" open="1" top="0" tabpos="1" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="4698" topLine="100" />
 		</Cursor>
 	</File>
 	<File name="COGLES2FixedPipelineRenderer.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
@@ -107,24 +137,81 @@
 			<Cursor1 position="9292" topLine="6" />
 		</Cursor>
 	</File>
-	<File name="CIrrDeviceSDL.cpp" open="1" top="0" tabpos="12" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="CWebGL1Driver.cpp" open="1" top="0" tabpos="7" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="7372" topLine="152" />
+			<Cursor1 position="202" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="COpenGLDriver.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="CSceneManager.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="447" topLine="0" />
+			<Cursor1 position="6130" topLine="225" />
 		</Cursor>
+	</File>
+	<File name="COGLES2Common.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1717" topLine="40" />
+		</Cursor>
+	</File>
+	<File name="COGLES2Renderer2D.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="5" />
+		</Cursor>
+	</File>
+	<File name="CIrrDeviceSDL.cpp" open="1" top="1" tabpos="2" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="3823" topLine="197" />
+		</Cursor>
+		<Folding>
+			<Collapse line="153" />
+		</Folding>
+	</File>
+	<File name="CD3D9Texture.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="14666" topLine="220" />
+		</Cursor>
+	</File>
+	<File name="IBurningShader.cpp" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="0" topLine="192" />
+		</Cursor>
+	</File>
+	<File name="CAnimatedMeshSceneNode.cpp" open="0" top="0" tabpos="20" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="27702" topLine="841" />
+		</Cursor>
+		<Folding>
+			<Collapse line="302" />
+			<Collapse line="352" />
+		</Folding>
 	</File>
 	<File name="../../changes.txt" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
 			<Cursor1 position="110" topLine="0" />
 		</Cursor>
 	</File>
-	<File name="CIrrDeviceSDL.h" open="1" top="0" tabpos="11" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+	<File name="COpenGLDriver.cpp" open="1" top="0" tabpos="8" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
 		<Cursor>
-			<Cursor1 position="5533" topLine="196" />
+			<Cursor1 position="142784" topLine="4501" />
+		</Cursor>
+	</File>
+	<File name="CWebGL1Driver.h" open="1" top="0" tabpos="9" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="284" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="../../include/aabbox3d.h" open="0" top="0" tabpos="0" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="437" topLine="0" />
+		</Cursor>
+	</File>
+	<File name="CIrrDeviceSDL.h" open="1" top="0" tabpos="10" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="597" topLine="15" />
+		</Cursor>
+	</File>
+	<File name="../../include/SIrrCreationParameters.h" open="1" top="0" tabpos="5" split="0" active="1" splitpos="0" zoom_1="0" zoom_2="0">
+		<Cursor>
+			<Cursor1 position="1706" topLine="42" />
 		</Cursor>
 	</File>
 </CodeBlocks_layout_file>

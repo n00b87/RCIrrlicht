@@ -27,7 +27,7 @@ else
   CXXFLAGS += -O3
 endif
 ifdef EMSCRIPTEN
-  CXXFLAGS += -std=gnu++11 -U__STRICT_ANSI__
+  CXXFLAGS += -std=gnu++11 -U__STRICT_ANSI__ --use-port=sdl2
 endif
 
 ifdef EMSCRIPTEN
