@@ -83,7 +83,7 @@ emscripten: EMSCRIPTEN=1
 
 CXXINCS = -I../../include -Izlib -Ijpeglib -Ilibpng
 CPPFLAGS += $(CXXINCS) -DIRRLICHT_EXPORTS=1
-CXXFLAGS += -Wall -pipe -fno-exceptions -fno-rtti -sUSE_SDL=2 -sFULL_ES2=1
+CXXFLAGS += -Wall -pipe -fno-exceptions -fno-rtti
 #CXXFLAGS += -std=gnu++11 -U__STRICT_ANSI__
 ifndef NDEBUG
 CPPFLAGS += -g -D_DEBUG
@@ -107,12 +107,17 @@ sharedlib sharedlib_osx: CPPFLAGS += -fPIC
 sharedlib: LDFLAGS += -fPIC
 
 #multilib handling
-ifeq ($(HOSTTYPE), x86_64)
-LIBSELECT=64
+BITS := $(shell getconf LONG_BIT)
+ifneq ($(BITS), 32)
+	LIBSELECT := $(BITS)
 endif
 
 #Linux specific options
 staticlib sharedlib install: SYSTEM = Linux
+STATIC_LIB = libIrrlicht.a
+LIB_PATH = ../../lib/$(SYSTEM)
+PREFIX ?= /usr/local
+INSTALL_DIR ?= $(PREFIX)/lib$(LIBSELECT)
 sharedlib install: SHARED_LIB = libIrrlicht.so
 sharedlib: LDFLAGS += -L/usr/X11R6/lib$(LIBSELECT) -lGL -lXxf86vm
 staticlib sharedlib: CXXINCS += -I/usr/X11R6/include
@@ -139,7 +144,6 @@ staticlib_win32: CPPFLAGS += -D_IRR_STATIC_LIB_
 
 #emscripten specific options
 staticlib_emscripten: SYSTEM = emscripten
-staticlib_emscripten: CPPFLAGS += 
 
 
 # You might want to disable features you don't need in Irrlicht here to reduce Irrlicht library.
@@ -237,7 +241,7 @@ help:
 	@echo " sharedlib: Build shared library Irrlicht.so for Linux"
 	@echo " staticlib: Build static library Irrlicht.a for Linux"
 	@echo " emscripten: Build static emscripen library on Linux"
-	@echo " install: Copy shared library to /usr/local/lib"
+	@echo " install: Copy shared library to $(INSTALL_DIR)"
 	@echo ""
 	@echo " sharedlib_win32: Build shared library Irrlicht.dll for Windows"
 	@echo " staticlib_win32: Build static library Irrlicht.a for Windows"

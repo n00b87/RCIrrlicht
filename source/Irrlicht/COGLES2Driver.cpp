@@ -25,15 +25,6 @@
 #include "EProfileIDs.h"
 #include "IProfiler.h"
 
-#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-#ifdef _IRR_ANDROID_PLATFORM_
-	#include "SDL.h"
-#else
-	#include <SDL2/SDL.h>
-#endif
-#include "CIrrDeviceSDL.h"
-#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
-
 #ifdef _IRR_COMPILE_WITH_ANDROID_DEVICE_
 #include "android_native_app_glue.h"
 #endif
@@ -43,61 +34,6 @@ namespace irr
 namespace video
 {
 
-#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-COGLES2Driver::COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device) :
-	CNullDriver(io, params.WindowSize), COGLES2ExtensionHandler(), CacheHandler(0),
-	Params(params), ResetRenderStates(true), LockRenderStateMode(false), AntiAlias(params.AntiAlias),
-	MaterialRenderer2DActive(0), MaterialRenderer2DTexture(0), MaterialRenderer2DNoTexture(0),
-	CurrentRenderMode(ERM_NONE), Transformation3DChanged(true),
-	OGLES2ShaderPath(params.OGLES2ShaderPath),
-	ColorFormat(ECF_R8G8B8), SDLDevice(device), ContextManager(0), DeviceType(EIDT_SDL)
-{
-#ifdef _DEBUG
-	setDebugName("COGLES2Driver");
-#endif
-
-	IRR_PROFILE(
-		static bool initProfile = false;
-		if (!initProfile )
-		{
-			initProfile = true;
-			getProfiler().add(EPID_ES2_END_SCENE, L"endScene", L"ES2");
-			getProfiler().add(EPID_ES2_BEGIN_SCENE, L"beginScene", L"ES2");
-			getProfiler().add(EPID_ES2_UPDATE_VERTEX_HW_BUF, L"upVertBuf", L"ES2");
-			getProfiler().add(EPID_ES2_UPDATE_INDEX_HW_BUF, L"upIdxBuf", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_PRIMITIVES, L"drawPrim", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_2DIMAGE, L"draw2dImg", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_2DIMAGE_BATCH, L"draw2dImgB", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_2DRECTANGLE, L"draw2dRect", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_2DLINE, L"draw2dLine", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_3DLINE, L"draw3dLine", L"ES2");
-			getProfiler().add(EPID_ES2_SET_RENDERSTATE_2D, L"rstate2d", L"ES2");
-			getProfiler().add(EPID_ES2_SET_RENDERSTATE_3D, L"rstate3d", L"ES2");
-			getProfiler().add(EPID_ES2_SET_RENDERSTATE_BASIC, L"rstateBasic", L"ES2");
-			getProfiler().add(EPID_ES2_SET_RENDERSTATE_TEXTURE, L"rstateTex", L"ES2");
-			getProfiler().add(EPID_ES2_DRAW_SHADOW, L"shadows", L"ES2");
-		}
- 	)
-
- 	SDLDevice->context = SDL_GL_CreateContext(SDLDevice->window);
- 	if(SDLDevice->context == NULL)
-        os::Printer::log("Context Failed: ", SDL_GetError());
-    else
-    {
-        os::Printer::log("Context Created");
-        SDL_GL_MakeCurrent(SDLDevice->window, SDLDevice->context);
-    }
-
- 	//SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
-
-	//SDL_Renderer *renderer = SDL_CreateRenderer(SDLDevice->window, -1,
-	//	SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE);
-
-	//SDL_RendererInfo rendererInfo;
-	//SDL_GetRendererInfo(renderer, &rendererInfo);
-
-}
-#else
 COGLES2Driver::COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager) :
 	CNullDriver(io, params.WindowSize), COGLES2ExtensionHandler(), CacheHandler(0),
 	Params(params), ResetRenderStates(true), LockRenderStateMode(false), AntiAlias(params.AntiAlias),
@@ -141,7 +77,6 @@ COGLES2Driver::COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFil
 	ExposedData = ContextManager->getContext();
 	ContextManager->activateContext(ExposedData, false);
 }
-#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
 
 COGLES2Driver::~COGLES2Driver()
 {
@@ -167,10 +102,6 @@ COGLES2Driver::~COGLES2Driver()
 		ContextManager->terminate();
 		ContextManager->drop();
 	}
-
-	#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-	SDL_GL_DeleteContext(SDLDevice->window);
-	#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
 }
 
 	bool COGLES2Driver::genericDriverInit(const core::dimension2d<u32>& screenSize, bool stencilBuffer)
@@ -180,7 +111,6 @@ COGLES2Driver::~COGLES2Driver()
 
 		// print renderer information
 		VendorName = glGetString(GL_VENDOR);
-		os::Printer::log("GL_STRING");
 		os::Printer::log(VendorName.c_str(), ELL_INFORMATION);
 
 		// load extensions
@@ -498,14 +428,6 @@ COGLES2Driver::~COGLES2Driver()
 		if (ContextManager)
 			ContextManager->activateContext(videoData, true);
 
-		#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
-			if ( DeviceType == EIDT_SDL )
-			{
-				SDL_GL_MakeCurrent(SDLDevice->window, SDLDevice->context);
-				//glFrontFace(GL_CW);
-			}
-		#endif
-
 		clearBuffers(clearFlag, clearColor, clearDepth, clearStencil);
 
 		return true;
@@ -521,15 +443,6 @@ COGLES2Driver::~COGLES2Driver()
 
 		if (ContextManager)
 			return ContextManager->swapBuffers();
-
-		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			if ( DeviceType == EIDT_SDL )
-			{
-				//SDL_GL_SwapWindow(SDLDevice->window);
-				SDLDevice->renderSwap();
-				return true;
-			}
-		#endif
 
 		return false;
 	}
@@ -2173,11 +2086,14 @@ COGLES2Driver::~COGLES2Driver()
 		return 8;
 	}
 
-	void COGLES2Driver::setViewPort(const core::rect<s32>& area)
+	void COGLES2Driver::setViewPort(const core::rect<s32>& area, bool clipToRenderTarget)
 	{
 		core::rect<s32> vp = area;
-		core::rect<s32> rendert(0, 0, getCurrentRenderTargetSize().Width, getCurrentRenderTargetSize().Height);
-		vp.clipAgainst(rendert);
+		if ( clipToRenderTarget )
+		{
+			core::rect<s32> rendert(0, 0, getCurrentRenderTargetSize().Width, getCurrentRenderTargetSize().Height);
+			vp.clipAgainst(rendert);
+		}
 
 		if (vp.getHeight() > 0 && vp.getWidth() > 0)
 			CacheHandler->setViewport(vp.UpperLeftCorner.X, getCurrentRenderTargetSize().Height - vp.UpperLeftCorner.Y - vp.getHeight(), vp.getWidth(), vp.getHeight());
@@ -2547,12 +2463,6 @@ COGLES2Driver::~COGLES2Driver()
 
 		if (target)
 		{
-		    //set manual depth texture
-
-		    //ITexture* depthTexture = addRenderTargetTexture(texture->getSize(), "IRR_DEPTH_STENCIL", video::ECF_D24S8);
-
-		    //-----------------------------
-
 			COGLES2RenderTarget* renderTarget = static_cast<COGLES2RenderTarget*>(target);
 
 			CacheHandler->setFBO(renderTarget->getBufferID());
@@ -3116,18 +3026,6 @@ class IVideoDriver;
 class IContextManager;
 #endif
 
-#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device)
-{
-#ifdef _IRR_COMPILE_WITH_OGLES2_
-	COGLES2Driver* driver = new COGLES2Driver(params, io, device);
-	driver->genericDriverInit(params.WindowSize, params.Stencilbuffer);	// don't call in constructor, it uses virtual function calls of driver
-	return driver;
-#else
-	return 0;
-#endif //  _IRR_COMPILE_WITH_OGLES2_
-}
-#else
 IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager)
 {
 #ifdef _IRR_COMPILE_WITH_OGLES2_
@@ -3138,7 +3036,6 @@ IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::
 	return 0;
 #endif //  _IRR_COMPILE_WITH_OGLES2_
 }
-#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
 
 } // end namespace
 } // end namespace

@@ -247,7 +247,6 @@ bool COGLES2MaterialRenderer::createShader(GLenum shaderType, const char* shader
 
 			return false;
 		}
-		os::Printer::log("GLSL shader successfully compiled: ");
 
 		glAttachShader(Program, shaderHandle);
 	}

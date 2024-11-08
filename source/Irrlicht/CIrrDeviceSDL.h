@@ -4,11 +4,10 @@
 // This device code is based on the original SDL device implementation
 // contributed by Shane Parker (sirshane).
 
-#ifndef __C_IRR_DEVICE_SDL_H_INCLUDED__
-#define __C_IRR_DEVICE_SDL_H_INCLUDED__
+#ifndef IRR_C_IRR_DEVICE_SDL_H_INCLUDED
+#define IRR_C_IRR_DEVICE_SDL_H_INCLUDED
 
 #include "IrrCompileConfig.h"
-
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 
@@ -17,13 +16,12 @@
 #include "IImagePresenter.h"
 #include "ICursorControl.h"
 
-#ifdef _IRR_ANDROID_PLATFORM_
-	#include "SDL.h"
-	#include "SDL_syswm.h"
-#else
-	#include <SDL2/SDL.h>
-	#include <SDL2/SDL_syswm.h>
+#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+#include <emscripten/html5.h>
 #endif
+
+#include <SDL/SDL.h>
+#include <SDL/SDL_syswm.h>
 
 namespace irr
 {
@@ -32,9 +30,6 @@ namespace irr
 	{
 	public:
 
-	    SDL_Window* window;
-		SDL_GLContext context;
-
 		//! constructor
 		CIrrDeviceSDL(const SIrrlichtCreationParameters& param);
 
@@ -42,71 +37,70 @@ namespace irr
 		virtual ~CIrrDeviceSDL();
 
 		//! runs the device. Returns false if device wants to be deleted
-		virtual bool run();
+		virtual bool run() IRR_OVERRIDE;
 
 		//! pause execution temporarily
-		virtual void yield();
+		virtual void yield() IRR_OVERRIDE;
 
 		//! pause execution for a specified time
-		virtual void sleep(u32 timeMs, bool pauseTimer);
+		virtual void sleep(u32 timeMs, bool pauseTimer) IRR_OVERRIDE;
 
 		//! sets the caption of the window
-		virtual void setWindowCaption(const wchar_t* text);
+		virtual void setWindowCaption(const wchar_t* text) IRR_OVERRIDE;
 
 		//! returns if window is active. if not, nothing need to be drawn
-		virtual bool isWindowActive() const;
+		virtual bool isWindowActive() const IRR_OVERRIDE;
 
 		//! returns if window has focus.
-		bool isWindowFocused() const;
+		bool isWindowFocused() const IRR_OVERRIDE;
 
 		//! returns if window is minimized.
-		bool isWindowMinimized() const;
+		bool isWindowMinimized() const IRR_OVERRIDE;
 
 		//! returns color format of the window.
-		video::ECOLOR_FORMAT getColorFormat() const;
+		video::ECOLOR_FORMAT getColorFormat() const IRR_OVERRIDE;
 
 		//! presents a surface in the client area
-		virtual bool present(video::IImage* surface, void* windowId=0, core::rect<s32>* src=0);
+		virtual bool present(video::IImage* surface, void* windowId=0, core::rect<s32>* src=0) IRR_OVERRIDE;
 
 		//! notifies the device that it should close itself
-		virtual void closeDevice();
+		virtual void closeDevice() IRR_OVERRIDE;
 
 		//! \return Returns a pointer to a list with all video modes supported
-		video::IVideoModeList* getVideoModeList();
+		virtual video::IVideoModeList* getVideoModeList() IRR_OVERRIDE;
 
 		//! Sets if the window should be resizable in windowed mode.
-		virtual void setResizable(bool resize=false);
+		virtual void setResizable(bool resize=false) IRR_OVERRIDE;
 
 		//! Minimizes the window.
-		virtual void minimizeWindow();
+		virtual void minimizeWindow() IRR_OVERRIDE;
 
 		//! Maximizes the window.
-		virtual void maximizeWindow();
+		virtual void maximizeWindow() IRR_OVERRIDE;
 
 		//! Restores the window size.
-		virtual void restoreWindow();
+		virtual void restoreWindow() IRR_OVERRIDE;
 
-		//! Get the position of the frame on-screen
-		virtual core::position2di getWindowPosition();
+		//! Checks if the Irrlicht window is running in fullscreen mode
+		/** \return True if window is fullscreen. */
+		virtual bool isFullscreen() const IRR_OVERRIDE;
+
+		//! Get the position of this window on screen
+		virtual core::position2di getWindowPosition() IRR_OVERRIDE;
 
 		//! Activate any joysticks, and generate events for them.
-		virtual bool activateJoysticks(core::array<SJoystickInfo> & joystickInfo);
+		virtual bool activateJoysticks(core::array<SJoystickInfo> & joystickInfo) IRR_OVERRIDE;
 
 		//! Set the current Gamma Value for the Display
-		virtual bool setGammaRamp( f32 red, f32 green, f32 blue, f32 brightness, f32 contrast );
+		virtual bool setGammaRamp( f32 red, f32 green, f32 blue, f32 brightness, f32 contrast ) IRR_OVERRIDE;
 
 		//! Get the current Gamma Value for the Display
-		virtual bool getGammaRamp( f32 &red, f32 &green, f32 &blue, f32 &brightness, f32 &contrast );
+		virtual bool getGammaRamp( f32 &red, f32 &green, f32 &blue, f32 &brightness, f32 &contrast ) IRR_OVERRIDE;
 
 		//! Get the device type
-		virtual E_DEVICE_TYPE getType() const
+		virtual E_DEVICE_TYPE getType() const IRR_OVERRIDE
 		{
-				return EIDT_SDL;
-		}
-
-		virtual void renderSwap()
-		{
-		    SDL_GL_SwapWindow(this->window);
+			return EIDT_SDL;
 		}
 
 		//! Implementation of the linux cursor control
@@ -120,79 +114,103 @@ namespace irr
 			}
 
 			//! Changes the visible state of the mouse cursor.
-			virtual void setVisible(bool visible)
+			virtual void setVisible(bool visible) IRR_OVERRIDE
 			{
 				IsVisible = visible;
 				if ( visible )
 					SDL_ShowCursor( SDL_ENABLE );
 				else
+				{
 					SDL_ShowCursor( SDL_DISABLE );
+				}
 			}
 
 			//! Returns if the cursor is currently visible.
-			virtual bool isVisible() const
+			virtual bool isVisible() const IRR_OVERRIDE
 			{
 				return IsVisible;
 			}
 
 			//! Sets the new position of the cursor.
-			virtual void setPosition(const core::position2d<f32> &pos)
+			virtual void setPosition(const core::position2d<f32> &pos) IRR_OVERRIDE
 			{
 				setPosition(pos.X, pos.Y);
 			}
 
 			//! Sets the new position of the cursor.
-			virtual void setPosition(f32 x, f32 y)
+			virtual void setPosition(f32 x, f32 y) IRR_OVERRIDE
 			{
 				setPosition((s32)(x*Device->Width), (s32)(y*Device->Height));
 			}
 
 			//! Sets the new position of the cursor.
-			virtual void setPosition(const core::position2d<s32> &pos)
+			virtual void setPosition(const core::position2d<s32> &pos) IRR_OVERRIDE
 			{
 				setPosition(pos.X, pos.Y);
 			}
 
 			//! Sets the new position of the cursor.
-			virtual void setPosition(s32 x, s32 y)
+			virtual void setPosition(s32 x, s32 y) IRR_OVERRIDE
 			{
-				SDL_WarpMouseInWindow( Device->window, x, y );
+				SDL_WarpMouse( x, y );
+				CursorPos.X = x;
+				CursorPos.Y = y;
 			}
 
 			//! Returns the current position of the mouse cursor.
-			virtual const core::position2d<s32>& getPosition()
+			virtual const core::position2d<s32>& getPosition(bool updateCursor) IRR_OVERRIDE
 			{
-				updateCursorPos();
+				if ( updateCursor )
+					updateCursorPos();
 				return CursorPos;
 			}
 
 			//! Returns the current position of the mouse cursor.
-			virtual core::position2d<f32> getRelativePosition()
+			virtual core::position2d<f32> getRelativePosition(bool updateCursor) IRR_OVERRIDE
 			{
-				updateCursorPos();
+				if ( updateCursor )
+					updateCursorPos();
 				return core::position2d<f32>(CursorPos.X / (f32)Device->Width,
 					CursorPos.Y / (f32)Device->Height);
 			}
 
-			virtual void setReferenceRect(core::rect<s32>* rect=0)
+			virtual void setReferenceRect(core::rect<s32>* rect=0) IRR_OVERRIDE
 			{
+			}
+
+			virtual bool getReferenceRect(core::rect<s32>& rect) IRR_OVERRIDE
+			{ 
+				rect.UpperLeftCorner = core::vector2di(0,0);
+				rect.LowerRightCorner.X = (irr::s32)Device->Width;
+				rect.LowerRightCorner.Y = (irr::s32)Device->Height;
+				return false;
 			}
 
 		private:
 
 			void updateCursorPos()
 			{
+#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+				EmscriptenPointerlockChangeEvent pointerlockStatus; // let's hope that test is not expensive ...
+				if ( emscripten_get_pointerlock_status(&pointerlockStatus) == EMSCRIPTEN_RESULT_SUCCESS )
+				{
+					if ( pointerlockStatus.isActive )
+					{
+						CursorPos.X += Device->MouseXRel;
+						CursorPos.Y += Device->MouseYRel;
+						Device->MouseXRel = 0;
+						Device->MouseYRel = 0;
+					}
+					else
+					{
+						CursorPos.X = Device->MouseX;
+						CursorPos.Y = Device->MouseY;
+					}
+				}
+#else
 				CursorPos.X = Device->MouseX;
 				CursorPos.Y = Device->MouseY;
-
-				if (CursorPos.X < 0)
-					CursorPos.X = 0;
-				if (CursorPos.X > (s32)Device->Width)
-					CursorPos.X = Device->Width;
-				if (CursorPos.Y < 0)
-					CursorPos.Y = 0;
-				if (CursorPos.Y > (s32)Device->Height)
-					CursorPos.Y = Device->Height;
+#endif
 			}
 
 			CIrrDeviceSDL* Device;
@@ -202,12 +220,23 @@ namespace irr
 
 	private:
 
+#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+	static EM_BOOL MouseUpDownCallback(int eventType, const EmscriptenMouseEvent * event, void* userData);
+	static EM_BOOL MouseEnterCallback(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
+	static EM_BOOL MouseLeaveCallback(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
+
+	// Check if it's a special key like left, right, up down and so on which shouldn't have a Unicode character.
+	bool isNoUnicodeKey(EKEY_CODE key) const;
+#endif
+
 		//! create the driver
 		void createDriver();
 
 		bool createWindow();
 
 		void createKeyMap();
+
+		void logAttributes();
 
 		SDL_Surface* Screen;
 		int SDL_Flags;
@@ -222,7 +251,6 @@ namespace irr
 		u32 Width, Height;
 
 		bool Resizable;
-		bool WindowHasFocusDeprecated;	// TODO: variable only kept to avoid breaking binary compatibility in 1.8. Will be removed in 1.9
 		bool WindowMinimized;
 
 		struct SKeyMap
@@ -249,5 +277,4 @@ namespace irr
 } // end namespace irr
 
 #endif // _IRR_COMPILE_WITH_SDL_DEVICE_
-#endif // __C_IRR_DEVICE_SDL_H_INCLUDED__
-
+#endif // IRR_C_IRR_DEVICE_SDL_H_INCLUDED

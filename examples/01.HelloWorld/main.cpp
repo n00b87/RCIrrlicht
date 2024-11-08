@@ -48,9 +48,6 @@ After we have set up the IDE, the compiler will know where to find the Irrlicht
 Engine header files so we can include it now in our code.
 */
 #include <irrlicht.h>
-#include <SDL2/SDL.h>
-#include <iostream>
-#include <vector>
 
 /*
 That header just adds the getExampleMediaPath tool-functions to help locating
@@ -85,38 +82,6 @@ using namespace scene;
 using namespace video;
 using namespace io;
 using namespace gui;
-
-
-// Function to calculate a point on a cubic Bezier curve
-vector3df bezierPoint(const vector3df& p0, const vector3df& p1, const vector3df& p2, const vector3df& p3, float t) {
-    float u = 1.0f - t;
-    float tt = t * t;
-    float uu = u * u;
-    float uuu = uu * u;
-    float ttt = tt * t;
-
-    vector3df p = uuu * p0; // (1-t)^3 * p0
-    p += 3 * uu * t * p1;   // 3 * (1-t)^2 * t * p1
-    p += 3 * u * tt * p2;   // 3 * (1-t) * t^2 * p2
-    p += ttt * p3;          // t^3 * p3
-
-    return p;
-}
-
-// Function to draw a Bezier curve
-void drawBezierCurve(IVideoDriver* driver, const vector3df& p0, const vector3df& p1, const vector3df& p2, const vector3df& p3, SColor color, int segments) {
-    std::vector<vector3df> points;
-
-    for (int i = 0; i <= segments; ++i) {
-        float t = static_cast<float>(i) / segments;
-        points.push_back(bezierPoint(p0, p1, p2, p3, t));
-    }
-
-    for (size_t i = 0; i < points.size() - 1; ++i) {
-        driver->draw3DLine(points[i], points[i + 1], color);
-    }
-}
-
 
 /*
 This is the main method. We can now use main() on every platform.
@@ -161,34 +126,9 @@ int main()
 	Always check the return value to cope with unsupported drivers,
 	dimensions, etc.
 	*/
-
-	#ifdef RC_WEB
-    if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_NOPARACHUTE) < 0)
-    #else
-    //if(SDL_Init(SDL_INIT_AUDIO | SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0)
-    if(SDL_Init(SDL_INIT_EVENTS | SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC | SDL_INIT_SENSOR | SDL_INIT_NOPARACHUTE) < 0) //Audio causes init to fail on Fedora40 so I am leaving it out for now
-    #endif
-    {
-        //os::Printer::log("SDL_Init Error: ", SDL_GetError());
-        std::cout << "No DICE" << std::endl;
-        return 0;
-    }
-
-    SDL_Window* window = SDL_CreateWindow("OGLES2 Test Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-
-	SIrrlichtCreationParameters p;
-		p.DriverType = EDT_OGLES2;
-		p.WindowSize = dimension2d<u32>(640, 480);
-		p.Bits = 32;
-		p.Fullscreen = false;
-		p.Stencilbuffer = false;
-		p.Vsync = false;
-		p.EventReceiver = 0;
-		p.DeviceType = EIDT_SDL;
-		p.WindowId = window;
-	IrrlichtDevice *device = createDeviceEx(p);
-		//createDevice( video::EDT_OGLES2, dimension2d<u32>(640, 480), 16,
-			//false, false, false, 0);
+	IrrlichtDevice *device =
+		createDevice( video::EDT_OGLES1, dimension2d<u32>(640, 480), 16,
+			false, false, false, 0);
 
 	if (!device)
 		return 1;
@@ -198,7 +138,7 @@ int main()
 	'L' in front of the string. The Irrlicht Engine uses wide character
 	strings when displaying text.
 	*/
-	//device->setWindowCaption(L"Hello World! - Irrlicht Engine Demo");
+	device->setWindowCaption(L"Hello World! - Irrlicht Engine Demo");
 
 	/*
 	Get a pointer to the VideoDriver, the SceneManager and the graphical
@@ -294,34 +234,8 @@ int main()
 	more. This would be when the user closes the window or presses ALT+F4
 	(or whatever keycode closes a window on your OS).
 	*/
-	SDL_Event event;
-
-	bool quit = false;
-
-	while(device->run() && (!quit))
+	while(device->run())
 	{
-        while(SDL_PollEvent(&event))
-        {
-            switch(event.type)
-            {
-                case SDL_WINDOWEVENT:
-                    if(event.window.event == SDL_WINDOWEVENT_RESIZED)
-                    {
-
-                    }
-                    else if(event.window.event == SDL_WINDOWEVENT_CLOSE)
-                    {
-                        if(SDL_QuitRequested() != 0)
-                        {
-                            //SDL_PumpEvents();
-                            SDL_FlushEvent(SDL_QUIT);
-                            quit = true;
-                        }
-                        std::cout << "SDL QUIT" << std::endl;
-                    }
-                    break;
-            }
-        }
 		/*
 		Anything can be drawn between a beginScene() and an endScene()
 		call. The beginScene() call clears the screen with a color and
@@ -332,14 +246,6 @@ int main()
 		driver->beginScene(ECBF_COLOR | ECBF_DEPTH, SColor(255,100,101,140));
 
 		smgr->drawAll();
-
-		vector3df p0(0, 0, 0);
-		vector3df p1(10, 30, 0);
-		vector3df p2(20, -30, 0);
-		vector3df p3(30, 0, 0);
-
-		drawBezierCurve(driver, p0, p1, p2, p3, SColor(255, 255, 255, 255), 100);
-
 		guienv->drawAll();
 
 		driver->endScene();
@@ -353,8 +259,6 @@ int main()
 	See the documentation at irr::IReferenceCounted::drop() for more
 	information.
 	*/
-	SDL_DestroyWindow(window);
-	SDL_Quit();
 	device->drop();
 
 	return 0;

@@ -31,10 +31,6 @@
 #pragma comment(lib, "libGLESv2.lib")
 #endif
 
-#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-#include "CIrrDeviceSDL.h"
-#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
-
 namespace irr
 {
 namespace video
@@ -48,20 +44,11 @@ namespace video
 	class COGLES2Driver : public CNullDriver, public IMaterialRendererServices, public COGLES2ExtensionHandler
 	{
 		friend class COpenGLCoreTexture<COGLES2Driver>;
-
-		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
-		#else
-			friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
-		#endif
+		friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
 
 	protected:
 		//! constructor (use createOGLES2Driver instead)
-		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
-		#else
-			COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
-		#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
+		COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
 
 	public:
 
@@ -205,7 +192,7 @@ namespace video
 			video::SColor rightDownEdge = video::SColor(0,0,0,0)) IRR_OVERRIDE;
 
 		//! sets a viewport
-		virtual void setViewPort(const core::rect<s32>& area) IRR_OVERRIDE;
+		virtual void setViewPort(const core::rect<s32>& area, bool clipToRenderTarget=true) IRR_OVERRIDE;
 
 		//! Only used internally by the engine
 		virtual void OnResize(const core::dimension2d<u32>& size) IRR_OVERRIDE;
@@ -450,13 +437,7 @@ private:
 
 		core::array<RequestedLight> RequestedLights;
 
-		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			CIrrDeviceSDL *SDLDevice;
-		#endif
-
 		IContextManager* ContextManager;
-
-		E_DEVICE_TYPE DeviceType;
 	};
 
 } // end namespace video

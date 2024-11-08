@@ -15,7 +15,6 @@ namespace irr
 	class CIrrDeviceLinux;
 	class CIrrDeviceSDL;
 	class CIrrDeviceMacOSX;
-	class CIrrDeviceWx;
 }
 
 #ifdef _IRR_COMPILE_WITH_OPENGL_
@@ -36,13 +35,13 @@ namespace video
 	class COpenGLDriver : public CNullDriver, public IMaterialRendererServices, public COpenGLExtensionHandler
 	{
 	public:
-		// Information about state of fixed pipeline activity.
-		enum E_OPENGL_FIXED_PIPELINE_STATE
+		// Information about active pipeline state (fixed function vs shader)
+		enum E_OPENGL_ACTIVE_PIPELINE
 		{
-			EOFPS_ENABLE = 0, // fixed pipeline.
-			EOFPS_DISABLE, // programmable pipeline.
-			EOFPS_ENABLE_TO_DISABLE, // switch from fixed to programmable pipeline.
-			EOFPS_DISABLE_TO_ENABLE // switch from programmable to fixed pipeline.
+			EOAP_FIXED = 0, // fixed function pipeline.
+			EOAP_SHADER, // programmable pipeline.
+			EOAP_FIXED_TO_SHADER, // switch from fixed to programmable pipeline.
+			EOAP_SHADER_TO_FIXED // switch from programmable to fixed pipeline.
 		};
 
 #if defined(_IRR_COMPILE_WITH_WINDOWS_DEVICE_) || defined(_IRR_COMPILE_WITH_X11_DEVICE_) || defined(_IRR_COMPILE_WITH_OSX_DEVICE_)
@@ -51,11 +50,7 @@ namespace video
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 		COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
-#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
-
-#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
-		COpenGLDriver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceWx* wx_device);
-#endif // _IRR_COMPILE_WITH_WX_DEVICE_
+#endif
 
 		bool initDriver();
 
@@ -257,7 +252,7 @@ namespace video
 			video::SColor rightDownEdge = video::SColor(0,0,0,0)) IRR_OVERRIDE;
 
 		//! sets a viewport
-		virtual void setViewPort(const core::rect<s32>& area) IRR_OVERRIDE;
+		virtual void setViewPort(const core::rect<s32>& area, bool clipToRenderTarget=true) IRR_OVERRIDE;
 
 		//! Sets the fog mode.
 		virtual void setFog(SColor color, E_FOG_TYPE fogType, f32 start,
@@ -412,17 +407,17 @@ namespace video
 		bool getColorFormatParameters(ECOLOR_FORMAT format, GLint& internalFormat, GLenum& pixelFormat,
 			GLenum& pixelType, void(**converter)(const void*, u32, void*)) const;
 
-		//! Return info about fixed pipeline state.
-		E_OPENGL_FIXED_PIPELINE_STATE getFixedPipelineState() const;
+		//! Return info about active pipeline state.
+		E_OPENGL_ACTIVE_PIPELINE getActivePipelineState() const;
 
-		//! Set info about fixed pipeline state.
-		void setFixedPipelineState(E_OPENGL_FIXED_PIPELINE_STATE state);
+		//! Set info about active pipeline state.
+		void setActivePipelineState(E_OPENGL_ACTIVE_PIPELINE state);
 
 		//! Get current material.
 		const SMaterial& getCurrentMaterial() const;
 
 		//! Rest renderstates forcing stuff like OnSetMaterial to be called
-		void DoResetRenderStates()
+		void DoResetRenderStates() 
 		{
 			ResetRenderStates = true;
 		}
@@ -442,7 +437,7 @@ namespace video
 		virtual ITexture* createDeviceDependentTexture(const io::path& name, IImage* image) IRR_OVERRIDE;
 
 		virtual ITexture* createDeviceDependentTextureCubemap(const io::path& name, const core::array<IImage*>& image) IRR_OVERRIDE;
-
+		
 		//! creates a transposed matrix in supplied GLfloat array to pass to OpenGL
 		inline void getGLMatrix(GLfloat gl_matrix[16], const core::matrix4& m);
 		inline void getGLTextureMatrix(GLfloat gl_matrix[16], const core::matrix4& m);
@@ -507,7 +502,7 @@ namespace video
 		//! Color buffer format
 		ECOLOR_FORMAT ColorFormat;
 
-		E_OPENGL_FIXED_PIPELINE_STATE FixedPipelineState;
+		E_OPENGL_ACTIVE_PIPELINE ActivePipelineState;
 
 		SIrrlichtCreationParameters Params;
 
@@ -530,11 +525,7 @@ namespace video
 
 		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
 			CIrrDeviceSDL *SDLDevice;
-		#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
-
-		#ifdef _IRR_COMPILE_WITH_WX_DEVICE_
-			CIrrDeviceWx* wx_device;
-		#endif // _IRR_COMPILE_WITH_WX_DEVICE_
+		#endif
 
 		IContextManager* ContextManager;
 

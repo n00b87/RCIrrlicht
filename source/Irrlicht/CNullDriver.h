@@ -111,7 +111,7 @@ namespace video
 			f32 clearDepth = 1.f, u8 clearStencil = 0) IRR_OVERRIDE;
 
 		//! sets a viewport
-		virtual void setViewPort(const core::rect<s32>& area) IRR_OVERRIDE;
+		virtual void setViewPort(const core::rect<s32>& area, bool clipToRenderTarget=true) IRR_OVERRIDE;
 
 		//! gets the area of the current viewport
 		virtual const core::rect<s32>& getViewPort() const IRR_OVERRIDE;
@@ -750,6 +750,8 @@ namespace video
 			return (f32) getAverage ( p[(y * pitch) + x] );
 		}
 
+		// Check if z-writing should be enabled
+		// Note: If ZBuffer is disabled completely with ECFN_DISABLED it will still do nothing
 		inline bool getWriteZBuffer(const SMaterial& material) const
 		{
 			switch ( material.ZWriteEnable )

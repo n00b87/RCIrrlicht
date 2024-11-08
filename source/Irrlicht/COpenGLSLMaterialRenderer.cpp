@@ -33,14 +33,8 @@ namespace video
 //! Constructor
 COpenGLSLMaterialRenderer::COpenGLSLMaterialRenderer(video::COpenGLDriver* driver,
 		s32& outMaterialTypeNr, const c8* vertexShaderProgram,
-		const c8* vertexShaderEntryPointName,
-		E_VERTEX_SHADER_TYPE vsCompileTarget,
 		const c8* pixelShaderProgram,
-		const c8* pixelShaderEntryPointName,
-		E_PIXEL_SHADER_TYPE psCompileTarget,
 		const c8* geometryShaderProgram,
-		const c8* geometryShaderEntryPointName,
-		E_GEOMETRY_SHADER_TYPE gsCompileTarget,
 		scene::E_PRIMITIVE_TYPE inType, scene::E_PRIMITIVE_TYPE outType,
 		u32 verticesOut,
 		IShaderConstantSetCallBack* callback,
@@ -228,10 +222,10 @@ void COpenGLSLMaterialRenderer::OnSetMaterial(const video::SMaterial& material,
 				bool resetAllRenderstates,
 				video::IMaterialRendererServices* services)
 {
-	if (Driver->getFixedPipelineState() == COpenGLDriver::EOFPS_ENABLE)
-		Driver->setFixedPipelineState(COpenGLDriver::EOFPS_ENABLE_TO_DISABLE);
+	if (Driver->getActivePipelineState() == COpenGLDriver::EOAP_FIXED)
+		Driver->setActivePipelineState(COpenGLDriver::EOAP_FIXED_TO_SHADER);
 	else
-		Driver->setFixedPipelineState(COpenGLDriver::EOFPS_DISABLE);
+		Driver->setActivePipelineState(COpenGLDriver::EOAP_SHADER);
 
 	COpenGLCacheHandler* cacheHandler = Driver->getCacheHandler();
 

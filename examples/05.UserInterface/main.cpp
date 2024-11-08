@@ -11,27 +11,8 @@ a counter variable for changing the creation position of a window,
 and a pointer to a listbox.
 */
 #include <irrlicht.h>
-#include <vector>
-#include <SDL2/SDL.h>
-
-#include <codecvt>
-#include <strstream>
-
 #include "driverChoice.h"
 #include "exampleHelper.h"
-
-#include "gui_freetype_font.h"
-#include "camera.h"
-#include "an8parser.h"
-#include "rc_defines.h"
-#include "rc_stdlib.h"
-#include "rc_gfx.h"
-#include "rc_gfx3D.h"
-#include "rc_matrix.h"
-#include "rc_geometry.h"
-#include "rc_audio.h"
-#include "rc_net.h"
-#include "rc_video.h"
 
 using namespace irr;
 
@@ -45,552 +26,266 @@ using namespace gui;
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
-void drawDebugInfo(int overlay_canvas, int view_canvas)
+// Declare a structure to hold some context for the event receiver so that it
+// has it available inside its OnEvent() method.
+struct SAppContext
 {
-	rc_setActiveCanvas(view_canvas);
-	double cam_x, cam_y, cam_z;
-	rc_getCameraPosition(&cam_x, &cam_y, &cam_z);
-	std::string cam_pos = rc_intern_str(cam_x) + ", " + rc_intern_str(cam_y) + ", " + rc_intern_str(cam_z);
+	IrrlichtDevice *device;
+	s32				counter;
+	IGUIListBox*	listbox;
+};
 
-	double rot_x, rot_y, rot_z;
-	rc_getCameraRotation(&rot_x, &rot_y, &rot_z);
-	std::string cam_rot = rc_intern_str(rot_x) + ", " + rc_intern_str(rot_y) + ", " + rc_intern_str(rot_z);
-
-	double mouse_x, mouse_y, mb1, mb2, mb3;
-	rc_getMouse(&mouse_x, &mouse_y, &mb1, &mb2, &mb3);
-	std::string mouse_info = "";
-	mouse_info += rc_intern_str(mouse_x) + ", ";
-	mouse_info += rc_intern_str(mouse_y) + "   ";
-	mouse_info += "LEFT = " + rc_intern_str(mb1) + ", ";
-	mouse_info += "MIDDLE = " + rc_intern_str(mb2) + ", ";
-	mouse_info += "RIGHT = " + rc_intern_str(mb3) + ", ";
-
-	rc_setActiveCanvas(overlay_canvas);
-	rc_clearCanvas();
-	rc_setColor(rc_rgb(255,255,255));
-
-	rc_drawText("Position: " + cam_pos, 10, 10);
-	rc_drawText("Rotation: " + cam_rot, 10, 30);
-	rc_drawText("Mouse Info: " + mouse_info, 10, 50);
-}
-
-void test_matrix1()
+// Define some values that we'll use to identify individual GUI controls.
+enum
 {
-	irr::core::matrix4 m;
-	m.setTranslation(irr::core::vector3df(44, 55, 66));
-	m.setRotationDegrees(irr::core::vector3df(20, 70, 30));
+	GUI_ID_QUIT_BUTTON = 101,
+	GUI_ID_NEW_WINDOW_BUTTON,
+	GUI_ID_FILE_OPEN_BUTTON,
+	GUI_ID_TRANSPARENCY_SCROLL_BAR
+};
 
-	std::cout << "rot euler = " << m.getTranslation().X << ", " << m.getTranslation().Y << ", " << m.getTranslation().Z << std::endl;
-
-	std::cout << std::endl << "debug output 1" << std::endl;
-	printIrrMatrix(m);
-
-	irr::core::vector3df rot = m.getRotationDegrees();
-
-	std::cout << std::endl;
-
-	std::cout << "ROT = " << rot.X << ", " << rot.Y << ", " << rot.Z << std::endl;
-
-	irr::core::matrix4 m2;
-	m2.setRotationDegrees(irr::core::vector3df(11, 12, 14));
-	m2.setTranslation(irr::core::vector3df(23, 22, 19));
-	m2.setScale(irr::core::vector3df(2,3,4));
-
-	std::cout << std::endl;
-
-	std::cout << std::endl << "debug output 2" << std::endl;
-	printIrrMatrix(m2);
-
-	m = m * m2;
-
-	std::cout << std::endl;
-
-	std::cout << std::endl << "debug output 3" << std::endl;
-	printIrrMatrix(m);
-
-	std::cout << std::endl;
-
-	//printMatrix(m);
-}
-
-void test_matrix2()
+/*
+	Set the skin transparency by changing the alpha values of all skin-colors
+*/
+void setSkinTransparency(s32 alpha, irr::gui::IGUISkin * skin)
 {
-	double x;
-	double y;
-	double z;
-
-	int m = DimMatrix(NEW_MATRIX, 4, 4);
-	rc_setIdentityMatrix(m, 4);
-	rc_setMatrixTranslation(m, 44, 55, 66);
-	rc_setMatrixRotation(m, 20, 70, 30);
-
-	rc_getMatrixTranslation(m, &x, &y, &z);
-
-	std::cout << "rot euler = " << x << ", " << y << ", " << z << std::endl;
-
-	std::cout << std::endl << "debug output 1" << std::endl;
-	printRCMatrix(m);
-
-	rc_getMatrixRotation(m, &x, &y, &z);
-
-	std::cout << std::endl;
-
-	std::cout << "!!ROT = " << x << ", " << y << ", " << z << std::endl;
-
-	int m2 = DimMatrix(NEW_MATRIX, 4, 4);
-	rc_setIdentityMatrix(m2, 4);
-	rc_setMatrixRotation(m2, 11, 12, 14);
-	rc_setMatrixTranslation(m2, 23, 22, 19);
-	rc_setMatrixScale(m2, 2,3,4);
-
-	std::cout << std::endl;
-
-	std::cout << std::endl << "debug output 2" << std::endl;
-	printRCMatrix(m2);
-
-	int mC = DimMatrix(NEW_MATRIX, 4, 4);
-
-	rc_multiplyMatrix(m, m2, mC);
-
-	std::cout << std::endl << "debug output 3" << std::endl;
-	printRCMatrix(mC);
-
-	std::cout << std::endl;
-
-	//printMatrix(m);
-}
-
-void rcbasic_init()
-{
-	rc_audio_init();
-    rc_gfx_init();
-    rc_net_init();
-}
-
-int sprite_test()
-{
-
-    rcbasic_init();
-
-    rc_windowOpen("testing", 640, 480, false, true);
-
-
-	SDL_Event event;
-	bool quit = false;
-
-	std::cout << "test start" << std::endl;
-
-	uint32_t canvas1 = rc_canvasOpenSpriteLayer(0, 0, 640, 480);
-	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
-
-	rc_setCanvasZ(canvas1, 0);
-	rc_setCanvasZ(canvas2, 1);
-
-    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
-    rc_loadFont(fnt, 12);
-
-    int img_a = rc_loadImage("graizor.png");
-    int img_b = rc_loadImage("rcbasic.png");
-
-    rc_setActiveCanvas(canvas1);
-    int spriteA = rc_createSprite(img_a, 64, 64);
-	int walk_animation_left = rc_createSpriteAnimation(spriteA, 4, 8);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 0, 28);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 1, 29);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 2, 30);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 3, 31);
-
-	int walk_animation_right = rc_createSpriteAnimation(spriteA, 4, 8);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 0, 0);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 1, 1);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 2, 2);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 3, 3);
-
-	rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
-	//rc_loopSpriteAnimation(spriteA, -1);
-
-	int spriteB = rc_createSprite(img_b, 96, 96);
-	rc_setSpritePosition(spriteB, 1, 100);
-
-	//rc_setSpriteSolid(spriteA, true);
-	//rc_setSpriteSolid(spriteB, true);
-
-	rc_setSpriteZ(spriteA, 1);
-	rc_setSpriteZ(spriteB, 0);
-
-	while(rc_update())
+	for (s32 i=0; i<irr::gui::EGDC_COUNT ; ++i)
 	{
-		if(rc_key(SDLK_ESCAPE))
-			break;
-
-		if(rc_key(SDLK_1))
-		{
-			rc_setSpriteSolid(spriteA, true);
-			rc_setSpriteSolid(spriteB, true);
-		}
-		else if(rc_key(SDLK_2))
-		{
-			rc_setSpriteSolid(spriteA, false);
-			rc_setSpriteSolid(spriteB, false);
-		}
-		else if(rc_key(SDLK_3))
-		{
-			std::cout << "3" << std::endl;
-			rc_setSpriteAnimationLength(spriteA, walk_animation_left, 1);
-		}
-		else if(rc_key(SDLK_4))
-		{
-			std::cout << "4" << std::endl;
-			rc_setSpriteFrame(spriteA, 21);
-		}
-
-		if(rc_key(SDLK_LEFT))
-		{
-			if(rc_getSpriteAnimation(spriteA)!=walk_animation_left)
-				rc_setSpriteAnimation(spriteA, walk_animation_left, -1);
-		}
-		else if(rc_key(SDLK_RIGHT))
-		{
-			if(rc_getSpriteAnimation(spriteA)!=walk_animation_right)
-				rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
-		}
-
-		int lv = 30;
-		if(rc_key(SDLK_a))
-		{
-			//rc_translateSprite(spriteB, -1, 0);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(-lv, 0));
-		}
-		else if(rc_key(SDLK_d))
-		{
-			//rc_translateSprite(spriteB, 1, 0);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(lv, 0));
-		}
-
-		if(rc_key(SDLK_w))
-		{
-			//rc_translateSprite(spriteB, 0, -1);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0, -lv));
-		}
-		else if(rc_key(SDLK_s))
-		{
-			//rc_translateSprite(spriteB, 0, 1);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0,lv));
-		}
-
-		//rc_rotateSprite(spriteB, 1);
-		rc_sprite[spriteB].physics.body->SetAngularVelocity(10);
-	}
-
-	std::cout << "test end" << std::endl;
-
-	SDL_DestroyWindow(rc_window);
-	SDL_Quit();
-	device->drop();
-
-	return 0;
-}
-
-
-int tile_test()
-{
-
-    rcbasic_init();
-
-    rc_windowOpen("testing", 640, 480, false, true);
-
-
-	SDL_Event event;
-	bool quit = false;
-
-	std::cout << "test start" << std::endl;
-
-	uint32_t canvas1 = rc_canvasOpenSpriteLayer(0, 0, 640, 480);
-	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
-
-	uint32_t canvas3 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
-
-	rc_setCanvasZ(canvas1, 0);
-	rc_setCanvasZ(canvas2, 1);
-	rc_setCanvasZ(canvas3, 2);
-
-	rc_setActiveCanvas(canvas3);
-	rc_setColor(rc_rgb(120, 120, 120));
-	rc_drawRectFill(0, 0, 640, 480);
-
-    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
-    rc_loadFont(fnt, 12);
-
-    int img_a = rc_loadImage("graizor.png");
-    int img_b = rc_loadImage("rcbasic.png");
-
-    rc_setActiveCanvas(canvas1);
-    int spriteA = rc_createSprite(img_a, 64, 64);
-	int walk_animation_left = rc_createSpriteAnimation(spriteA, 4, 8);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 0, 28);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 1, 29);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 2, 30);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_left, 3, 31);
-
-	int walk_animation_right = rc_createSpriteAnimation(spriteA, 4, 8);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 0, 0);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 1, 1);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 2, 2);
-	rc_setSpriteAnimationFrame(spriteA, walk_animation_right, 3, 3);
-
-	rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
-	//rc_loopSpriteAnimation(spriteA, -1);
-
-	int spriteB = rc_createSprite(img_b, 96, 96);
-	rc_setSpritePosition(spriteB, 1, 100);
-
-	//rc_setSpriteSolid(spriteA, true);
-	//rc_setSpriteSolid(spriteB, true);
-
-	rc_setSpriteZ(spriteA, 1);
-	rc_setSpriteZ(spriteB, 0);
-
-
-	int tile_img = rc_loadImage("tiles2.png");
-
-	std::cout << "img = " << tile_img << std::endl;
-
-	rc_setActiveCanvas(canvas2);
-
-	int tileset = rc_createTileSet(tile_img, 32, 32);
-	int tilemap = rc_createTileMap(tileset, 500, 500);
-
-	rc_fillTile(tilemap, 7, 3, 3, 4, 2);
-
-	rc_setTileAnimationLength(tileset, 7, 2);
-	rc_setTileAnimationSpeed(tileset, 7, 1);
-	rc_setTileAnimationFrame(tileset, 7, 1, 8);
-
-	int offset_x = 0;
-	int offset_y = 0;
-
-
-	while(rc_update())
-	{
-		if(rc_key(SDLK_ESCAPE))
-			break;
-
-		if(rc_key(SDLK_0))
-		{
-			std::cout << "Current Speed = " << rc_getTileAnimationSpeed(tileset, 7) << std::endl;
-		}
-		else if(rc_key(SDLK_1))
-			rc_setTileAnimationSpeed(tileset, 7, rc_getTileAnimationSpeed(tileset, 7)+1);
-
-		if(rc_key(SDLK_UP))
-			offset_y -= 2;
-		else if(rc_key(SDLK_DOWN))
-			offset_y += 2;
-
-		if(rc_key(SDLK_LEFT))
-			offset_x -= 2;
-		else if(rc_key(SDLK_RIGHT))
-			offset_x += 2;
-
-		if(rc_key(SDLK_1))
-		{
-			rc_setSpriteSolid(spriteA, true);
-			rc_setSpriteSolid(spriteB, true);
-		}
-		else if(rc_key(SDLK_2))
-		{
-			rc_setSpriteSolid(spriteA, false);
-			rc_setSpriteSolid(spriteB, false);
-		}
-		else if(rc_key(SDLK_3))
-		{
-			std::cout << "3" << std::endl;
-			rc_setSpriteAnimationLength(spriteA, walk_animation_left, 1);
-		}
-		else if(rc_key(SDLK_4))
-		{
-			std::cout << "4" << std::endl;
-			rc_setSpriteFrame(spriteA, 21);
-		}
-
-		if(rc_key(SDLK_a))
-		{
-			if(rc_getSpriteAnimation(spriteA)!=walk_animation_left)
-				rc_setSpriteAnimation(spriteA, walk_animation_left, -1);
-		}
-		else if(rc_key(SDLK_d))
-		{
-			if(rc_getSpriteAnimation(spriteA)!=walk_animation_right)
-				rc_setSpriteAnimation(spriteA, walk_animation_right, -1);
-		}
-
-		int lv = 30;
-		if(rc_key(SDLK_a))
-		{
-			//rc_translateSprite(spriteB, -1, 0);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(-lv, 0));
-		}
-		else if(rc_key(SDLK_d))
-		{
-			//rc_translateSprite(spriteB, 1, 0);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(lv, 0));
-		}
-
-		if(rc_key(SDLK_w))
-		{
-			//rc_translateSprite(spriteB, 0, -1);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0, -lv));
-		}
-		else if(rc_key(SDLK_s))
-		{
-			//rc_translateSprite(spriteB, 0, 1);
-			rc_sprite[spriteA].physics.body->SetLinearVelocity(b2Vec2(0,lv));
-		}
-
-		//rc_rotateSprite(spriteB, 1);
-		rc_sprite[spriteB].physics.body->SetAngularVelocity(10);
-
-		rc_setCanvasOffset(canvas1, offset_x, offset_y);
-		rc_drawTileMap(tilemap, 0, 0, 640, 480, offset_x, offset_y);
-	}
-
-	std::cout << "test end" << std::endl;
-
-	SDL_DestroyWindow(rc_window);
-	SDL_Quit();
-	device->drop();
-
-	return 0;
-}
-
-
-void control3D(double cam_speed)
-{
-
-	if(rc_key(SDLK_w))
-		rc_translateCamera(0, 0, cam_speed);
-
-	if(rc_key(SDLK_s))
-		rc_translateCamera(0, 0, -cam_speed);
-
-	if(rc_key(SDLK_a))
-		rc_translateCamera(-cam_speed, 0, 0);
-
-	if(rc_key(SDLK_d))
-		rc_translateCamera(cam_speed, 0, 0);
-
-	if(rc_key(SDLK_UP))
-		rc_rotateCamera(cam_speed, 0, 0);
-
-	if(rc_key(SDLK_DOWN))
-		rc_rotateCamera(-cam_speed, 0, 0);
-
-	if(rc_key(SDLK_LEFT))
-	{
-		double crx, cry, crz;
-		rc_getCameraRotation(&crx, &cry, &crz);
-		rc_setCameraRotation(crx, cry-cam_speed, crz);
-		//rc_rotateCamera(0, -cam_speed, 0);
-	}
-
-	if(rc_key(SDLK_RIGHT))
-	{
-		double crx, cry, crz;
-		rc_getCameraRotation(&crx, &cry, &crz);
-
-		rc_setCameraRotation(crx, cry+cam_speed, crz);
-		//rc_rotateCamera(0, cam_speed, 0);
+		video::SColor col = skin->getColor((EGUI_DEFAULT_COLOR)i);
+		col.setAlpha(alpha);
+		skin->setColor((EGUI_DEFAULT_COLOR)i, col);
 	}
 }
 
-int actor_test()
+/*
+The Event Receiver is not only capable of getting keyboard and
+mouse input events, but also events of the graphical user interface
+(gui). There are events for almost everything: button click,
+listbox selection change, events that say that a element was hovered
+and so on. To be able to react to some of these events, we create
+an event receiver.
+We only react to gui events, and if it's such an event, we get the
+id of the caller (the gui element which caused the event) and get
+the pointer to the gui environment.
+*/
+class MyEventReceiver : public IEventReceiver
 {
+public:
+	MyEventReceiver(SAppContext & context) : Context(context) { }
 
-    rcbasic_init();
-
-    rc_windowOpen("testing", 640, 480, false, true);
-
-
-	SDL_Event event;
-	bool quit = false;
-
-	std::cout << "test start" << std::endl;
-
-	uint32_t canvas1 = rc_canvasOpen3D(0, 0, 640, 480, 0);
-	uint32_t canvas2 = rc_canvasOpen(640, 480, 0, 0, 640, 480, 0);
-
-	rc_setCanvasZ(canvas1, 0);
-	rc_setCanvasZ(canvas2, 1);
-
-    std::string fnt = "NotoSansJP-VariableFont_wght.ttf";
-    rc_loadFont(fnt, 12);
-
-    std::string media_path = "../../media/";
-    int q3map_mesh = rc_loadMeshFromArchive(media_path + "map-20kdm2.pk3", "20kdm2.bsp");
-    int q3map = rc_createOctreeActor(q3map_mesh);
-
-    int tst_mesh = rc_loadMesh(media_path + "dwarf.x");
-    int tst_actor = rc_createAnimatedActor(tst_mesh);
-
-    int tst_texture = rc_loadImage(media_path + "dwarf.jpg");
-    rc_setActorTexture(tst_actor, 0, tst_texture);
-    int tst_material = rc_getActorMaterial(tst_actor, 0);
-    rc_setMaterialLighting(tst_material, false);
-
-    int a1 = rc_createActorAnimation(tst_actor, 0, 8, 24);
-    //rc_setActorAnimation(tst_actor, a1, 0);
-
-    rc_setActorPosition(q3map, -1350,-130,-1400);
-    rc_setActorPosition(tst_actor, -90,-15,-140);
-
-    rc_setActiveCanvas(canvas1);
-
-	double cam_speed = 3;
-
-	rc_rotateCamera(0, 180, 0);
-	irr::scene::IAnimatedMeshSceneNode* node = (irr::scene::IAnimatedMeshSceneNode*)rc_actor[tst_actor].mesh_node;
-	std::cout << "mesh type = " << ((int)node->getMesh()->getMeshType()) << std::endl;
-	//std::cout << "mesh joint_used = " << ((int)node->) << std::endl;
-
-	node->setDebugDataVisible(irr::scene::EDS_MESH_WIRE_OVERLAY);
-
-	while(rc_update())
+	virtual bool OnEvent(const SEvent& event)
 	{
-		if(rc_key(SDLK_ESCAPE))
-			break;
-
-		if(rc_key(SDLK_SPACE))
-			rc_setActorPosition(tst_actor, 0, 0, 0);
-
-		if(rc_key(SDLK_1))
-			rc_setActorAnimation(tst_actor, a1, 2);
-
-		if(!rc_actorAnimationIsPlaying(tst_actor))
-			rc_setActorFrame(tst_actor, 0);
-
-		if(rc_key(SDLK_2) && (!rc_actorIsInTransition(tst_actor)))
+		if (event.EventType == EET_GUI_EVENT)
 		{
-			rc_startActorTransition(tst_actor, 8, 10);
-			//rc_setActorAnimationSpeed(tst_actor, a1, rc_getActorAnimationSpeed(tst_actor, a1)+1);
+			s32 id = event.GUIEvent.Caller->getID();
+			IGUIEnvironment* env = Context.device->getGUIEnvironment();
+
+			switch(event.GUIEvent.EventType)
+			{
+
+			/*
+			If a scrollbar changed its scroll position, and it is
+			'our' scrollbar (the one with id GUI_ID_TRANSPARENCY_SCROLL_BAR), 
+			then we change the transparency of all gui elements. This is an
+			easy task: There is a skin object, in which all color
+			settings are stored. We simply go through all colors
+			stored in the skin and change their alpha value.
+			*/
+			case EGET_SCROLL_BAR_CHANGED:
+				if (id == GUI_ID_TRANSPARENCY_SCROLL_BAR)
+				{
+					s32 pos = ((IGUIScrollBar*)event.GUIEvent.Caller)->getPos();
+					setSkinTransparency(pos, env->getSkin());
+				}
+				break;
+
+			/*
+			If a button was clicked, it could be one of 'our'
+			three buttons. If it is the first, we shut down the engine.
+			If it is the second, we create a little window with some
+			text on it. We also add a string to the list box to log
+			what happened. And if it is the third button, we create
+			a file open dialog, and add also this as string to the list box.
+			That's all for the event receiver.
+			*/
+			case EGET_BUTTON_CLICKED:
+				switch(id)
+				{
+				case GUI_ID_QUIT_BUTTON:
+					Context.device->closeDevice();
+					return true;
+
+				case GUI_ID_NEW_WINDOW_BUTTON:
+					{
+					Context.listbox->addItem(L"Window created");
+					Context.counter += 30;
+					if (Context.counter > 200)
+						Context.counter = 0;
+
+					IGUIWindow* window = env->addWindow(
+						rect<s32>(100 + Context.counter, 100 + Context.counter, 300 + Context.counter, 200 + Context.counter),
+						false, // modal?
+						L"Test window");
+
+					env->addStaticText(L"Please close me",
+						rect<s32>(35,35,140,50),
+						true, // border?
+						false, // wordwrap?
+						window);
+					}
+					return true;
+
+				case GUI_ID_FILE_OPEN_BUTTON:
+					Context.listbox->addItem(L"File open");
+					// There are some options for the file open dialog
+					// We set the title, make it a modal window, and make sure
+					// that the working directory is restored after the dialog
+					// is finished.
+					env->addFileOpenDialog(L"Please choose a file.", true, 0, -1, true);
+					return true;
+
+				default:
+					return false;
+				}
+				break;
+
+			case EGET_FILE_SELECTED:
+				{
+					// show the model filename, selected in the file dialog
+					IGUIFileOpenDialog* dialog =
+						(IGUIFileOpenDialog*)event.GUIEvent.Caller;
+					Context.listbox->addItem(dialog->getFileName());
+				}
+				break;
+
+			default:
+				break;
+			}
 		}
 
-		control3D(cam_speed);
+		return false;
 	}
 
-	std::cout << "test end" << std::endl;
+private:
+	SAppContext & Context;
+};
 
-	SDL_DestroyWindow(rc_window);
-	SDL_Quit();
-	device->drop();
 
-	return 0;
-}
-
+/*
+OK, now for the more interesting part. First, create the Irrlicht device. As in
+some examples before, we ask the user which driver he wants to use for this
+example.
+*/
 int main()
 {
-	//actor_test();
-	//sprite_test();
-	tile_test();
+	// ask user for driver
+	video::E_DRIVER_TYPE driverType=driverChoiceConsole();
+	if (driverType==video::EDT_COUNT)
+		return 1;
+
+	// create device and exit if creation failed
+	IrrlichtDevice * device = createDevice(driverType, core::dimension2d<u32>(640, 480));
+
+	if (device == 0)
+		return 1; // could not create selected driver.
+
+	/* The creation was successful, now we set the event receiver and
+		store pointers to the driver and to the gui environment. */
+
+	device->setWindowCaption(L"Irrlicht Engine - User Interface Demo");
+	device->setResizable(true);
+
+	video::IVideoDriver* driver = device->getVideoDriver();
+	IGUIEnvironment* env = device->getGUIEnvironment();
+
+	const io::path mediaPath = getExampleMediaPath();
+
+	/*
+	To make the font a little bit nicer, we load an external font
+	and set it as the new default font in the skin.
+	To keep the standard font for tool tip text, we set it to
+	the built-in font.
+	*/
+
+	IGUISkin* skin = env->getSkin();
+	IGUIFont* font = env->getFont(mediaPath + "fonthaettenschweiler.bmp");
+	if (font)
+		skin->setFont(font);
+
+	skin->setFont(env->getBuiltInFont(), EGDF_TOOLTIP);
+
+	/*
+	We add three buttons. The first one closes the engine. The second
+	creates a window and the third opens a file open dialog. The third
+	parameter is the id of the button, with which we can easily identify
+	the button in the event receiver.
+	*/
+
+	env->addButton(rect<s32>(10,240,110,240 + 32), 0, GUI_ID_QUIT_BUTTON,
+			L"Quit", L"Exits Program");
+	env->addButton(rect<s32>(10,280,110,280 + 32), 0, GUI_ID_NEW_WINDOW_BUTTON,
+			L"New Window", L"Launches a new Window");
+	env->addButton(rect<s32>(10,320,110,320 + 32), 0, GUI_ID_FILE_OPEN_BUTTON,
+			L"File Open", L"Opens a file");
+
+	/*
+	Now, we add a static text and a scrollbar, which modifies the
+	transparency of all gui elements. We set the maximum value of
+	the scrollbar to 255, because that's the maximal value for
+	a color value.
+	Then we create an other static text and a list box.
+	*/
+
+	env->addStaticText(L"Transparent Control:", rect<s32>(150,20,350,40), true);
+	IGUIScrollBar* scrollbar = env->addScrollBar(true,
+			rect<s32>(150, 45, 350, 60), 0, GUI_ID_TRANSPARENCY_SCROLL_BAR);
+	scrollbar->setMax(255);
+	scrollbar->setPos(255);
+	setSkinTransparency( scrollbar->getPos(), env->getSkin());
+
+	// set scrollbar position to alpha value of an arbitrary element
+	scrollbar->setPos(env->getSkin()->getColor(EGDC_WINDOW).getAlpha());
+
+	env->addStaticText(L"Logging ListBox:", rect<s32>(50,110,250,130), true);
+	IGUIListBox * listbox = env->addListBox(rect<s32>(50, 140, 250, 210));
+	env->addEditBox(L"Editable Text", rect<s32>(350, 80, 550, 100));
+
+	// Store the appropriate data in a context structure.
+	SAppContext context;
+	context.device = device;
+	context.counter = 0;
+	context.listbox = listbox;
+
+	// Then create the event receiver, giving it that context structure.
+	MyEventReceiver receiver(context);
+
+	// And tell the device to use our custom event receiver.
+	device->setEventReceiver(&receiver);
+
+
+	/*
+	And at last, we create a nice Irrlicht Engine logo in the top left corner.
+	*/
+	env->addImage(driver->getTexture(mediaPath + "irrlichtlogo3.png"),
+			position2d<int>(10,10));
+
+
+	/*
+	That's all, we only have to draw everything.
+	*/
+
+	while(device->run() && driver)
+	if (device->isWindowActive())
+	{
+		driver->beginScene(video::ECBF_COLOR | video::ECBF_DEPTH, SColor(0,200,200,200));
+
+		env->drawAll();
+
+		driver->endScene();
+	}
+
+	device->drop();
+
 	return 0;
 }
 

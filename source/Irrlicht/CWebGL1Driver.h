@@ -9,8 +9,6 @@
 
 #include "SIrrCreationParameters.h"
 
-#undef _IRR_COMPILE_WITH_WEBGL1_
-
 #ifdef _IRR_COMPILE_WITH_WEBGL1_
 
 #include "COGLES2Driver.h"

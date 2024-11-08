@@ -26,8 +26,6 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add directory="/usr/include/freetype2" />
-					<Add directory="/home/n00b/Projects/RealisticWaterSceneNode-master" />
 				</Compiler>
 				<Linker>
 					<Add library="Xxf86vm" />
@@ -42,88 +40,16 @@
 		</VirtualTargets>
 		<Compiler>
 			<Add option="-g" />
-			<Add option="-DRC_LINUX" />
 			<Add directory="../../include" />
-			<Add directory="/usr/include/bullet" />
-			<Add directory="/home/n00b/Projects/irrBullet/include" />
-			<Add directory="/home/n00b/Projects/an8-parser" />
-			<Add directory="/home/n00b/Projects/irrTheora" />
-			<Add directory="/home/n00b/Projects/RCBASIC4/rcbasic_runtime" />
 		</Compiler>
 		<Linker>
-			<Add option="-lSDL2 -lSDL2_image -lSDL2_net -lSDL2_mixer -logg -lvorbis -lvorbisfile -ltheora -ltheoradec -lfreetype -lbox2d -lBullet3Collision -lBullet3Common -lBullet3Dynamics -lBullet3Geometry -lBulletCollision -lBulletDynamics -lBulletInverseDynamics -lBulletSoftBody -lLinearMath" />
 			<Add library="Irrlicht" />
 		</Linker>
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_audio.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_font.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_geometry.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_gfx.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_gfx3D.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_gfx_core.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_sprite2D.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_spritelib.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_stdlib.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_tilelib.h" />
-		<Unit filename="../../../RCBASIC4/rcbasic_runtime/rc_tilemap.h" />
-		<Unit filename="../../../RealisticWaterSceneNode-master/RealisticWater.cpp" />
-		<Unit filename="../../../RealisticWaterSceneNode-master/RealisticWater.h" />
-		<Unit filename="../../../irrBullet/include/irrBullet.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletBoxShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletBvhTriangleMeshShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCapsuleShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionCallBackInformation.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionObject.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionObjectAffector.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionObjectAffectorAttract.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionObjectAffectorDelete.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCollisionShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCommon.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCompileConfig.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletConeShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletConvexHullShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletCylinderShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletGImpactMeshShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletGhostObject.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletKinematicCharacterController.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletLiquidBody.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletMotionState.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletPhysicsDebug.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletRayCastVehicle.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletRigidBody.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletSoftBody.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletSphereShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletTriangleMeshShape.h" />
-		<Unit filename="../../../irrBullet/include/irrBulletWorld.h" />
-		<Unit filename="../../../irrBullet/src/irrBullet.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletBoxShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletBvhTriangleMeshShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCapsuleShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionCallBackInformation.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionObject.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionObjectAffector.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionObjectAffectorAttract.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionObjectAffectorDelete.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCollisionShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletConeShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletConvexHullShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletCylinderShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletGImpactMeshShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletGhostObject.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletLiquidBody.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletMotionState.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletPhysicsDebug.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletRayCastVehicle.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletRigidBody.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletSoftBody.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletSphereShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletTriangleMeshShape.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletWorld.cpp" />
-		<Unit filename="../../../irrBullet/src/irrBulletcommon.cpp" />
-		<Unit filename="gui_freetype_font.cpp" />
 		<Unit filename="main.cpp" />
-		<Unit filename="theoraplay.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Extensions />
+		<Extensions>
+			<code_completion />
+			<debugger />
+			<envvars />
+		</Extensions>
 	</Project>
 </CodeBlocks_project_file>
