@@ -43,7 +43,7 @@ namespace irr
 namespace video
 {
 
-#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
+#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_) && (!defined(_IRR_EMSCRIPTEN_PLATFORM_))
 COGLES2Driver::COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device) :
 	CNullDriver(io, params.WindowSize), COGLES2ExtensionHandler(), CacheHandler(0),
 	Params(params), ResetRenderStates(true), LockRenderStateMode(false), AntiAlias(params.AntiAlias),
@@ -168,7 +168,7 @@ COGLES2Driver::~COGLES2Driver()
 		ContextManager->drop();
 	}
 
-	#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
+	#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_) && (!defined(_IRR_EMSCRIPTEN_PLATFORM_))
 	SDL_GL_DeleteContext(SDLDevice->window);
 	#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
 }
@@ -519,7 +519,7 @@ COGLES2Driver::~COGLES2Driver()
 		if (ContextManager)
 			return ContextManager->swapBuffers();
 
-		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
+		#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_) && (!defined(_IRR_EMSCRIPTEN_PLATFORM_))
 			if ( DeviceType == EIDT_SDL )
 			{
 				//SDL_GL_SwapWindow(SDLDevice->window);
@@ -3114,16 +3114,31 @@ class IContextManager;
 #endif
 
 #ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device)
-{
-#ifdef _IRR_COMPILE_WITH_OGLES2_
-	COGLES2Driver* driver = new COGLES2Driver(params, io, device);
-	driver->genericDriverInit(params.WindowSize, params.Stencilbuffer);	// don't call in constructor, it uses virtual function calls of driver
-	return driver;
-#else
-	return 0;
-#endif //  _IRR_COMPILE_WITH_OGLES2_
-}
+
+	#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+	IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager)
+	{
+	#ifdef _IRR_COMPILE_WITH_OGLES2_
+		COGLES2Driver* driver = new COGLES2Driver(params, io, contextManager);
+		driver->genericDriverInit(params.WindowSize, params.Stencilbuffer);	// don't call in constructor, it uses virtual function calls of driver
+		return driver;
+	#else
+		return 0;
+	#endif //  _IRR_COMPILE_WITH_OGLES2_
+	}
+	#else
+	IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device)
+	{
+	#ifdef _IRR_COMPILE_WITH_OGLES2_
+		COGLES2Driver* driver = new COGLES2Driver(params, io, device);
+		driver->genericDriverInit(params.WindowSize, params.Stencilbuffer);	// don't call in constructor, it uses virtual function calls of driver
+		return driver;
+	#else
+		return 0;
+	#endif //  _IRR_COMPILE_WITH_OGLES2_
+	}
+	#endif // _IRR_EMSCRIPTEN_PLATFORM_
+
 #else
 IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager)
 {

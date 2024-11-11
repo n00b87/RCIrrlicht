@@ -18,6 +18,17 @@
 #include <stdlib.h>
 #include "SIrrCreationParameters.h"
 
+#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+#ifdef _IRR_COMPILE_WITH_OGLES2_
+#include "CEGLManager.h"
+#endif
+#include <emscripten.h>
+#endif
+
+#if defined(_IRR_COMPILE_WITH_WEBGL1_) && defined(_IRR_EMSCRIPTEN_PLATFORM_)
+	#include "CWebGL1Driver.h"
+#endif
+
 #ifdef _IRR_ANDROID_PLATFORM_
 	#include "SDL.h"
 	#include "SDL_syswm.h"
@@ -57,8 +68,17 @@ namespace irr
 		#endif
 
 		#ifdef _IRR_COMPILE_WITH_OGLES2_
-		IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params,
-				io::IFileSystem* io, CIrrDeviceSDL* device);
+			#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+			IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params,
+					io::IFileSystem* io, IContextManager* contextManager);
+			#else
+			IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params,
+					io::IFileSystem* io, CIrrDeviceSDL* device);
+			#endif // _IRR_EMSCRIPTEN_PLATFORM_
+		#endif // _IRR_COMPILE_WITH_OGLES2_
+
+		#if defined(_IRR_COMPILE_WITH_WEBGL1_) && defined(_IRR_EMSCRIPTEN_PLATFORM_)
+		IVideoDriver* createWebGL1Driver(const irr::SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
 		#endif
 	} // end namespace video
 
@@ -128,7 +148,7 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters& param)
 
 	if ( CreationParams.Fullscreen )
 		SDL_Flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-	if (CreationParams.DriverType == video::EDT_OPENGL || CreationParams.DriverType == video::EDT_OGLES2)
+	if (CreationParams.DriverType == video::EDT_OPENGL || CreationParams.DriverType == video::EDT_OGLES2 || CreationParams.DriverType == video::EDT_WEBGL1)
 		SDL_Flags |= SDL_WINDOW_OPENGL;
 
 	// create window
@@ -170,7 +190,7 @@ bool CIrrDeviceSDL::createWindow()
 	if ( Close )
 		return false;
 
-	if (CreationParams.DriverType == video::EDT_OPENGL || CreationParams.DriverType == video::EDT_OGLES2)
+	if (CreationParams.DriverType == video::EDT_OPENGL || CreationParams.DriverType == video::EDT_OGLES2 || CreationParams.DriverType == video::EDT_WEBGL1)
 	{
 		if(CreationParams.DriverType == video::EDT_OPENGL)
 	    {
@@ -178,7 +198,7 @@ bool CIrrDeviceSDL::createWindow()
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	    }
-	    if(CreationParams.DriverType == video::EDT_OGLES2)
+	    if(CreationParams.DriverType == video::EDT_OGLES2 || CreationParams.DriverType == video::EDT_WEBGL1)
         {
         	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -262,10 +282,34 @@ void CIrrDeviceSDL::createDriver()
 	switch(CreationParams.DriverType)
 	{
 	case video::EDT_OGLES2:
-		#ifdef _IRR_COMPILE_WITH_OGLES2_
-		VideoDriver = video::createOGLES2Driver(CreationParams, FileSystem, this);
+		#if defined(_IRR_COMPILE_WITH_OGLES2_) && defined(_IRR_EMSCRIPTEN_PLATFORM_)
+		{
+			video::SExposedVideoData data;
+
+			ContextManager = new video::CEGLManager();
+			ContextManager->initialize(CreationParams, data);
+
+			VideoDriver = video::createOGLES2Driver(CreationParams, FileSystem, ContextManager);
+		}
+		#elif  defined(_IRR_COMPILE_WITH_OGLES2_)
+			VideoDriver = video::createOGLES2Driver(CreationParams, FileSystem, this);
 		#else
-		os::Printer::log("No GLES2 support compiled in.", ELL_ERROR);
+			os::Printer::log("No GLES2 support compiled in.", ELL_ERROR);
+		#endif
+		break;
+
+	case video::EDT_WEBGL1:
+		#if defined(_IRR_COMPILE_WITH_WEBGL1_) && defined(_IRR_EMSCRIPTEN_PLATFORM_)
+		{
+			video::SExposedVideoData data;
+
+			ContextManager = new video::CEGLManager();
+			ContextManager->initialize(CreationParams, data);
+
+			VideoDriver = video::createWebGL1Driver(CreationParams, FileSystem, ContextManager);
+		}
+		#else
+			os::Printer::log("No WebGL1 support compiled in.", ELL_ERROR);
 		#endif
 		break;
 

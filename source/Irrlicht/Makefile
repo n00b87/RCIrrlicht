@@ -83,7 +83,7 @@ emscripten: EMSCRIPTEN=1
 
 CXXINCS = -I../../include -Izlib -Ijpeglib -Ilibpng
 CPPFLAGS += $(CXXINCS) -DIRRLICHT_EXPORTS=1
-CXXFLAGS += -Wall -pipe -fno-exceptions -fno-rtti
+CXXFLAGS += -Wall -pipe -fno-exceptions -fno-rtti -sUSE_SDL=2 -sFULL_ES2=1
 #CXXFLAGS += -std=gnu++11 -U__STRICT_ANSI__
 ifndef NDEBUG
 CPPFLAGS += -g -D_DEBUG
@@ -139,6 +139,7 @@ staticlib_win32: CPPFLAGS += -D_IRR_STATIC_LIB_
 
 #emscripten specific options
 staticlib_emscripten: SYSTEM = emscripten
+staticlib_emscripten: CPPFLAGS += 
 
 
 # You might want to disable features you don't need in Irrlicht here to reduce Irrlicht library.

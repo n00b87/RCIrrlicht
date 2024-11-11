@@ -50,7 +50,11 @@ namespace video
 		friend class COpenGLCoreTexture<COGLES2Driver>;
 
 		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
+			#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+				friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
+			#else
+				friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
+			#endif // _IRR_EMSCRIPTEN_PLATFORM_
 		#else
 			friend IVideoDriver* createOGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
 		#endif
@@ -58,7 +62,11 @@ namespace video
 	protected:
 		//! constructor (use createOGLES2Driver instead)
 		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
+			#ifdef _IRR_EMSCRIPTEN_PLATFORM_
+				COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
+			#else
+				COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, CIrrDeviceSDL* device);
+			#endif
 		#else
 			COGLES2Driver(const SIrrlichtCreationParameters& params, io::IFileSystem* io, IContextManager* contextManager);
 		#endif // _IRR_COMPILE_WITH_SDL_DEVICE_
@@ -451,7 +459,9 @@ private:
 		core::array<RequestedLight> RequestedLights;
 
 		#ifdef _IRR_COMPILE_WITH_SDL_DEVICE_
-			CIrrDeviceSDL *SDLDevice;
+			#ifndef _IRR_EMSCRIPTEN_PLATFORM_
+				CIrrDeviceSDL *SDLDevice;
+			#endif // _IRR_EMSCRIPTEN_PLATFORM_
 		#endif
 
 		IContextManager* ContextManager;

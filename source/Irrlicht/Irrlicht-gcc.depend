@@ -7827,7 +7827,7 @@
 	"os.h"
 	"coreutil.h"
 
-1731270733 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/CNullDriver.cpp
+1731284620 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/CNullDriver.cpp
 	"CNullDriver.h"
 	"os.h"
 	"CImage.h"
@@ -8045,7 +8045,7 @@
 	"irrString.h"
 	"COGLES2Common.h"
 
-1731251462 /home/n00b/Projects/RCIrrlicht/source/Irrlicht/COGLES2Driver.h
+1731287952 /home/n00b/Projects/RCIrrlicht/source/Irrlicht/COGLES2Driver.h
 	"IrrCompileConfig.h"
 	"SIrrCreationParameters.h"
 	"CNullDriver.h"
@@ -9887,7 +9887,7 @@
 	<windows.h>
 	<errno.h>
 
-1731260078 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/CIrrDeviceSDL.cpp
+1731288979 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/CIrrDeviceSDL.cpp
 	"IrrCompileConfig.h"
 	"CIrrDeviceSDL.h"
 	"IEventReceiver.h"
@@ -9900,6 +9900,9 @@
 	<stdio.h>
 	<stdlib.h>
 	"SIrrCreationParameters.h"
+	"CEGLManager.h"
+	<emscripten.h>
+	"CWebGL1Driver.h"
 	"SDL.h"
 	"SDL_syswm.h"
 	"SDL_video.h"
@@ -9908,7 +9911,7 @@
 	<SDL2/SDL_video.h>
 	"COGLES2Driver.h"
 
-1731270808 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/COGLES2Driver.cpp
+1731288525 source:/home/n00b/Projects/RCIrrlicht/source/Irrlicht/COGLES2Driver.cpp
 	"COGLES2Driver.h"
 	"CNullDriver.h"
 	"IContextManager.h"

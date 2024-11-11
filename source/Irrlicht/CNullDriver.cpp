@@ -755,7 +755,7 @@ bool CNullDriver::setRenderTarget(ITexture* texture, u16 clearFlag, SColor clear
 		// create depth texture if require.
 		if (!depthTexture)
 		{
-			depthTexture = addRenderTargetTexture(texture->getSize(), "IRR_DEPTH_STENCIL", video::ECF_D16);
+			depthTexture = addRenderTargetTexture(texture->getSize(), "IRR_DEPTH_STENCIL", ( (getDriverType() == EDT_OGLES2 || getDriverType() == EDT_WEBGL1) ? video::ECF_D16 : video::ECF_D24S8) );
 			SharedDepthTextures.push_back(depthTexture);
 		}
 
