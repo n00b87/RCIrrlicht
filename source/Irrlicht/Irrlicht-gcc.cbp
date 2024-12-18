@@ -54,7 +54,7 @@
 				<Option output="../../lib/Win32-gcc/Irrlicht" prefix_auto="1" extension_auto="1" />
 				<Option object_output="../obj/win32-gcc-release-dll" />
 				<Option type="3" />
-				<Option compiler="gcc" />
+				<Option compiler="mingw32" />
 				<Option createDefFile="1" />
 				<Option createStaticLib="1" />
 				<Compiler>
@@ -68,11 +68,14 @@
 					<Add option="-DIRRLICHT_EXPORTS" />
 					<Add option="-D_CRT_SECURE_NO_DEPRECATE" />
 					<Add option="-D__GNUWIN32__" />
+					<Add option="-DRC_WINDOWS" />
 					<Add directory="../../include" />
 					<Add directory="zlib" />
+					<Add directory="../../../SDL2-dev/i686-w64-mingw32/include" />
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
+					<Add option="-lSDL2" />
 					<Add library="kernel32" />
 					<Add library="user32" />
 					<Add library="gdi32" />
@@ -85,6 +88,7 @@
 					<Add library="uuid" />
 					<Add library="opengl32" />
 					<Add library="winmm" />
+					<Add directory="../../../SDL2-dev/i686-w64-mingw32/lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="cmd /c del ..\..\bin\Win32-gcc\Irrlicht.dll" />
@@ -403,7 +407,6 @@
 			<Add option="-fno-rtti" />
 			<Add option="-fstrict-aliasing" />
 			<Add option="-U__STRICT_ANSI__" />
-			<Add option="-D_IRR_COMPILE_WITH_OGLES2_" />
 			<Add option="-D_IRR_COMPILE_WITH_SDL_DEVICE_" />
 			<Add option="-D_IRR_COMPILE_WITH_OPENGL_" />
 		</Compiler>
@@ -834,19 +837,103 @@
 		<Unit filename="COCTLoader.cpp" />
 		<Unit filename="COCTLoader.h" />
 		<Unit filename="COGLES2Common.h" />
-		<Unit filename="COGLES2Driver.cpp" />
+		<Unit filename="COGLES2Driver.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2Driver.h" />
-		<Unit filename="COGLES2ExtensionHandler.cpp" />
+		<Unit filename="COGLES2ExtensionHandler.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2ExtensionHandler.h" />
-		<Unit filename="COGLES2FixedPipelineRenderer.cpp" />
+		<Unit filename="COGLES2FixedPipelineRenderer.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2FixedPipelineRenderer.h" />
-		<Unit filename="COGLES2MaterialRenderer.cpp" />
+		<Unit filename="COGLES2MaterialRenderer.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2MaterialRenderer.h" />
-		<Unit filename="COGLES2NormalMapRenderer.cpp" />
+		<Unit filename="COGLES2NormalMapRenderer.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2NormalMapRenderer.h" />
-		<Unit filename="COGLES2ParallaxMapRenderer.cpp" />
+		<Unit filename="COGLES2ParallaxMapRenderer.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2ParallaxMapRenderer.h" />
-		<Unit filename="COGLES2Renderer2D.cpp" />
+		<Unit filename="COGLES2Renderer2D.cpp">
+			<Option target="Win32 - Debug - dll" />
+			<Option target="Win32 - Release - fast math - dll" />
+			<Option target="Win32 - Debug - static" />
+			<Option target="Win32 - Release - accurate math - static" />
+			<Option target="Win32 - Release - fast math - static" />
+			<Option target="Linux - Debug - shared" />
+			<Option target="Linux - Release - accurate math - shared" />
+			<Option target="Linux - Release - fast math - shared" />
+			<Option target="Linux - Debug - static" />
+			<Option target="Linux - Release - accurate math - static" />
+			<Option target="Linux - Release - fast math - static" />
+		</Unit>
 		<Unit filename="COGLES2Renderer2D.h" />
 		<Unit filename="COGLESCommon.h" />
 		<Unit filename="COGLESCoreExtensionHandler.h" />
